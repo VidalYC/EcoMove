@@ -1,6 +1,6 @@
-from ..repositories import transports_repo, loans_repo, payments_repo
-from ..schemas.transports import TransportType
-from ..services.pricing_service import calculate_cost
+from app.repositories import transports_repo, loans_repo, payments_repo
+from app.schemas.transports import TransportType
+from app.services.pricing_service import calculate_cost
 
 def open_loan(user_id:int, transport_id:int, origin_station_id:int,
               destination_station_id:int, duration_minutes:int) -> dict:

@@ -1,6 +1,6 @@
 from fastapi import APIRouter
-from ...schemas.stations import StationCreate, Station
-from ...repositories import stations_repo, transports_repo
+from app.schemas.stations import StationCreate, Station
+from app.repositories import stations_repo, transports_repo
 
 router = APIRouter(prefix="/stations", tags=["stations"])
 

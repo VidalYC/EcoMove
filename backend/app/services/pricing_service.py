@@ -1,4 +1,4 @@
-from ..schemas.transports import TransportType
+from app.schemas.transports import TransportType
 
 TARIFFS_PER_MINUTE = {
     TransportType.BICICLETA: 50.0,   # COP por minuto (ejemplo)

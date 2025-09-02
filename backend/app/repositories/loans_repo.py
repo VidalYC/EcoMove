@@ -1,5 +1,5 @@
 from typing import List, Optional
-from ..db.memory import db, next_id
+from app.db.memory import db, next_id
 
 def create_loan(data: dict) -> dict:
     data["id"] = next_id("loans")

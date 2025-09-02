@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 # Pagos se generan al cerrar préstamo; endpoint opcional para listar
-from ...db.memory import db
+from app.db.memory import db
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 

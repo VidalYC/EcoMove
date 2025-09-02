@@ -1,6 +1,6 @@
 from fastapi import APIRouter
-from ...schemas.transports import TransportCreate, Transport
-from ...repositories import transports_repo
+from app.schemas.transports import TransportCreate, Transport
+from app.repositories import transports_repo
 
 router = APIRouter(prefix="/transports", tags=["transports"])
 

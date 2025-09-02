@@ -1,6 +1,6 @@
 from fastapi import APIRouter
-from ...schemas.users import UserCreate, User
-from ...repositories import users_repo
+from app.schemas.users import UserCreate, User
+from app.repositories import users_repo
 
 router = APIRouter(prefix="/users", tags=["users"])
 

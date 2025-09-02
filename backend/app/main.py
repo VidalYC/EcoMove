@@ -1,6 +1,6 @@
 from fastapi import FastAPI
-from .core.config import settings
-from .api.routers import users, stations, transports, loans, payments
+from app.core.config import settings
+from app.api.routers import users, stations, transports, loans, payments
 
 app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION)
 

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
-from ...schemas.loans import LoanCreate, Loan
-from ...repositories import loans_repo
-from ...services.loans_service import open_loan, close_loan
+from app.schemas.loans import LoanCreate, Loan
+from app.repositories import loans_repo
+from app.services.loans_service import open_loan, close_loan
 
 router = APIRouter(prefix="/loans", tags=["loans"])
 
