@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2024-01-15T10:00:00.000Z" agent="5.0" etag="example" version="22.1.11" type="device">
+  <diagram name="EcoMove-ClassDiagram-Complete" id="class-diagram-complete">
+    <mxGraphModel dx="2000" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2000" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Título del Diagrama -->
+        <mxCell id="title" value="EcoMove - Diagrama UML de Clases Completo" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1;fontColor=#2c5aa0;" vertex="1" parent="1">
+          <mxGeometry x="750" y="20" width="500" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Clase Usuario -->
+        <mxCell id="Usuario" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;Usuario&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;- id: Long&lt;br&gt;- nombre: String&lt;br&gt;- correo: String&lt;br&gt;- documento: String&lt;br&gt;- telefono: String&lt;br&gt;- fechaRegistro: Date&lt;br&gt;- estado: EstadoUsuario&lt;br&gt;- role: String&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;+ Usuario(nombre, correo, documento)&lt;br&gt;+ getId(): Long&lt;br&gt;+ getNombre(): String&lt;br&gt;+ getCorreo(): String&lt;br&gt;+ validarDocumento(): boolean&lt;br&gt;+ activarUsuario(): void&lt;br&gt;+ desactivarUsuario(): void&lt;br&gt;+ comparePassword(password: String): boolean&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=10;fontFamily=Helvetica;html=1;strokeColor=#2c5aa0;fillColor=#e1f5fe;" vertex="1" parent="1">
+          <mxGeometry x="50" y="80" width="240" height="220" as="geometry" />
+        </mxCell>
+
+        <!-- Clase Transporte (Abstracta) -->
+        <mxCell id="Transporte" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;i&gt;&lt;b&gt;«abstract» Transporte&lt;/b&gt;&lt;/i&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;# id: String&lt;br&gt;# modelo: String&lt;br&gt;# estado: EstadoTransporte&lt;br&gt;# estacionActual: Estacion&lt;br&gt;# tarifaPorHora: BigDecimal&lt;br&gt;# fechaAdquisicion: Date&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;+ Transporte(id, modelo, tarifa)&lt;br&gt;+ getId(): String&lt;br&gt;+ getEstado(): EstadoTransporte&lt;br&gt;+ setEstacion(estacion: Estacion): void&lt;br&gt;+ marcarComoDisponible(): void&lt;br&gt;+ marcarComoEnUso(): void&lt;br&gt;&lt;i&gt;+ calcularTarifa(duracion: Duration): BigDecimal&lt;/i&gt;&lt;br&gt;&lt;i&gt;+ obtenerTipo(): TipoTransporte&lt;/i&gt;&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=10;fontFamily=Helvetica;html=1;strokeColor=#6366f1;fillColor=#eef2ff;" vertex="1" parent="1">
+          <mxGeometry x="400" y="80" width="300" height="240" as="geometry" />
+        </mxCell>
+
+        <!-- Clase Bicicleta -->
+        <mxCell id="Bicicleta" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;Bicicleta&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;- numMarchas: int&lt;br&gt;- tipoFreno: String&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;+ Bicicleta(id, modelo, marchas)&lt;br&gt;+ calcularTarifa(duracion: Duration): BigDecimal&lt;br&gt;+ obtenerTipo(): TipoTransporte&lt;br&gt;+ getNumMarchas(): int&lt;br&gt;+ setNumMarchas(marchas: int): void&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=10;fontFamily=Helvetica;html=1;strokeColor=#10b981;fillColor=#ecfdf5;" vertex="1" parent="1">
+          <mxGeometry x="320" y="400" width="260" height="130" as="geometry" />
+        </mxCell>
+
+        <!-- Clase PatinetaElectrica -->
+        <mxCell id="PatinetaElectrica" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;PatinetaElectrica&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;- nivelBateria: int&lt;br&gt;- velocidadMaxima: double&lt;br&gt;- autonomia: int&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;+ PatinetaElectrica(id, modelo, bateria)&lt;br&gt;+ calcularTarifa(duracion: Duration): BigDecimal&lt;br&gt;+ obtenerTipo(): TipoTransporte&lt;br&gt;+ cargarBateria(): void&lt;br&gt;+ getNivelBateria(): int&lt;br&gt;+ setNivelBateria(nivel: int): void&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=10;fontFamily=Helvetica;html=1;strokeColor=#f59e0b;fillColor=#fffbeb;" vertex="1" parent="1">
+          <mxGeometry x="620" y="400" width="280" height="150" as="geometry" />
+        </mxCell>
+
+        <!-- Clase Estacion -->
+        <mxCell id="Estacion" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;Estacion&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;- id: Long&lt;br&gt;- nombre: String&lt;br&gt;- direccion: String&lt;br&gt;- coordenadas: Coordenada&lt;br&gt;- capacidadMaxima: int&lt;br&gt;- transportes: List&amp;lt;Transporte&amp;gt;&lt;br&gt;- fechaCreacion: Date&lt;br&gt;- isActive: boolean&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;+ Estacion(nombre, direccion, capacidad)&lt;br&gt;+ agregarTransporte(transporte: Transporte): boolean&lt;br&gt;+ removerTransporte(transporte: Transporte): boolean&lt;br&gt;+ consultarDisponibilidad(): Map&amp;lt;TipoTransporte, Integer&amp;gt;&lt;br&gt;+ obtenerTransportesDisponibles(): List&amp;lt;Transporte&amp;gt;&lt;br&gt;+ obtenerTransportePorTipo(tipo: TipoTransporte): Transporte&lt;br&gt;+ estaCompleta(): boolean&lt;br&gt;+ activar(): void&lt;br&gt;+ desactivar(): void&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=10;fontFamily=Helvetica;html=1;strokeColor=#8b5cf6;fillColor=#f3e8ff;" vertex="1" parent="1">
+          <mxGeometry x="780" y="80" width="360" height="280" as="geometry" />
+        </mxCell>
+
+        <!-- Clase Prestamo -->
+        <mxCell id="Prestamo" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;Prestamo&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;- id: Long&lt;br&gt;- usuario: Usuario&lt;br&gt;- transporte: Transporte&lt;br&gt;- estacionOrigen: Estacion&lt;br&gt;- estacionDestino: Estacion&lt;br&gt;- fechaInicio: LocalDateTime&lt;br&gt;- fechaFin: LocalDateTime&lt;br&gt;- duracionEstimada: Duration&lt;br&gt;- costoTotal: BigDecimal&lt;br&gt;- estado: EstadoPrestamo&lt;br&gt;- metodoPago: MetodoPago&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;+ Prestamo(usuario, transporte, origen, destino)&lt;br&gt;+ iniciarPrestamo(): void&lt;br&gt;+ finalizarPrestamo(estacionDevolucion: Estacion): void&lt;br&gt;+ calcularCosto(): BigDecimal&lt;br&gt;+ extenderTiempo(tiempoAdicional: Duration): void&lt;br&gt;+ procesarPago(): boolean&lt;br&gt;+ getDuracionReal(): Duration&lt;br&gt;+ getEstado(): EstadoPrestamo&lt;br&gt;+ cancelar(): void&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=10;fontFamily=Helvetica;html=1;strokeColor=#ef4444;fillColor=#fef2f2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="380" width="240" height="320" as="geometry" />
+        </mxCell>
+
+        <!-- Clase GestorPrestamos -->
+        <mxCell id="GestorPrestamos" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;GestorPrestamos&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;- prestamos: List&amp;lt;Prestamo&amp;gt;&lt;br&gt;- calculadoraTarifas: CalculadoraTarifas&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;+ GestorPrestamos()&lt;br&gt;+ crearPrestamo(usuario: Usuario, transporte: Transporte, &lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;origen: Estacion, destino: Estacion): Prestamo&lt;br&gt;+ finalizarPrestamo(prestamoId: Long, &lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;estacionDevolucion: Estacion): boolean&lt;br&gt;+ obtenerPrestamosActivos(usuario: Usuario): List&amp;lt;Prestamo&amp;gt;&lt;br&gt;+ obtenerHistorial(usuario: Usuario): List&amp;lt;Prestamo&amp;gt;&lt;br&gt;+ validarDisponibilidad(estacion: Estacion, &lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;tipo: TipoTransporte): boolean&lt;br&gt;+ extenderPrestamo(prestamoId: Long, tiempo: Duration): boolean&lt;br&gt;+ cancelarPrestamo(prestamoId: Long): boolean&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=10;fontFamily=Helvetica;html=1;strokeColor=#0ea5e9;fillColor=#e0f2fe;" vertex="1" parent="1">
+          <mxGeometry x="400" y="740" width="400" height="200" as="geometry" />
+        </mxCell>
+
+        <!-- Clase CalculadoraTarifas -->
+        <mxCell id="CalculadoraTarifas" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;CalculadoraTarifas&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;- tarifasBase: Map&amp;lt;TipoTransporte, BigDecimal&amp;gt;&lt;br&gt;- descuentos: List&amp;lt;Descuento&amp;gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;+ CalculadoraTarifas()&lt;br&gt;+ calcularCosto(transporte: Transporte, &lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;duracion: Duration): BigDecimal&lt;br&gt;+ aplicarDescuentos(usuario: Usuario, &lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;costoBase: BigDecimal): BigDecimal&lt;br&gt;+ actualizarTarifa(tipo: TipoTransporte, &lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;nuevaTarifa: BigDecimal): void&lt;br&gt;+ obtenerTarifaPorHora(tipo: TipoTransporte): BigDecimal&lt;br&gt;+ agregarDescuento(descuento: Descuento): void&lt;br&gt;+ removerDescuento(descuentoId: String): void&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=10;fontFamily=Helvetica;html=1;strokeColor=#84cc16;fillColor=#f7fee7;" vertex="1" parent="1">
+          <mxGeometry x="880" y="740" width="320" height="180" as="geometry" />
+        </mxCell>
+
+        <!-- Clase Coordenada -->
+        <mxCell id="Coordenada" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;Coordenada&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;- latitud: double&lt;br&gt;- longitud: double&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;+ Coordenada(lat: double, lng: double)&lt;br&gt;+ calcularDistancia(otra: Coordenada): double&lt;br&gt;+ getLatitud(): double&lt;br&gt;+ getLongitud(): double&lt;br&gt;+ setLatitud(lat: double): void&lt;br&gt;+ setLongitud(lng: double): void&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=10;fontFamily=Helvetica;html=1;strokeColor=#6b7280;fillColor=#f9fafb;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="80" width="220" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- Clase Descuento -->
+        <mxCell id="Descuento" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;Descuento&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;- id: String&lt;br&gt;- tipo: String&lt;br&gt;- porcentaje: double&lt;br&gt;- fechaInicio: Date&lt;br&gt;- fechaFin: Date&lt;br&gt;- isActive: boolean&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;+ Descuento(tipo, porcentaje, inicio, fin)&lt;br&gt;+ aplicar(monto: BigDecimal): BigDecimal&lt;br&gt;+ esValido(): boolean&lt;br&gt;+ activar(): void&lt;br&gt;+ desactivar(): void&lt;br&gt;+ getPorcentaje(): double&lt;br&gt;+ setPorcentaje(porcentaje: double): void&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=10;fontFamily=Helvetica;html=1;strokeColor=#6b7280;fillColor=#f9fafb;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="260" width="220" height="180" as="geometry" />
+        </mxCell>
+
+        <!-- Enumeraciones -->
+        <mxCell id="TipoTransporte" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;i&gt;&lt;b&gt;«enum» TipoTransporte&lt;/b&gt;&lt;/i&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;BICICLETA&lt;br&gt;PATINETA_ELECTRICA&lt;br&gt;SCOOTER&lt;br&gt;VEHICULO_ELECTRICO&lt;br&gt;MONOCICLO_ELECTRICO&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=10;fontFamily=Helvetica;html=1;strokeColor=#8b5cf6;fillColor=#f3e8ff;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="480" width="160" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="EstadoTransporte" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;i&gt;&lt;b&gt;«enum» EstadoTransporte&lt;/b&gt;&lt;/i&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;DISPONIBLE&lt;br&gt;EN_USO&lt;br&gt;MANTENIMIENTO&lt;br&gt;FUERA_DE_SERVICIO&lt;br&gt;RESERVADO&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=10;fontFamily=Helvetica;html=1;strokeColor=#8b5cf6;fillColor=#f3e8ff;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="480" width="160" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="EstadoPrestamo" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;i&gt;&lt;b&gt;«enum» EstadoPrestamo&lt;/b&gt;&lt;/i&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;ACTIVO&lt;br&gt;FINALIZADO&lt;br&gt;CANCELADO&lt;br&gt;EXTENDIDO&lt;br&gt;SUSPENDIDO&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=10;fontFamily=Helvetica;html=1;strokeColor=#8b5cf6;fillColor=#f3e8ff;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="620" width="160" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="MetodoPago" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;i&gt;&lt;b&gt;«enum» MetodoPago&lt;/b&gt;&lt;/i&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;EFECTIVO&lt;br&gt;TARJETA_CREDITO&lt;br&gt;PSE&lt;br&gt;BILLETERA_DIGITAL&lt;br&gt;STRIPE&lt;br&gt;PAYPAL&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=10;fontFamily=Helvetica;html=1;strokeColor=#8b5cf6;fillColor=#f3e8ff;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="620" width="160" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="EstadoUsuario" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;i&gt;&lt;b&gt;«enum» EstadoUsuario&lt;/b&gt;&lt;/i&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;ACTIVO&lt;br&gt;INACTIVO&lt;br&gt;SUSPENDIDO&lt;br&gt;BLOQUEADO&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=10;fontFamily=Helvetica;html=1;strokeColor=#8b5cf6;fillColor=#f3e8ff;" vertex="1" parent="1">
+          <mxGeometry x="1450" y="780" width="160" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Relaciones de Herencia -->
+        <mxCell id="herencia1" style="endArrow=block;endSize=16;endFill=0;html=1;rounded=0;exitX=0.5;exitY=0;entryX=0.3;entryY=1;strokeWidth=2;" edge="1" parent="1" source="Bicicleta" target="Transporte">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="450" y="380" as="sourcePoint" />
+            <mxPoint x="490" y="340" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="herencia2" style="endArrow=block;endSize=16;endFill=0;html=1;rounded=0;exitX=0.5;exitY=0;entryX=0.7;entryY=1;strokeWidth=2;" edge="1" parent="1" source="PatinetaElectrica" target="Transporte">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="760" y="380" as="sourcePoint" />
+            <mxPoint x="610" y="340" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Relaciones de Asociación -->
+        <mxCell id="usuario_prestamo" style="endArrow=none;html=1;endSize=12;startArrow=none;startSize=12;startFill=0;endFill=0;rounded=0;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeWidth=2;" edge="1" parent="1" source="Usuario" target="Prestamo">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="170" y="300" as="sourcePoint" />
+            <mxPoint x="170" y="380" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="usuario_prestamo_label1" value="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="150" y="300" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="usuario_prestamo_label2" value="0..*" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="150" y="360" width="30" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Relación Estacion-Transporte (Composición) -->
+        <mxCell id="estacion_transporte" style="endArrow=none;html=1;endSize=12;startArrow=diamond;startSize=12;startFill=1;endFill=0;rounded=0;exitX=0;exitY=0.5;entryX=1;entryY=0.5;strokeWidth=2;" edge="1" parent="1" source="Estacion" target="Transporte">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="780" y="200" as="sourcePoint" />
+            <mxPoint x="700" y="200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="estacion_transporte_label1" value="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="760" y="180" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="estacion_transporte_label2" value="0..*" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="700" y="180" width="30" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Relación Prestamo-Transporte -->
+        <mxCell id="prestamo_transporte" style="endArrow=none;html=1;endSize=12;startArrow=none;startSize=12;startFill=0;endFill=0;rounded=0;exitX=1;exitY=0.3;entryX=0;entryY=0.7;strokeWidth=2;" edge="1" parent="1" source="Prestamo" target="Transporte">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="290" y="480" as="sourcePoint" />
+            <mxPoint x="400" y="250" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="prestamo_transporte_label1" value="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="380" y="230" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="prestamo_transporte_label2" value="0..*" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="290" y="460" width="30" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Relación Prestamo-Estacion Origen -->
+        <mxCell id="prestamo_estacion_origen" style="endArrow=none;html=1;endSize=12;startArrow=none;startSize=12;startFill=0;endFill=0;rounded=0;exitX=1;exitY=0.6;entryX=0;entryY=0.8;strokeWidth=2;" edge="1" parent="1" source="Prestamo" target="Estacion">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="290" y="572" as="sourcePoint" />
+            <mxPoint x="780" y="304" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="prestamo_estacion_origen_label" value="origen" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="450" y="550" width="40" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Relación Prestamo-Estacion Destino -->
+        <mxCell id="prestamo_estacion_destino" style="endArrow=none;html=1;endSize=12;startArrow=none;startSize=12;startFill=0;endFill=0;rounded=0;exitX=1;exitY=0.8;entryX=0;entryY=0.9;strokeWidth=2;dashed=1;" edge="1" parent="1" source="Prestamo" target="Estacion">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="290" y="636" as="sourcePoint" />
+            <mxPoint x="780" y="332" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="prestamo_estacion_destino_label" value="destino" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="500" y="610" width="40" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Relación GestorPrestamos-Prestamo (Agregación) -->
+        <mxCell id="gestor_prestamo" style="endArrow=none;html=1;endSize=12;startArrow=diamond;startSize=12;startFill=0;endFill=0;rounded=0;exitX=0.3;exitY=0;entryX=0.5;entryY=1;strokeWidth=2;" edge="1" parent="1" source="GestorPrestamos" target="Prestamo">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="520" y="740" as="sourcePoint" />
+            <mxPoint x="170" y="700" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gestor_prestamo_label1" value="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="500" y="720" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="gestor_prestamo_label2" value="0..*" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="150" y="700" width="30" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Relación GestorPrestamos-CalculadoraTarifas (Uso) -->
+        <mxCell id="gestor_calculadora" style="endArrow=open;html=1;endSize=12;dashed=1;rounded=0;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;" edge="1" parent="1" source="GestorPrestamos" target="CalculadoraTarifas">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="800" y="840" as="sourcePoint" />
+            <mxPoint x="880" y="830" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="gestor_calculadora_label" value="«uses»" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="820" y="820" width="50" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Relación Estacion-Coordenada (Composición) -->
+        <mxCell id="estacion_coordenada" style="endArrow=none;html=1;endSize=12;startArrow=diamond;startSize=12;startFill=1;endFill=0;rounded=0;exitX=1;exitY=0.2;entryX=0;entryY=0.5;strokeWidth=2;" edge="1" parent="1" source="Estacion" target="Coordenada">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="1140" y="136" as="sourcePoint" />
+            <mxPoint x="1200" y="150" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="estacion_coordenada_label1" value="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="115" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="estacion_coordenada_label2" value="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="130" width="20" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Relación CalculadoraTarifas-Descuento -->
+        <mxCell id="calculadora_descuento" style="endArrow=none;html=1;endSize=12;startArrow=diamond;startSize=12;startFill=0;endFill=0;rounded=0;exitX=1;exitY=0.3;entryX=0;entryY=0.8;strokeWidth=2;" edge="1" parent="1" source="CalculadoraTarifas" target="Descuento">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="1200" y="794" as="sourcePoint" />
+            <mxPoint x="1200" y="404" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="calculadora_descuento_label1" value="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="774" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="calculadora_descuento_label2" value="0..*" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="404" width="30" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Clases Futuras (Extensibilidad) -->
+        <mxCell id="Scooter" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;Scooter&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 8px&quot;&gt;(Futuro)&lt;/font&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;- potenciaMotor: double&lt;br&gt;- capacidadCombustible: double&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;+ Scooter(id, modelo, potencia)&lt;br&gt;+ calcularTarifa(duracion: Duration): BigDecimal&lt;br&gt;+ obtenerTipo(): TipoTransporte&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=10;fontFamily=Helvetica;html=1;strokeColor=#94a3b8;fillColor=#f1f5f9;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="950" y="400" width="240" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="VehiculoElectrico" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;&quot;&gt;&lt;b&gt;VehiculoElectrico&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 8px&quot;&gt;(Futuro)&lt;/font&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;- capacidadBateria: int&lt;br&gt;- autonomiaKm: int&lt;br&gt;- numAsientos: int&lt;/p&gt;&lt;hr size=&quot;1&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:4px;&quot;&gt;+ VehiculoElectrico(id, modelo, bateria)&lt;br&gt;+ calcularTarifa(duracion: Duration): BigDecimal&lt;br&gt;+ obtenerTipo(): TipoTransporte&lt;br&gt;+ cargarBateria(): void&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;fontSize=10;fontFamily=Helvetica;html=1;strokeColor=#94a3b8;fillColor=#f1f5f9;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="950" y="540" width="240" height="130" as="geometry" />
+        </mxCell>
+
+        <!-- Herencia futura -->
+        <mxCell id="herencia_scooter" style="endArrow=block;endSize=16;endFill=0;html=1;rounded=0;exitX=0.5;exitY=0;entryX=1;entryY=0.8;strokeWidth=2;dashed=1;" edge="1" parent="1" source="Scooter" target="Transporte">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="1070" y="400" as="sourcePoint" />
+            <mxPoint x="700" y="272" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="herencia_vehiculo" style="endArrow=block;endSize=16;endFill=0;html=1;rounded=0;exitX=0.5;exitY=0;entryX=1;entryY=0.9;strokeWidth=2;dashed=1;" edge="1" parent="1" source="VehiculoElectrico" target="Transporte">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="1070" y="540" as="sourcePoint" />
+            <mxPoint x="700" y="296" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Leyenda -->
+        <mxCell id="leyenda" value="&lt;b&gt;Leyenda de Relaciones:&lt;/b&gt;&lt;br&gt;&lt;br&gt;◆——— Composición (parte-todo)&lt;br&gt;◇——— Agregación (tiene-un)&lt;br&gt;▷——— Herencia (es-un)&lt;br&gt;———— Asociación (usa/conoce)&lt;br&gt;- - - -&amp;gt; Dependencia (depende-de)&lt;br&gt;- - - - Línea punteada: Clase futura" style="text;html=1;strokeColor=#6b7280;fillColor=#f9fafb;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=10;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="50" y="980" width="250" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- Nota de Diseño Principal -->
+        <mxCell id="nota_diseno" value="&lt;b&gt;Principios de Diseño Aplicados:&lt;/b&gt;&lt;br&gt;&lt;br&gt;• &lt;b&gt;Flexibilidad:&lt;/b&gt; Clase abstracta Transporte permite agregar nuevos tipos&lt;br&gt;• &lt;b&gt;Mantenibilidad:&lt;/b&gt; Separación clara de responsabilidades&lt;br&gt;• &lt;b&gt;Reutilización:&lt;/b&gt; Enumeraciones y métodos reutilizables&lt;br&gt;• &lt;b&gt;Extensibilidad:&lt;/b&gt; Preparado para Scooter y VehiculoElectrico&lt;br&gt;• &lt;b&gt;Encapsulamiento:&lt;/b&gt; Atributos privados con métodos de acceso&lt;br&gt;• &lt;b&gt;Polimorfismo:&lt;/b&gt; Método calcularTarifa() implementado por subclases" style="text;html=1;strokeColor=#2c5aa0;fillColor=#e1f5fe;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=10;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="350" y="980" width="400" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- Patrones de Diseño -->
+        <mxCell id="patrones" value="&lt;b&gt;Patrones de Diseño Implementados:&lt;/b&gt;&lt;br&gt;&lt;br&gt;• &lt;b&gt;Template Method:&lt;/b&gt; Transporte.calcularTarifa()&lt;br&gt;• &lt;b&gt;Factory Method:&lt;/b&gt; Creación de transportes específicos&lt;br&gt;• &lt;b&gt;Strategy:&lt;/b&gt; CalculadoraTarifas para diferentes algoritmos&lt;br&gt;• &lt;b&gt;Facade:&lt;/b&gt; GestorPrestamos encapsula complejidad&lt;br&gt;• &lt;b&gt;Enum Pattern:&lt;/b&gt; Estados y tipos bien definidos&lt;br&gt;• &lt;b&gt;Value Object:&lt;/b&gt; Coordenada como objeto de valor" style="text;html=1;strokeColor=#10b981;fillColor=#ecfdf5;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=10;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="800" y="980" width="350" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- Extensibilidad Futura -->
+        <mxCell id="extensibilidad" value="&lt;b&gt;Preparado para el Futuro:&lt;/b&gt;&lt;br&gt;&lt;br&gt;• &lt;b&gt;Nuevos Transportes:&lt;/b&gt; Scooter, VehiculoElectrico, MonocicloElectrico&lt;br&gt;• &lt;b&gt;Suscripciones:&lt;/b&gt; Nuevos métodos de pago y planes&lt;br&gt;• &lt;b&gt;Geolocalización:&lt;/b&gt; Coordenada preparada para GPS&lt;br&gt;• &lt;b&gt;IoT:&lt;/b&gt; Sensores en vehículos para monitoreo&lt;br&gt;• &lt;b&gt;IA:&lt;/b&gt; Predicción de demanda y optimización&lt;br&gt;• &lt;b&gt;Blockchain:&lt;/b&gt; Pagos descentralizados" style="text;html=1;strokeColor=#f59e0b;fillColor=#fffbeb;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=10;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="980" width="350" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- Multiplicidades adicionales -->
+        <mxCell id="mult_estacion_origen" value="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="760" y="280" width="20" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mult_estacion_destino" value="0..1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="760" y="310" width="30" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Visibilidad en colores -->
+        <mxCell id="visibilidad_nota" value="&lt;b&gt;Visibilidad de Atributos y Métodos:&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;font color=&quot;#059669&quot;&gt;+ Público&lt;/font&gt; - Accesible desde cualquier clase&lt;br&gt;&lt;font color=&quot;#f59e0b&quot;&gt;# Protegido&lt;/font&gt; - Accesible desde subclases&lt;br&gt;&lt;font color=&quot;#dc2626&quot;&gt;- Privado&lt;/font&gt; - Accesible solo desde la misma clase&lt;br&gt;&lt;br&gt;&lt;i&gt;Métodos en cursiva&lt;/i&gt; - Métodos abstractos" style="text;html=1;strokeColor=#6366f1;fillColor=#eef2ff;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=10;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="1600" y="80" width="300" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- Métricas del Sistema -->
+        <mxCell id="metricas" value="&lt;b&gt;Métricas del Sistema UML:&lt;/b&gt;&lt;br&gt;&lt;br&gt;• &lt;b&gt;Clases Principales:&lt;/b&gt; 9&lt;br&gt;• &lt;b&gt;Clases Futuras:&lt;/b&gt; 2&lt;br&gt;• &lt;b&gt;Enumeraciones:&lt;/b&gt; 5&lt;br&gt;• &lt;b&gt;Relaciones:&lt;/b&gt; 8&lt;br&gt;• &lt;b&gt;Métodos Abstractos:&lt;/b&gt; 2&lt;br&gt;• &lt;b&gt;Patrones Aplicados:&lt;/b&gt; 6" style="text;html=1;strokeColor=#ef4444;fillColor=#fef2f2;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=10;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="1600" y="260" width="220" height="140" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

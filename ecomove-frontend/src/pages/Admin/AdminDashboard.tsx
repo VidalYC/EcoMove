@@ -145,7 +145,7 @@ export default function AdminDashboard() {
                     <span className={`text-xs font-medium px-2 py-1 rounded-full ${
                       loan.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                     }`}>
-                      {loan.status === 'completed' ? 'Completado' : 'Activo'}
+                      {loan.status === 'completed' ? 'Completado' : 'active'}
                     </span>
                   </div>
                 </div>
