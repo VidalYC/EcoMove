@@ -137,7 +137,7 @@ export class TransporteService {
     try {
       await client.query('BEGIN');
       
-      const allowedFields = ['modelo', 'estado', 'estacion_actual_id', 'tarifa_por_hora', 'kilometraje'];
+      const allowedFields = ['modelo', 'estado', 'estacion_actual_id', 'tarifa_por_hora'];
       const setFields: string[] = [];
       const values: any[] = [];
       let paramIndex = 1;
@@ -162,7 +162,7 @@ export class TransporteService {
         SET ${setFields.join(', ')}
         WHERE id = $${paramIndex}
         RETURNING id, tipo, modelo, estado, estacion_actual_id, tarifa_por_hora,
-                  fecha_adquisicion, kilometraje, created_at, updated_at
+                  fecha_adquisicion, created_at, updated_at
       `;
 
       const result = await client.query(query, values);
