@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { UsuarioModel } from '../models/UsuarioModel';
 import { UsuarioService } from '../services/UsuarioService';
 import { IUsuarioCreate, IUsuarioUpdate } from '../types/Usuario';
-
+import { AuthMiddleware } from '../middleware/Auth';
 
 interface ExtendedRequest extends Request {
   user?: {
@@ -102,13 +102,20 @@ export class UsuarioController {
         return;
       }
 
+      // Generar token JWT
+      const token = AuthMiddleware.generateToken(user);
+
       // Remover password_hash del response
       const { password_hash, ...userResponse } = user;
 
       res.json({
         success: true,
         message: 'Login exitoso',
-        data: userResponse
+        data: {
+          user: userResponse,
+          token,
+          expires_in: process.env.JWT_EXPIRES_IN || '24h'
+        }
       });
 
     } catch (error) {
