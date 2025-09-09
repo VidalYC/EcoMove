@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { PrestamoController } from '../controllers/PrestamoController';
 import { PrestamoValidator } from '../middleware/PrestamoValidator';
+import { AuthMiddleware } from '../middleware/Auth'; // NUEVO IMPORT
 
 const router = Router();
 
@@ -24,6 +25,7 @@ router.post('/calcular-tarifa',
 
 // Iniciar nuevo préstamo
 router.post('/',
+  AuthMiddleware.authenticate, // NUEVO MIDDLEWARE
   PrestamoValidator.validateCreatePrestamo(),
   PrestamoValidator.handleValidationErrors,
   PrestamoValidator.validateUsuarioActivo,
@@ -36,6 +38,7 @@ router.post('/',
 
 // Finalizar préstamo
 router.put('/:id/finalizar',
+  AuthMiddleware.authenticate, // NUEVO MIDDLEWARE
   PrestamoValidator.validateFinalizarPrestamo(),
   PrestamoValidator.handleValidationErrors,
   PrestamoValidator.validatePrestamoExists,
@@ -46,6 +49,7 @@ router.put('/:id/finalizar',
 
 // Cancelar préstamo
 router.put('/:id/cancelar',
+  AuthMiddleware.authenticate, // NUEVO MIDDLEWARE
   PrestamoValidator.validateCancelarPrestamo(),
   PrestamoValidator.handleValidationErrors,
   PrestamoValidator.validatePrestamoExists,
@@ -54,6 +58,7 @@ router.put('/:id/cancelar',
 
 // Extender tiempo de préstamo
 router.put('/:id/extender',
+  AuthMiddleware.authenticate, // NUEVO MIDDLEWARE
   PrestamoValidator.validateExtenderPrestamo(),
   PrestamoValidator.handleValidationErrors,
   PrestamoValidator.validatePrestamoExists,
@@ -62,6 +67,8 @@ router.put('/:id/extender',
 
 // Obtener historial de préstamos de un usuario
 router.get('/usuario/:usuarioId',
+  AuthMiddleware.authenticate, // NUEVO MIDDLEWARE
+  AuthMiddleware.requireOwnershipOrAdmin('usuarioId'), // NUEVO MIDDLEWARE
   PrestamoValidator.validateHistorialUsuario(),
   PrestamoValidator.handleValidationErrors,
   PrestamoValidator.validateUsuarioActivo,
@@ -72,7 +79,8 @@ router.get('/usuario/:usuarioId',
 
 // Obtener reporte de préstamos por período
 router.get('/reporte',
-  // PrestamoValidator.validateAdminRole, // Comentado por ahora
+  AuthMiddleware.authenticate, // NUEVO MIDDLEWARE
+  AuthMiddleware.requireAdmin, // NUEVO MIDDLEWARE - DESCOMENTADO
   PrestamoValidator.validateReportePeriodo(),
   PrestamoValidator.handleValidationErrors,
   PrestamoValidator.validateRangoFechas,
@@ -81,7 +89,8 @@ router.get('/reporte',
 
 // Obtener todos los préstamos activos
 router.get('/activos',
-  // PrestamoValidator.validateAdminRole, // Comentado por ahora
+  AuthMiddleware.authenticate, // NUEVO MIDDLEWARE
+  AuthMiddleware.requireAdmin, // NUEVO MIDDLEWARE - DESCOMENTADO
   PrestamoValidator.validatePrestamosActivos(),
   PrestamoValidator.handleValidationErrors,
   PrestamoController.obtenerPrestamosActivos

@@ -1,8 +1,8 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { UsuarioController } from '../controllers/UsuarioController';
 import { UsuarioValidator } from '../middleware/UsuarioValidator';
+import { AuthMiddleware } from '../middleware/Auth'; // NUEVO IMPORT
 import { IUsuario } from '../types/Usuario';
-// import { AuthMiddleware } from '../middleware/auth';
 
 const router = Router();
 
@@ -33,15 +33,17 @@ router.post('/login',
   UsuarioController.login
 );
 
-// ========== RUTAS PROTEGIDAS ==========
+// ========== RUTAS PROTEGIDAS (requieren autenticación) ==========
 
 // Obtener perfil del usuario autenticado
 router.get('/profile',
+  AuthMiddleware.authenticate, // NUEVO MIDDLEWARE
   UsuarioController.getProfile
 );
 
 // Actualizar perfil del usuario autenticado
 router.put('/profile',
+  AuthMiddleware.authenticate, // NUEVO MIDDLEWARE
   UsuarioValidator.validateUpdateProfile(),
   UsuarioValidator.handleValidationErrors,
   UsuarioController.updateProfile
@@ -49,30 +51,39 @@ router.put('/profile',
 
 // Cambiar contraseña
 router.put('/change-password',
+  AuthMiddleware.authenticate, // NUEVO MIDDLEWARE
   UsuarioValidator.validateChangePassword(),
   UsuarioValidator.handleValidationErrors,
   UsuarioController.changePassword
 );
 
-// ========== RUTAS DE ADMINISTRACIÓN ==========
+// ========== RUTAS DE ADMINISTRACIÓN (requieren rol admin) ==========
 
 // Listar todos los usuarios (solo admin)
 router.get('/',
+  AuthMiddleware.authenticate, // NUEVO MIDDLEWARE
+  AuthMiddleware.requireAdmin, // NUEVO MIDDLEWARE
   UsuarioController.getAllUsers
 );
 
 // Buscar usuarios (solo admin)
 router.get('/search',
+  AuthMiddleware.authenticate, // NUEVO MIDDLEWARE
+  AuthMiddleware.requireAdmin, // NUEVO MIDDLEWARE
   UsuarioController.searchUsers
 );
 
 // Obtener estadísticas (solo admin)
 router.get('/stats',
+  AuthMiddleware.authenticate, // NUEVO MIDDLEWARE
+  AuthMiddleware.requireAdmin, // NUEVO MIDDLEWARE
   UsuarioController.getStats
 );
 
-// Obtener usuario por ID (solo admin) - CON CASTING
+// Obtener usuario por ID (solo admin)
 router.get('/:id',
+  AuthMiddleware.authenticate, // NUEVO MIDDLEWARE
+  AuthMiddleware.requireAdmin, // NUEVO MIDDLEWARE
   UsuarioValidator.validateUserExists,
   (req: Request, res: Response) => {
     const extReq = req as ExtendedRequest;
@@ -85,18 +96,24 @@ router.get('/:id',
 
 // Activar usuario (solo admin)
 router.put('/:id/activate',
+  AuthMiddleware.authenticate, // NUEVO MIDDLEWARE
+  AuthMiddleware.requireAdmin, // NUEVO MIDDLEWARE
   UsuarioValidator.validateUserExists,
   UsuarioController.activateUser
 );
 
 // Desactivar usuario (solo admin)
 router.put('/:id/deactivate',
+  AuthMiddleware.authenticate, // NUEVO MIDDLEWARE
+  AuthMiddleware.requireAdmin, // NUEVO MIDDLEWARE
   UsuarioValidator.validateUserExists,
   UsuarioController.deactivateUser
 );
 
-// Actualizar usuario específico (solo admin) - CON CASTING
+// Actualizar usuario específico (solo admin)
 router.put('/:id',
+  AuthMiddleware.authenticate, // NUEVO MIDDLEWARE
+  AuthMiddleware.requireAdmin, // NUEVO MIDDLEWARE
   UsuarioValidator.validateUserExists,
   UsuarioValidator.validateUpdateProfile(),
   UsuarioValidator.handleValidationErrors,
