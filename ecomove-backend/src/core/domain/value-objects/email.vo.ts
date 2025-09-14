@@ -1,38 +1,28 @@
-import { ValidationException } from "../../../shared/exceptions/validation-exception";
-
+// src/core/domain/value-objects/email.vo.ts
 export class Email {
-  private readonly _value: string;
+  private readonly value: string;
 
-  constructor(value: string) {
-    this.validate(value);
-    this._value = value.toLowerCase().trim();
-  }
-
-  get value(): string {
-    return this._value;
+  constructor(email: string) {
+    this.validate(email);
+    this.value = email.toLowerCase().trim();
   }
 
   private validate(email: string): void {
-    const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-    
-    if (!email || !email.trim()) {
-      throw new ValidationException('Email is required');
-    }
-    
-    if (!emailRegex.test(email)) {
-      throw new ValidationException('Invalid email format');
+    if (!email) {
+      throw new Error('Email is required');
     }
 
-    if (email.length > 255) {
-      throw new ValidationException('Email cannot exceed 255 characters');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw new Error('Invalid email format');
     }
+  }
+
+  getValue(): string {
+    return this.value;
   }
 
   equals(other: Email): boolean {
-    return this._value === other._value;
-  }
-
-  toString(): string {
-    return this._value;
+    return this.value === other.value;
   }
 }

@@ -1,28 +1,33 @@
-import { User } from '../../domain/entities/user.entity';
+// src/core/use-cases/user/change-password.use-case.ts
 import { UserRepository } from '../../domain/repositories/user.repository';
+import { PasswordService } from '../../domain/services/password.service';
 import { NotFoundException } from '../../../shared/exceptions/not-found-exception';
-import { BusinessException } from '../../../shared/exceptions/business-exception';
-import { ChangePasswordDto } from './dtos/change-password.dto';
+import { ValidationException } from '../../../shared/exceptions/validation-exception';
 
 export class ChangePasswordUseCase {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly passwordService: PasswordService
+  ) {}
 
-  async execute(userId: number, dto: ChangePasswordDto): Promise<void> {
+  async execute(userId: number, currentPassword: string, newPassword: string): Promise<void> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('Usuario no encontrado');
     }
 
-    // Verificar contraseña actual
-    const isValidCurrentPassword = await user.verifyPassword(dto.currentPassword);
-    if (!isValidCurrentPassword) {
-      throw new BusinessException('Current password is incorrect');
+    const isCurrentPasswordValid = await this.passwordService.compare(
+      currentPassword, 
+      user.getPassword()
+    );
+    
+    if (!isCurrentPasswordValid) {
+      throw new ValidationException('Contraseña actual incorrecta');
     }
 
-    // Cambiar contraseña
-    await user.changePassword(dto.newPassword);
-
-    // Guardar cambios
+    const hashedNewPassword = await this.passwordService.hash(newPassword);
+    user.changePassword(hashedNewPassword);
+    
     await this.userRepository.update(user);
   }
 }

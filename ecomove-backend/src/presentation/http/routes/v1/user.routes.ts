@@ -1,56 +1,79 @@
-import { Router } from 'express';
-import { UserController } from '../../controllers/user.controller';
-import { UserValidator } from '../../validators/user.validator';
-import { AuthenticationMiddleware } from '../../middleware/authentication.middleware';
+// src/presentation/http/routes/v1/user.routes.ts
+import { Router, Request, Response } from 'express';
+import { AuthRoutes } from './auth.routes';
+import { UserProfileRoutes } from './user-profile.routes';
+import { UserAdminRoutes } from './user-admin.routes';
 import { DIContainer } from '../../../../config/container';
 
+/**
+ * Enrutador principal de usuarios
+ * Responsabilidad única: Combinar todas las rutas relacionadas con usuarios
+ */
 export class UserRoutes {
-  static create(): Router {
-    const router = Router();
-    const container = DIContainer.getInstance();
-    
-    // Obtener controller del container
-    const userController = container.getUserController();
-    const authMiddleware = container.getAuthMiddleware();
+  private router: Router;
+  private container: DIContainer;
 
-    // ========== RUTAS PÚBLICAS - FORMATO ORIGINAL ==========
+  constructor() {
+    this.router = Router();
+    this.container = DIContainer.getInstance();
+    this.setupRoutes();
+  }
 
-    // Registro de usuario (formato original: nombre, correo, documento, telefono, password)
-    router.post('/register',
-      UserValidator.validateRegister(),
-      UserValidator.handleValidationErrors,
-      (req, res) => userController.register(req, res)
+  private setupRoutes(): void {
+    // Rutas de autenticación (públicas)
+    const authRoutes = new AuthRoutes(this.container.getAuthController());
+    this.router.use('/auth', authRoutes.getRouter());
+
+    // Rutas de perfil (requieren autenticación)
+    const profileRoutes = new UserProfileRoutes(
+      this.container.getUserProfileController(),
+      this.container.getAuthMiddleware()
     );
+    this.router.use('/', profileRoutes.getRouter());
 
-    // Login de usuario (formato original: correo, password)
-    router.post('/login', 
-      UserValidator.validateLogin(),
-      UserValidator.handleValidationErrors,
-      (req, res) => userController.login(req, res)
+    // Rutas de administración (requieren admin)
+    const adminRoutes = new UserAdminRoutes(
+      this.container.getUserAdminController(),
+      this.container.getAuthMiddleware()
     );
+    this.router.use('/admin', adminRoutes.getRouter());
 
-    // ========== RUTAS PROTEGIDAS ==========
-
-    // Obtener perfil del usuario autenticado
-    router.get('/profile',
-      authMiddleware.authenticate.bind(authMiddleware),
-      (req, res) => userController.getProfile(req, res)
-    );
-
-    // Health check específico para usuarios
-    router.get('/health', (req, res) => {
+    // Health check general
+    this.router.get('/health', (req: Request, res: Response) => {
       res.json({
         success: true,
         message: 'Módulo de usuarios funcionando correctamente',
         timestamp: new Date().toISOString(),
+        modules: {
+          auth: 'active',
+          profile: 'active', 
+          admin: 'active'
+        },
         endpoints: {
-          register: 'POST /api/v1/users/register',
-          login: 'POST /api/v1/users/login', 
-          profile: 'GET /api/v1/users/profile'
+          auth: {
+            register: 'POST /api/v1/users/auth/register',
+            login: 'POST /api/v1/users/auth/login'
+          },
+          profile: {
+            getProfile: 'GET /api/v1/users/profile',
+            updateProfile: 'PUT /api/v1/users/profile',
+            changePassword: 'PUT /api/v1/users/change-password'
+          },
+          admin: {
+            list: 'GET /api/v1/users/admin',
+            search: 'GET /api/v1/users/admin/search',
+            stats: 'GET /api/v1/users/admin/stats',
+            getById: 'GET /api/v1/users/admin/:id',
+            activate: 'PUT /api/v1/users/admin/:id/activate',
+            deactivate: 'PUT /api/v1/users/admin/:id/deactivate',
+            update: 'PUT /api/v1/users/admin/:id'
+          }
         }
       });
     });
+  }
 
-    return router;
+  getRouter(): Router {
+    return this.router;
   }
 }

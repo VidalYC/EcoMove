@@ -1,8 +1,10 @@
+// src/main.ts
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { DIContainer } from './config/container';
 import { ErrorHandlerMiddleware } from './presentation/http/middleware/error-handler.middleware';
+import { UserRoutes } from './presentation/http/routes/v1/user.routes';
 
 dotenv.config();
 
@@ -24,7 +26,8 @@ app.use((req, res, next) => {
 const container = DIContainer.getInstance();
 
 // Rutas principales
-app.use('/api/v1/users', container.getUserRoutes().createRoutes());
+const userRoutes = new UserRoutes();
+app.use('/api/v1/users', userRoutes.getRouter());
 
 // Ruta raíz
 app.get('/', (req, res) => {
@@ -35,22 +38,40 @@ app.get('/', (req, res) => {
     architecture: 'Clean Architecture + SOLID Principles',
     endpoints: {
       health: '/api/v1/health',
-      users: '/api/v1/users',
+      users: {
+        auth: '/api/v1/users/auth/*',
+        profile: '/api/v1/users/profile',
+        admin: '/api/v1/users/admin/*'
+      },
       documentation: '/api/v1/docs (coming soon)'
     }
   });
 });
 
-// Health check
-app.get('/api/v1/health', (req, res) => {
+// Health check general
+app.get('/api/v1/health', async (req, res) => {
+  const healthCheck = await container.healthCheck();
+  
   res.json({
     success: true,
     message: 'EcoMove API is healthy',
     timestamp: new Date().toISOString(),
     version: '2.0.0',
-    modules: {
-      users: 'active',
-      database: 'connected'
+    status: healthCheck.status,
+    dependencies: healthCheck.dependencies
+  });
+});
+
+// Middleware catch-all para rutas no encontradas (DEBE IR ANTES del error handler)
+app.use((req, res, next) => {
+  res.status(404).json({
+    success: false,
+    message: `Ruta ${req.method} ${req.originalUrl} no encontrada`,
+    code: 'ROUTE_NOT_FOUND',
+    availableEndpoints: {
+      root: 'GET /',
+      health: 'GET /api/v1/health',
+      users: 'GET /api/v1/users/health'
     }
   });
 });
@@ -68,7 +89,9 @@ const startServer = async (): Promise<void> => {
     app.listen(PORT, () => {
       console.log(`🚀 EcoMove Server running on http://localhost:${PORT}`);
       console.log(`🏥 Health check: http://localhost:${PORT}/api/v1/health`);
-      console.log(`👥 Users API: http://localhost:${PORT}/api/v1/users`);
+      console.log(`🔐 Auth: http://localhost:${PORT}/api/v1/users/auth/`);
+      console.log(`👤 Profile: http://localhost:${PORT}/api/v1/users/profile`);
+      console.log(`⚙️  Admin: http://localhost:${PORT}/api/v1/users/admin/`);
       console.log(`📚 Architecture: Clean Architecture + SOLID Principles`);
     });
   } catch (error) {
