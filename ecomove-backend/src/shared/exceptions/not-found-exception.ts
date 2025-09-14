@@ -1,6 +1,6 @@
-import { BaseException } from "./base-exception";
-
-export class NotFoundException extends BaseException {
-  readonly code = 'NOT_FOUND';
-  readonly statusCode = 404;
+export class NotFoundException extends Error {
+  constructor(message: string = 'Resource not found') {
+    super(message);
+    this.name = 'NotFoundException';
+  }
 }

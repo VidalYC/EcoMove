@@ -1,22 +1,19 @@
+// src/core/use-cases/user/search-users.use-case.ts
+import { UserRepository, PaginatedResponse } from '../../domain/repositories/user.repository';
 import { User } from '../../domain/entities/user.entity';
-import { UserRepository } from '../../domain/repositories/user.repository';
-import { PaginationParams, PaginationResult } from '../../../shared/interfaces/pagination';
-
-export interface SearchUsersParams extends PaginationParams {
-  searchTerm: string;
-}
 
 export class SearchUsersUseCase {
   constructor(private readonly userRepository: UserRepository) {}
 
-  async execute(params: SearchUsersParams): Promise<PaginationResult<User>> {
-    const result = await this.userRepository.search(params.searchTerm, params.page, params.limit);
-    
-    return {
-      data: result.users,
-      total: result.total,
-      totalPages: result.totalPages,
-      currentPage: result.currentPage,
-    };
+  async execute(term: string, page: number = 1, limit: number = 10): Promise<PaginatedResponse<User>> {
+    if (!term || term.trim().length < 2) {
+      return {
+        users: [],
+        total: 0,
+        totalPages: 0,
+        currentPage: page
+      };
+    }
+    return await this.userRepository.search(term.trim(), page, limit);
   }
 }

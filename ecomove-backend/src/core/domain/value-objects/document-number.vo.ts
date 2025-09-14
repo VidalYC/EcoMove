@@ -1,34 +1,31 @@
-import { ValidationException } from "../../../shared/exceptions/validation-exception";
-
+// src/core/domain/value-objects/document-number.vo.ts
 export class DocumentNumber {
-  private readonly _value: string;
+  private readonly value: string;
 
-  constructor(value: string) {
-    this.validate(value);
-    this._value = value.trim();
+  constructor(documentNumber: string) {
+    this.validate(documentNumber);
+    this.value = documentNumber.trim();
   }
 
-  get value(): string {
-    return this._value;
+  private validate(documentNumber: string): void {
+    if (!documentNumber) {
+      throw new Error('Document number is required');
+    }
+
+    if (documentNumber.length < 8 || documentNumber.length > 15) {
+      throw new Error('Document number must be between 8 and 15 characters');
+    }
+
+    if (!/^\d+$/.test(documentNumber)) {
+      throw new Error('Document number must contain only numbers');
+    }
   }
 
-  private validate(document: string): void {
-    if (!document || !document.trim()) {
-      throw new ValidationException('Document number is required');
-    }
-
-    const cleanDocument = document.trim();
-    
-    if (!/^\d{7,12}$/.test(cleanDocument)) {
-      throw new ValidationException('Document must be between 7 and 12 digits');
-    }
+  getValue(): string {
+    return this.value;
   }
 
   equals(other: DocumentNumber): boolean {
-    return this._value === other._value;
-  }
-
-  toString(): string {
-    return this._value;
+    return this.value === other.value;
   }
 }
