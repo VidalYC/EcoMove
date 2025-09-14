@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { DIContainer } from './config/container';
 import { ErrorHandlerMiddleware } from './presentation/http/middleware/error-handler.middleware';
 import { UserRoutes } from './presentation/http/routes/v1/user.routes';
+import { TransportRoutes } from './presentation/http/routes/v1/transport.routes';
 
 dotenv.config();
 
@@ -28,6 +29,7 @@ const container = DIContainer.getInstance();
 // Rutas principales
 const userRoutes = new UserRoutes();
 app.use('/api/v1/users', userRoutes.getRouter());
+app.use('/api/v1/transports', TransportRoutes.create());
 
 // Ruta raíz
 app.get('/', (req, res) => {
@@ -43,6 +45,7 @@ app.get('/', (req, res) => {
         profile: '/api/v1/users/profile',
         admin: '/api/v1/users/admin/*'
       },
+      transports: '/api/v1/transports/*',
       documentation: '/api/v1/docs (coming soon)'
     }
   });
