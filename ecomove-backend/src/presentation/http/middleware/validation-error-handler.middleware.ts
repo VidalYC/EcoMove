@@ -1,6 +1,6 @@
 // src/presentation/http/middleware/validation-error-handler.middleware.ts
 import { Request, Response, NextFunction } from 'express';
-import { validationResult } from 'express-validator';
+const { validationResult } = require('express-validator');
 
 /**
  * Middleware para manejo de errores de validación
@@ -12,7 +12,7 @@ export class ValidationErrorHandler {
     const errors = validationResult(req);
     
     if (!errors.isEmpty()) {
-      const formattedErrors = errors.array().map(error => ({
+      const formattedErrors = errors.array().map((error: any) => ({
         field: error.type === 'field' ? (error as any).path : error.type,
         message: error.msg,
         value: error.type === 'field' ? (error as any).value : undefined

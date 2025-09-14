@@ -1,5 +1,4 @@
-// src/presentation/http/validators/profile.validator.ts
-import { body, ValidationChain } from 'express-validator';
+const { body } = require('express-validator');
 
 /**
  * Validador para operaciones de perfil de usuario
@@ -7,7 +6,7 @@ import { body, ValidationChain } from 'express-validator';
  */
 export class ProfileValidator {
   
-  static validateUpdateProfile(): ValidationChain[] {
+  static validateUpdateProfile() {
     return [
       body('nombre')
         .optional()
@@ -30,7 +29,7 @@ export class ProfileValidator {
     ];
   }
 
-  static validateChangePassword(): ValidationChain[] {
+  static validateChangePassword() {
     return [
       body('currentPassword')
         .notEmpty()
@@ -43,7 +42,7 @@ export class ProfileValidator {
         .withMessage('La nueva contraseña debe contener al menos una mayúscula, una minúscula y un número'),
 
       body('confirmPassword')
-        .custom((value, { req }) => {
+        .custom((value: any, { req }: { req: any }) => {
           if (value !== req.body.newPassword) {
             throw new Error('Las contraseñas no coinciden');
           }

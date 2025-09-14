@@ -1,13 +1,12 @@
 // src/presentation/http/validators/admin.validator.ts
-import { param, query, ValidationChain } from 'express-validator';
-
+const { param, query } = require('express-validator');
 /**
  * Validador para operaciones administrativas
  * Responsabilidad única: Validar consultas y operaciones de administración
  */
 export class AdminValidator {
   
-  static validatePagination(): ValidationChain[] {
+  static validatePagination() {
     return [
       query('page')
         .optional()
@@ -23,7 +22,7 @@ export class AdminValidator {
     ];
   }
 
-  static validateSearch(): ValidationChain[] {
+  static validateSearch() {
     return [
       query('term')
         .trim()
@@ -35,7 +34,7 @@ export class AdminValidator {
     ];
   }
 
-  static validateUserId(): ValidationChain[] {
+  static validateUserId() {
     return [
       param('id')
         .isInt({ min: 1 })

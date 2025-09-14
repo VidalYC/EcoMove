@@ -1,4 +1,3 @@
-// src/infrastructure/persistence/postgresql/user.repository.ts
 import { Pool, PoolClient } from 'pg';
 import { User, UserRole, UserStatus } from '../../../core/domain/entities/user.entity';
 import { Email } from '../../../core/domain/value-objects/email.vo';
@@ -89,7 +88,7 @@ export class PostgreSQLUserRepository implements UserRepository {
     try {
       const query = `
         UPDATE users 
-        SET name = $2, phone = $3, role = $4, status = $5, updated_at = CURRENT_TIMESTAMP
+        SET name = $2, phone = $3, password = $4, role = $5, status = $6, updated_at = CURRENT_TIMESTAMP
         WHERE id = $1 AND deleted_at IS NULL
         RETURNING *
       `;
@@ -98,6 +97,7 @@ export class PostgreSQLUserRepository implements UserRepository {
         user.getId(),
         user.getName(),
         user.getPhone(),
+        user.getPassword(), // ¡ESTE ERA EL CAMPO FALTANTE!
         user.getRole(),
         user.getStatus()
       ];

@@ -1,5 +1,5 @@
 // src/presentation/http/validators/auth.validator.ts
-import { body, ValidationChain } from 'express-validator';
+const { body } = require('express-validator');
 
 /**
  * Validador para operaciones de autenticación
@@ -7,7 +7,7 @@ import { body, ValidationChain } from 'express-validator';
  */
 export class AuthValidator {
   
-  static validateRegister(): ValidationChain[] {
+  static validateRegister() {
     return [
       body('nombre')
         .trim()
@@ -42,7 +42,7 @@ export class AuthValidator {
     ];
   }
 
-  static validateLogin(): ValidationChain[] {
+  static validateLogin() {
     return [
       body('correo')
         .trim()
