@@ -1,4 +1,3 @@
-// src/presentation/http/validators/auth.validator.ts
 const { body } = require('express-validator');
 
 /**

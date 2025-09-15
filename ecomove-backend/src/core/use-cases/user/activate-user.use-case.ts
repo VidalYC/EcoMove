@@ -1,4 +1,3 @@
-// src/core/use-cases/user/activate-user.use-case.ts
 import { User } from '../../domain/entities/user.entity';
 import { UserRepository } from '../../domain/repositories/user.repository';
 import { NotFoundException } from '../../../shared/exceptions/not-found-exception';

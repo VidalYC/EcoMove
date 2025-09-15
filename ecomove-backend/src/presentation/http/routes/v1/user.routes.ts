@@ -1,4 +1,3 @@
-// src/presentation/http/routes/v1/user.routes.ts
 import { Router, Request, Response } from 'express';
 import { AuthRoutes } from './auth.routes';
 import { UserProfileRoutes } from './user-profile.routes';

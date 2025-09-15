@@ -59,6 +59,28 @@ import {
 // Controllers - TRANSPORTES (nuevos)
 import { TransportController } from '../presentation/http/controllers/transport.controller';
 
+// Repositories - ESTACIONES (nuevos)
+import { StationRepository } from '../core/domain/entities/station.entity';
+import { PostgreSQLStationRepository } from '../infrastructure/database/repositories/postgresql-station.repository';
+
+// Use Cases - ESTACIONES (nuevos)
+import {
+  CreateStationUseCase,
+  GetStationUseCase,
+  GetAllStationsUseCase,
+  UpdateStationUseCase,
+  FindNearbyStationsUseCase,
+  GetStationAvailabilityUseCase,
+  CalculateRouteUseCase,
+  GetStationStatsUseCase,
+  FindStationsWithTransportsUseCase,
+  ActivateStationUseCase,
+  DeactivateStationUseCase,
+  GetOccupancyRankingUseCase
+} from '../core/use-cases/station';
+
+// Controllers - ESTACIONES (nuevos)
+import { StationController } from '../presentation/http/controllers/station.controller';
 
 /**
  * Contenedor de inyección de dependencias
@@ -121,8 +143,29 @@ export class DIContainer {
   private getTransportStatsUseCase!: GetTransportStatsUseCase;
   private deleteTransportUseCase!: DeleteTransportUseCase;
 
+
+
   // Controllers
   private transportController!: TransportController;
+
+  private stationRepository!: StationRepository;
+
+// Use Cases
+private createStationUseCase!: CreateStationUseCase;
+private getStationUseCase!: GetStationUseCase;
+private getAllStationsUseCase!: GetAllStationsUseCase;
+private updateStationUseCase!: UpdateStationUseCase;
+private findNearbyStationsUseCase!: FindNearbyStationsUseCase;
+private getStationAvailabilityUseCase!: GetStationAvailabilityUseCase;
+private calculateRouteUseCase!: CalculateRouteUseCase;
+private getStationStatsUseCase!: GetStationStatsUseCase;
+private findStationsWithTransportsUseCase!: FindStationsWithTransportsUseCase;
+private activateStationUseCase!: ActivateStationUseCase;
+private deactivateStationUseCase!: DeactivateStationUseCase;
+private getOccupancyRankingUseCase!: GetOccupancyRankingUseCase;
+
+// Controllers
+private stationController!: StationController;
 
   private constructor() {
     this.pool = DatabaseConfig.createPool();
@@ -150,6 +193,9 @@ export class DIContainer {
     
     // TRANSPORTES (nuevos)
     this.transportRepository = new PostgreSQLTransportRepository(this.pool);
+
+    // ESTACIONES (nuevos)
+    this.stationRepository = new PostgreSQLStationRepository(this.pool);
   }
 
   private initializeServices(): void {
@@ -211,6 +257,24 @@ export class DIContainer {
     this.updateBatteryLevelUseCase = new UpdateBatteryLevelUseCase(this.transportRepository);
     this.getTransportStatsUseCase = new GetTransportStatsUseCase(this.transportRepository);
     this.deleteTransportUseCase = new DeleteTransportUseCase(this.transportRepository);
+
+        
+    // ====================================================================
+    // ESTACIONES - Use Cases (nuevos)
+    // ====================================================================
+
+    this.createStationUseCase = new CreateStationUseCase(this.stationRepository);
+    this.getStationUseCase = new GetStationUseCase(this.stationRepository);
+    this.getAllStationsUseCase = new GetAllStationsUseCase(this.stationRepository);
+    this.updateStationUseCase = new UpdateStationUseCase(this.stationRepository);
+    this.findNearbyStationsUseCase = new FindNearbyStationsUseCase(this.stationRepository);
+    this.getStationAvailabilityUseCase = new GetStationAvailabilityUseCase(this.stationRepository);
+    this.calculateRouteUseCase = new CalculateRouteUseCase(this.stationRepository);
+    this.getStationStatsUseCase = new GetStationStatsUseCase(this.stationRepository);
+    this.findStationsWithTransportsUseCase = new FindStationsWithTransportsUseCase(this.stationRepository);
+    this.activateStationUseCase = new ActivateStationUseCase(this.stationRepository);
+    this.deactivateStationUseCase = new DeactivateStationUseCase(this.stationRepository);
+    this.getOccupancyRankingUseCase = new GetOccupancyRankingUseCase(this.stationRepository);
   }
 
   private initializeControllers(): void {
@@ -258,6 +322,26 @@ export class DIContainer {
       this.updateBatteryLevelUseCase,
       this.getTransportStatsUseCase,
       this.deleteTransportUseCase
+    );
+
+        
+    // ====================================================================
+    // ESTACIONES - Controllers (nuevos)
+    // ====================================================================
+
+    this.stationController = new StationController(
+      this.createStationUseCase,
+      this.getStationUseCase,
+      this.getAllStationsUseCase,
+      this.updateStationUseCase,
+      this.findNearbyStationsUseCase,
+      this.getStationAvailabilityUseCase,
+      this.calculateRouteUseCase,
+      this.getStationStatsUseCase,
+      this.findStationsWithTransportsUseCase,
+      this.activateStationUseCase,
+      this.deactivateStationUseCase,
+      this.getOccupancyRankingUseCase
     );
   }
 
@@ -319,9 +403,19 @@ export class DIContainer {
     return this.transportController;
   }
 
+  // Repositories
+  getStationRepository(): StationRepository {
+    return this.stationRepository;
+  }
+
+  // Controllers
+  getStationController(): StationController {
+    return this.stationController;
+  }
+
   // ========== UTILIDADES (existentes - sin cambios) ==========
 
-  async healthCheck(): Promise<{
+    async healthCheck(): Promise<{
     status: string;
     dependencies: Record<string, boolean>;
   }> {
@@ -334,9 +428,11 @@ export class DIContainer {
           database: true,
           userRepositories: !!this.userRepository,
           transportRepositories: !!this.transportRepository,
+          stationRepositories: !!this.stationRepository,
           services: !!this.passwordService && !!this.tokenService,
           userControllers: !!this.authController && !!this.userProfileController && !!this.userAdminController,
           transportControllers: !!this.transportController,
+          stationControllers: !!this.stationController,
           middleware: !!this.authenticationMiddleware
         }
       };
@@ -347,16 +443,14 @@ export class DIContainer {
           database: false,
           userRepositories: !!this.userRepository,
           transportRepositories: !!this.transportRepository,
+          stationRepositories: !!this.stationRepository,
           services: !!this.passwordService && !!this.tokenService,
           userControllers: !!this.authController && !!this.userProfileController && !!this.userAdminController,
           transportControllers: !!this.transportController,
+          stationControllers: !!this.stationController,
           middleware: !!this.authenticationMiddleware
         }
       };
     }
-  }
-
-  async close(): Promise<void> {
-    await this.pool.end();
   }
 }

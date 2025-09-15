@@ -1,4 +1,3 @@
-// src/core/use-cases/user/change-password.use-case.ts
 import { UserRepository } from '../../domain/repositories/user.repository';
 import { PasswordService } from '../../domain/services/password.service';
 import { NotFoundException } from '../../../shared/exceptions/not-found-exception';

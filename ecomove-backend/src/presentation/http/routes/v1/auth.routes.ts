@@ -1,4 +1,3 @@
-// src/presentation/http/routes/v1/auth.routes.ts
 import { Router, Request, Response } from 'express';
 import { AuthController } from '../../controllers/auth.controller';
 import { AuthValidator } from '../../validators/auth.validator';

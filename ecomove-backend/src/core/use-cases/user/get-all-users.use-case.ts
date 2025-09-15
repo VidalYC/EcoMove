@@ -1,4 +1,3 @@
-// src/core/use-cases/user/get-all-users.use-case.ts
 import { UserRepository, PaginatedResponse } from '../../domain/repositories/user.repository';
 import { User } from '../../domain/entities/user.entity';
 
