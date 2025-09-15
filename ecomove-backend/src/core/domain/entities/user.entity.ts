@@ -1,4 +1,3 @@
-// src/core/domain/entities/user.entity.ts
 import { Email } from '../value-objects/email.vo';
 import { DocumentNumber } from '../value-objects/document-number.vo';
 

@@ -1,13 +1,12 @@
 import { Pool } from 'pg';
-import { 
-  Transport, 
-  Bicycle, 
-  ElectricScooter,
-  TransportType,
-  TransportStatus,
-  TransportFilters,
-  TransportRepository 
-} from '../../../core/domain/entities/transport.entity';
+import { Transport } from '../../../core/domain/entities/transport.entity';
+import { TransportType } from '../../../shared/enums/transport.enums';
+import { TransportStatus } from '../../../shared/enums/transport.enums';
+import { ElectricScooter } from '../../../core/domain/entities/electric-scooter.entity';
+import { Bicycle } from '../../../core/domain/entities/bicycle.entity';
+import { TransportRepository } from '../../../core/domain/repositories/transport.repository';
+import { TransportFilters } from '@/core/domain/value-objects/transport-filters';
+
 
 export class PostgreSQLTransportRepository implements TransportRepository {
   constructor(private readonly pool: Pool) {}

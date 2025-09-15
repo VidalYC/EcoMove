@@ -1,4 +1,5 @@
-import { TransportRepository, TransportStatus } from '../../domain/entities/transport.entity';
+import { TransportStatus } from '../../../shared/enums/transport.enums';
+import { TransportRepository } from '../../domain/repositories/transport.repository';
 
 export class ChangeTransportStatusUseCase {
   constructor(private readonly transportRepository: TransportRepository) {}

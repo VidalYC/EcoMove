@@ -1,4 +1,4 @@
-import { TransportType, TransportStatus } from '../../core/domain/entities/transport.entity';
+import { TransportStatus, TransportType } from '../../shared/enums/transport.enums';
 
 export interface CreateBicycleDto {
   model: string;

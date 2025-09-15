@@ -1,4 +1,5 @@
-import { StationRepository, StationAvailability } from '../../domain/entities/station.entity';
+import { StationAvailability } from '../../domain/entities/station-availability.entity';
+import { StationRepository } from '../../domain/repositories/station.repository';
 
 export class GetStationAvailabilityUseCase {
   constructor(private readonly stationRepository: StationRepository) {}

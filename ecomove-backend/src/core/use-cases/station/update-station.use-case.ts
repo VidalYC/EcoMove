@@ -1,4 +1,6 @@
-import { StationRepository, Station, Coordinate } from '../../domain/entities/station.entity';
+import { Station } from '../../domain/entities/station.entity';
+import { Coordinate } from '../../../shared/interfaces/coordinate.interface';
+import { StationRepository } from '../../domain/repositories/station.repository';
 
 export class UpdateStationUseCase {
   constructor(private readonly stationRepository: StationRepository) {}

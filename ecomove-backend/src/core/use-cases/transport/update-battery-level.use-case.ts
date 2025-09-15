@@ -1,4 +1,5 @@
-import { TransportRepository, TransportType } from '../../domain/entities/transport.entity';
+import { TransportType } from '../../../shared/enums/transport.enums';
+import { TransportRepository } from '../../domain/repositories/transport.repository';
 
 export class UpdateBatteryLevelUseCase {
   constructor(private readonly transportRepository: TransportRepository) {}

@@ -1,4 +1,4 @@
-import { StationRepository } from '../../domain/entities/station.entity';
+import { StationRepository } from '../../domain/repositories/station.repository';
 
 export class GetStationStatsUseCase {
   constructor(private readonly stationRepository: StationRepository) {}

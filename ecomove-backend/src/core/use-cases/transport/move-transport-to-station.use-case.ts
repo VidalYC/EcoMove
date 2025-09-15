@@ -1,4 +1,4 @@
-import { TransportRepository } from '../../domain/entities/transport.entity';
+import { TransportRepository } from '../../domain/repositories/transport.repository';
 
 export class MoveTransportToStationUseCase {
   constructor(private readonly transportRepository: TransportRepository) {}
