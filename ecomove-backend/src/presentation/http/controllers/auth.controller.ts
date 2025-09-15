@@ -1,4 +1,3 @@
-// src/presentation/http/controllers/auth.controller.ts
 import { Request, Response } from 'express';
 import { RegisterUserUseCase } from '../../../core/use-cases/user/register-user.use-case';
 import { LoginUserUseCase } from '../../../core/use-cases/user/login-user.use-case';

@@ -1,4 +1,3 @@
-// src/presentation/http/routes/v1/user-admin.routes.ts
 import { Router, Request, Response } from 'express';
 import { UserAdminController } from '../../controllers/user-admin.controller';
 import { AdminValidator } from '../../validators/admin.validator';

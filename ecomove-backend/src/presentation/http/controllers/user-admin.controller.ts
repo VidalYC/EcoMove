@@ -1,4 +1,3 @@
-// src/presentation/http/controllers/user-admin.controller.ts
 import { Request, Response } from 'express';
 import { GetAllUsersUseCase } from '../../../core/use-cases/user/get-all-users.use-case';
 import { SearchUsersUseCase } from '../../../core/use-cases/user/search-users.use-case';

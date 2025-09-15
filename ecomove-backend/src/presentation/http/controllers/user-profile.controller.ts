@@ -1,4 +1,3 @@
-// src/presentation/http/controllers/user-profile.controller.ts
 import { Request, Response } from 'express';
 import { GetUserProfileUseCase } from '../../../core/use-cases/user/get-user-profile.use-case';
 import { UpdateUserProfileUseCase } from '../../../core/use-cases/user/update-user-profile.use-case';

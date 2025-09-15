@@ -1,4 +1,3 @@
--- src/database/schema.sql
 -- Esquema completo y limpio para EcoMove
 
 -- ==============================================

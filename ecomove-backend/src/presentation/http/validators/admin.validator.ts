@@ -1,4 +1,3 @@
-// src/presentation/http/validators/admin.validator.ts
 const { param, query } = require('express-validator');
 /**
  * Validador para operaciones administrativas

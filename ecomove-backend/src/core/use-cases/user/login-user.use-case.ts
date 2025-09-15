@@ -1,4 +1,3 @@
-// src/core/use-cases/user/login-user.use-case.ts
 import { User } from '../../domain/entities/user.entity';
 import { UserRepository } from '../../domain/repositories/user.repository';
 import { PasswordService } from '../../domain/services/password.service';

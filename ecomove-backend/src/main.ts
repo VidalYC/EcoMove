@@ -1,4 +1,3 @@
-// src/main.ts
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -6,6 +5,7 @@ import { DIContainer } from './config/container';
 import { ErrorHandlerMiddleware } from './presentation/http/middleware/error-handler.middleware';
 import { UserRoutes } from './presentation/http/routes/v1/user.routes';
 import { TransportRoutes } from './presentation/http/routes/v1/transport.routes';
+import { StationRoutes } from './presentation/http/routes/v1/station.routes'; // NUEVA IMPORTACIÓN
 
 dotenv.config();
 
@@ -30,6 +30,7 @@ const container = DIContainer.getInstance();
 const userRoutes = new UserRoutes();
 app.use('/api/v1/users', userRoutes.getRouter());
 app.use('/api/v1/transports', TransportRoutes.create());
+app.use('/api/v1/stations', StationRoutes.create()); // NUEVA RUTA
 
 // Ruta raíz
 app.get('/', (req, res) => {
@@ -46,6 +47,7 @@ app.get('/', (req, res) => {
         admin: '/api/v1/users/admin/*'
       },
       transports: '/api/v1/transports/*',
+      stations: '/api/v1/stations/*', // AGREGADO
       documentation: '/api/v1/docs (coming soon)'
     }
   });
@@ -74,7 +76,9 @@ app.use((req, res, next) => {
     availableEndpoints: {
       root: 'GET /',
       health: 'GET /api/v1/health',
-      users: 'GET /api/v1/users/health'
+      users: 'GET /api/v1/users/health',
+      transports: 'GET /api/v1/transports/health',
+      stations: 'GET /api/v1/stations/health' // AGREGADO
     }
   });
 });
@@ -95,6 +99,8 @@ const startServer = async (): Promise<void> => {
       console.log(`🔐 Auth: http://localhost:${PORT}/api/v1/users/auth/`);
       console.log(`👤 Profile: http://localhost:${PORT}/api/v1/users/profile`);
       console.log(`⚙️  Admin: http://localhost:${PORT}/api/v1/users/admin/`);
+      console.log(`🚲 Transports: http://localhost:${PORT}/api/v1/transports/`);
+      console.log(`🏢 Stations: http://localhost:${PORT}/api/v1/stations/`); // AGREGADO
       console.log(`📚 Architecture: Clean Architecture + SOLID Principles`);
     });
   } catch (error) {

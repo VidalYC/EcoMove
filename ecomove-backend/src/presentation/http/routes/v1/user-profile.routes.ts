@@ -1,4 +1,3 @@
-// src/presentation/http/routes/v1/user-profile.routes.ts
 import { Router, Request, Response } from 'express';
 import { UserProfileController } from '../../controllers/user-profile.controller';
 import { ProfileValidator } from '../../validators/profile.validator';
