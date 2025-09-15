@@ -1,4 +1,5 @@
-import { ElectricScooter, TransportRepository } from '../../domain/entities/transport.entity';
+import { ElectricScooter } from '../../domain/entities/electric-scooter.entity';
+import { TransportRepository } from '../../domain/repositories/transport.repository';
 import { CreateElectricScooterDto } from '../../../shared/interfaces/transport-dtos';
 
 export class CreateElectricScooterUseCase {

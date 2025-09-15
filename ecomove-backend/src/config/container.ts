@@ -38,7 +38,7 @@ import { AuthenticationMiddleware } from '../presentation/http/middleware/authen
 // ====================================================================
 
 // Repositories - TRANSPORTES (nuevos)
-import { TransportRepository } from '../core/domain/entities/transport.entity';
+import { TransportRepository } from '../core/domain/repositories/transport.repository';
 import { PostgreSQLTransportRepository } from '../infrastructure/database/repositories/postgresql-transport.repository';
 
 // Use Cases - TRANSPORTES (nuevos)
@@ -60,7 +60,7 @@ import {
 import { TransportController } from '../presentation/http/controllers/transport.controller';
 
 // Repositories - ESTACIONES (nuevos)
-import { StationRepository } from '../core/domain/entities/station.entity';
+import { StationRepository } from '../core/domain/repositories/station.repository';
 import { PostgreSQLStationRepository } from '../infrastructure/database/repositories/postgresql-station.repository';
 
 // Use Cases - ESTACIONES (nuevos)

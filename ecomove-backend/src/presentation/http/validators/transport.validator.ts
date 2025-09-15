@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { TransportType, TransportStatus } from '../../../core/domain/entities/transport.entity';
+import { TransportType, TransportStatus } from '../../../shared/enums/transport.enums';
 import { ApiResponse } from '../../../shared/interfaces/api-response';
 
 // Import para express-validator 7.x

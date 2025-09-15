@@ -1,4 +1,6 @@
-import { StationRepository, Station, StationFilters } from '../../domain/entities/station.entity';
+import { StationFilters } from '@/core/domain/value-objects/station-filters';
+import { Station } from '../../domain/entities/station.entity';
+import { StationRepository } from '../../domain/repositories/station.repository';
 
 export class GetAllStationsUseCase {
   constructor(private readonly stationRepository: StationRepository) {}

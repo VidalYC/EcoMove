@@ -1,4 +1,6 @@
-import { Transport, TransportRepository, TransportType } from '../../domain/entities/transport.entity';
+import { Transport } from '../../domain/entities/transport.entity';
+import { TransportType } from '../../../shared/enums/transport.enums';
+import { TransportRepository } from '../../domain/repositories/transport.repository';
 
 export class FindAvailableTransportsUseCase {
   constructor(private readonly transportRepository: TransportRepository) {}

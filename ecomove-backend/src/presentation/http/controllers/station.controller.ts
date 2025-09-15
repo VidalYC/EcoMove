@@ -13,7 +13,7 @@ import {
   DeactivateStationUseCase,
   GetOccupancyRankingUseCase
 } from '../../../core/use-cases/station';
-import { StationFilters } from '../../../core/domain/entities/station.entity';
+import { StationFilters } from '../../../core/domain/value-objects/station-filters';
 
 export class StationController {
   constructor(

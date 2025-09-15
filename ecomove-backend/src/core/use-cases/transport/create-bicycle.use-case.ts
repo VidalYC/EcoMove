@@ -1,4 +1,5 @@
-import { Bicycle, TransportRepository } from '../../domain/entities/transport.entity';
+import { Bicycle } from '../../domain/entities/bicycle.entity';
+import { TransportRepository } from '../../domain/repositories/transport.repository';
 import { CreateBicycleDto } from '../../../shared/interfaces/transport-dtos';
 
 export class CreateBicycleUseCase {
