@@ -34,14 +34,14 @@ import { UserAdminController } from '../presentation/http/controllers/user-admin
 import { AuthenticationMiddleware } from '../presentation/http/middleware/authentication.middleware';
 
 // ====================================================================
-// NUEVAS IMPORTACIONES - TRANSPORTES
+// IMPORTACIONES - TRANSPORTES (existentes)
 // ====================================================================
 
-// Repositories - TRANSPORTES (nuevos)
+// Repositories - TRANSPORTES (existentes)
 import { TransportRepository } from '../core/domain/repositories/transport.repository';
 import { PostgreSQLTransportRepository } from '../infrastructure/database/repositories/postgresql-transport.repository';
 
-// Use Cases - TRANSPORTES (nuevos)
+// Use Cases - TRANSPORTES (existentes)
 import {
   CreateBicycleUseCase,
   CreateElectricScooterUseCase,
@@ -56,14 +56,18 @@ import {
   DeleteTransportUseCase
 } from '../core/use-cases/transport';
 
-// Controllers - TRANSPORTES (nuevos)
+// Controllers - TRANSPORTES (existentes)
 import { TransportController } from '../presentation/http/controllers/transport.controller';
 
-// Repositories - ESTACIONES (nuevos)
+// ====================================================================
+// IMPORTACIONES - ESTACIONES (existentes)
+// ====================================================================
+
+// Repositories - ESTACIONES (existentes)
 import { StationRepository } from '../core/domain/repositories/station.repository';
 import { PostgreSQLStationRepository } from '../infrastructure/database/repositories/postgresql-station.repository';
 
-// Use Cases - ESTACIONES (nuevos)
+// Use Cases - ESTACIONES (existentes)
 import {
   CreateStationUseCase,
   GetStationUseCase,
@@ -79,8 +83,43 @@ import {
   GetOccupancyRankingUseCase
 } from '../core/use-cases/station';
 
-// Controllers - ESTACIONES (nuevos)
+// Controllers - ESTACIONES (existentes)
 import { StationController } from '../presentation/http/controllers/station.controller';
+
+// ====================================================================
+// NUEVAS IMPORTACIONES - PRÉSTAMOS/LOANS
+// ====================================================================
+
+// Repositories - PRÉSTAMOS (nuevos)
+import { LoanRepository } from '../core/domain/repositories/loan.repository';
+import { PostgreSQLLoanRepository } from '../infrastructure/database/repositories/postgresql-loan.repository';
+
+// Services - PRÉSTAMOS (nuevos)
+import { PaymentService } from '../core/domain/services/payment.service';
+import { StripePaymentService } from '../infrastructure/services/stripe-payment.service';
+import { NotificationService } from '../core/domain/services/notification.service';
+import { EmailNotificationService } from '../infrastructure/services/email-notification.service';
+import { PricingService } from '../core/domain/services/pricing.service';
+import { DefaultPricingService } from '../infrastructure/services/default-pricing.service';
+
+// Use Cases - PRÉSTAMOS (nuevos)
+import {
+  CreateLoanUseCase,
+  CompleteLoanUseCase,
+  CancelLoanUseCase,
+  ExtendLoanUseCase,
+  GetLoanUseCase,
+  GetLoanWithDetailsUseCase,
+  GetAllLoansUseCase,
+  GetActiveLoansUseCase,
+  GetUserLoanHistoryUseCase,
+  GetLoanStatsUseCase,
+  GetPeriodReportUseCase,
+  CalculateFareUseCase
+} from '../core/use-cases/loan';
+
+// Controllers - PRÉSTAMOS (nuevos)
+import { LoanController } from '../presentation/http/controllers/loan.controller';
 
 /**
  * Contenedor de inyección de dependencias
@@ -124,7 +163,7 @@ export class DIContainer {
   private authenticationMiddleware!: AuthenticationMiddleware;
 
   // ====================================================================
-  // TRANSPORTES - NUEVOS
+  // TRANSPORTES - EXISTENTES (sin cambios)
   // ====================================================================
   
   // Repositories
@@ -143,29 +182,60 @@ export class DIContainer {
   private getTransportStatsUseCase!: GetTransportStatsUseCase;
   private deleteTransportUseCase!: DeleteTransportUseCase;
 
-
-
   // Controllers
   private transportController!: TransportController;
 
+  // ====================================================================
+  // ESTACIONES - EXISTENTES (sin cambios)
+  // ====================================================================
+
+  // Repositories
   private stationRepository!: StationRepository;
 
-// Use Cases
-private createStationUseCase!: CreateStationUseCase;
-private getStationUseCase!: GetStationUseCase;
-private getAllStationsUseCase!: GetAllStationsUseCase;
-private updateStationUseCase!: UpdateStationUseCase;
-private findNearbyStationsUseCase!: FindNearbyStationsUseCase;
-private getStationAvailabilityUseCase!: GetStationAvailabilityUseCase;
-private calculateRouteUseCase!: CalculateRouteUseCase;
-private getStationStatsUseCase!: GetStationStatsUseCase;
-private findStationsWithTransportsUseCase!: FindStationsWithTransportsUseCase;
-private activateStationUseCase!: ActivateStationUseCase;
-private deactivateStationUseCase!: DeactivateStationUseCase;
-private getOccupancyRankingUseCase!: GetOccupancyRankingUseCase;
+  // Use Cases
+  private createStationUseCase!: CreateStationUseCase;
+  private getStationUseCase!: GetStationUseCase;
+  private getAllStationsUseCase!: GetAllStationsUseCase;
+  private updateStationUseCase!: UpdateStationUseCase;
+  private findNearbyStationsUseCase!: FindNearbyStationsUseCase;
+  private getStationAvailabilityUseCase!: GetStationAvailabilityUseCase;
+  private calculateRouteUseCase!: CalculateRouteUseCase;
+  private getStationStatsUseCase!: GetStationStatsUseCase;
+  private findStationsWithTransportsUseCase!: FindStationsWithTransportsUseCase;
+  private activateStationUseCase!: ActivateStationUseCase;
+  private deactivateStationUseCase!: DeactivateStationUseCase;
+  private getOccupancyRankingUseCase!: GetOccupancyRankingUseCase;
 
-// Controllers
-private stationController!: StationController;
+  // Controllers
+  private stationController!: StationController;
+
+  // ====================================================================
+  // PRÉSTAMOS - NUEVOS
+  // ====================================================================
+
+  // Repositories
+  private loanRepository!: LoanRepository;
+
+  // Services
+  private paymentService!: PaymentService;
+  private notificationService!: NotificationService;
+  private pricingService!: PricingService;
+
+  private createLoanUseCase!: CreateLoanUseCase;
+  private completeLoanUseCase!: CompleteLoanUseCase;
+  private cancelLoanUseCase!: CancelLoanUseCase;
+  private extendLoanUseCase!: ExtendLoanUseCase;
+  private getLoanUseCase!: GetLoanUseCase;
+  private getLoanWithDetailsUseCase!: GetLoanWithDetailsUseCase;
+  private getAllLoansUseCase!: GetAllLoansUseCase;
+  private getActiveLoansUseCase!: GetActiveLoansUseCase;
+  private getUserLoanHistoryUseCase!: GetUserLoanHistoryUseCase;
+  private getLoanStatsUseCase!: GetLoanStatsUseCase;
+  private getPeriodReportUseCase!: GetPeriodReportUseCase;
+  private calculateFareUseCase!: CalculateFareUseCase;
+
+  // Controllers
+  private loanController!: LoanController;
 
   private constructor() {
     this.pool = DatabaseConfig.createPool();
@@ -191,11 +261,14 @@ private stationController!: StationController;
     // USUARIOS (existentes)
     this.userRepository = new PostgreSQLUserRepository(this.pool);
     
-    // TRANSPORTES (nuevos)
+    // TRANSPORTES (existentes)
     this.transportRepository = new PostgreSQLTransportRepository(this.pool);
 
-    // ESTACIONES (nuevos)
+    // ESTACIONES (existentes)
     this.stationRepository = new PostgreSQLStationRepository(this.pool);
+
+    // PRÉSTAMOS (nuevos)
+    this.loanRepository = new PostgreSQLLoanRepository(this.pool);
   }
 
   private initializeServices(): void {
@@ -205,6 +278,13 @@ private stationController!: StationController;
       process.env.JWT_SECRET || 'your-secret-key',
       process.env.JWT_EXPIRES_IN || '24h'
     );
+
+    // PRÉSTAMOS (nuevos)
+    this.paymentService = new StripePaymentService(
+      process.env.STRIPE_SECRET_KEY || 'your-stripe-secret-key'
+    );
+    this.notificationService = new EmailNotificationService();
+    this.pricingService = new DefaultPricingService();
   }
 
   private initializeUseCases(): void {
@@ -243,7 +323,7 @@ private stationController!: StationController;
     this.updateUserByIdUseCase = new UpdateUserByIdUseCase(this.userRepository);
 
     // ====================================================================
-    // TRANSPORTES - Use Cases (nuevos)
+    // TRANSPORTES - Use Cases (existentes - sin cambios)
     // ====================================================================
     
     this.createBicycleUseCase = new CreateBicycleUseCase(this.transportRepository);
@@ -257,10 +337,9 @@ private stationController!: StationController;
     this.updateBatteryLevelUseCase = new UpdateBatteryLevelUseCase(this.transportRepository);
     this.getTransportStatsUseCase = new GetTransportStatsUseCase(this.transportRepository);
     this.deleteTransportUseCase = new DeleteTransportUseCase(this.transportRepository);
-
         
     // ====================================================================
-    // ESTACIONES - Use Cases (nuevos)
+    // ESTACIONES - Use Cases (existentes - sin cambios)
     // ====================================================================
 
     this.createStationUseCase = new CreateStationUseCase(this.stationRepository);
@@ -275,6 +354,49 @@ private stationController!: StationController;
     this.activateStationUseCase = new ActivateStationUseCase(this.stationRepository);
     this.deactivateStationUseCase = new DeactivateStationUseCase(this.stationRepository);
     this.getOccupancyRankingUseCase = new GetOccupancyRankingUseCase(this.stationRepository);
+
+     // ====================================================================
+    // PRÉSTAMOS - Use Cases (nuevos)
+    // ====================================================================
+
+    this.createLoanUseCase = new CreateLoanUseCase(
+      this.loanRepository,
+      this.userRepository,
+      this.transportRepository,
+      this.stationRepository
+    );
+
+    this.completeLoanUseCase = new CompleteLoanUseCase(
+      this.loanRepository,
+      this.transportRepository,
+      this.stationRepository
+    );
+
+    this.cancelLoanUseCase = new CancelLoanUseCase(
+      this.loanRepository,
+      this.transportRepository
+    );
+
+    this.extendLoanUseCase = new ExtendLoanUseCase(this.loanRepository);
+
+    this.getLoanUseCase = new GetLoanUseCase(this.loanRepository);
+
+    this.getLoanWithDetailsUseCase = new GetLoanWithDetailsUseCase(this.loanRepository);
+
+    this.getAllLoansUseCase = new GetAllLoansUseCase(this.loanRepository);
+
+    this.getActiveLoansUseCase = new GetActiveLoansUseCase(this.loanRepository);
+
+    this.getUserLoanHistoryUseCase = new GetUserLoanHistoryUseCase(
+      this.loanRepository,
+      this.userRepository
+    );
+
+    this.getLoanStatsUseCase = new GetLoanStatsUseCase(this.loanRepository);
+
+    this.getPeriodReportUseCase = new GetPeriodReportUseCase(this.loanRepository);
+
+    this.calculateFareUseCase = new CalculateFareUseCase(this.transportRepository);
   }
 
   private initializeControllers(): void {
@@ -307,7 +429,7 @@ private stationController!: StationController;
     );
 
     // ====================================================================
-    // TRANSPORTES - Controllers (nuevos)
+    // TRANSPORTES - Controllers (existentes - sin cambios)
     // ====================================================================
     
     this.transportController = new TransportController(
@@ -323,10 +445,9 @@ private stationController!: StationController;
       this.getTransportStatsUseCase,
       this.deleteTransportUseCase
     );
-
         
     // ====================================================================
-    // ESTACIONES - Controllers (nuevos)
+    // ESTACIONES - Controllers (existentes - sin cambios)
     // ====================================================================
 
     this.stationController = new StationController(
@@ -342,6 +463,25 @@ private stationController!: StationController;
       this.activateStationUseCase,
       this.deactivateStationUseCase,
       this.getOccupancyRankingUseCase
+    );
+
+    // ====================================================================
+    // PRÉSTAMOS - Controllers (nuevos)
+    // ====================================================================
+    
+    this.loanController = new LoanController(
+      this.createLoanUseCase,
+      this.completeLoanUseCase,
+      this.cancelLoanUseCase,
+      this.extendLoanUseCase,
+      this.getLoanUseCase,
+      this.getLoanWithDetailsUseCase,
+      this.getAllLoansUseCase,
+      this.getActiveLoansUseCase,
+      this.getUserLoanHistoryUseCase,
+      this.getLoanStatsUseCase,
+      this.getPeriodReportUseCase,
+      this.calculateFareUseCase
     );
   }
 
@@ -391,7 +531,7 @@ private stationController!: StationController;
     return this.authenticationMiddleware;
   }
 
-  // ========== GETTERS - TRANSPORTES (nuevos) ==========
+  // ========== GETTERS - TRANSPORTES (existentes - sin cambios) ==========
 
   // Repositories
   getTransportRepository(): TransportRepository {
@@ -403,6 +543,8 @@ private stationController!: StationController;
     return this.transportController;
   }
 
+  // ========== GETTERS - ESTACIONES (existentes - sin cambios) ==========
+
   // Repositories
   getStationRepository(): StationRepository {
     return this.stationRepository;
@@ -413,9 +555,34 @@ private stationController!: StationController;
     return this.stationController;
   }
 
-  // ========== UTILIDADES (existentes - sin cambios) ==========
+  // ========== GETTERS - PRÉSTAMOS (nuevos) ==========
 
-    async healthCheck(): Promise<{
+  // Repositories
+  getLoanRepository(): LoanRepository {
+    return this.loanRepository;
+  }
+
+  // Services
+  getPaymentService(): PaymentService {
+    return this.paymentService;
+  }
+
+  getNotificationService(): NotificationService {
+    return this.notificationService;
+  }
+
+  getPricingService(): PricingService {
+    return this.pricingService;
+  }
+
+  // Controllers
+  getLoanController(): LoanController {
+    return this.loanController;
+  }
+
+  // ========== UTILIDADES ==========
+
+  async healthCheck(): Promise<{
     status: string;
     dependencies: Record<string, boolean>;
   }> {
@@ -429,10 +596,12 @@ private stationController!: StationController;
           userRepositories: !!this.userRepository,
           transportRepositories: !!this.transportRepository,
           stationRepositories: !!this.stationRepository,
+          loanRepositories: !!this.loanRepository, // NUEVO
           services: !!this.passwordService && !!this.tokenService,
           userControllers: !!this.authController && !!this.userProfileController && !!this.userAdminController,
           transportControllers: !!this.transportController,
           stationControllers: !!this.stationController,
+          loanControllers: !!this.loanController, // NUEVO
           middleware: !!this.authenticationMiddleware
         }
       };
@@ -444,10 +613,12 @@ private stationController!: StationController;
           userRepositories: !!this.userRepository,
           transportRepositories: !!this.transportRepository,
           stationRepositories: !!this.stationRepository,
+          loanRepositories: !!this.loanRepository, // NUEVO
           services: !!this.passwordService && !!this.tokenService,
           userControllers: !!this.authController && !!this.userProfileController && !!this.userAdminController,
           transportControllers: !!this.transportController,
           stationControllers: !!this.stationController,
+          loanControllers: !!this.loanController, // NUEVO
           middleware: !!this.authenticationMiddleware
         }
       };

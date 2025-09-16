@@ -1,3 +1,5 @@
+// src/main.ts - Líneas a agregar/modificar
+
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -5,7 +7,8 @@ import { DIContainer } from './config/container';
 import { ErrorHandlerMiddleware } from './presentation/http/middleware/error-handler.middleware';
 import { UserRoutes } from './presentation/http/routes/v1/user.routes';
 import { TransportRoutes } from './presentation/http/routes/v1/transport.routes';
-import { StationRoutes } from './presentation/http/routes/v1/station.routes'; // NUEVA IMPORTACIÓN
+import { StationRoutes } from './presentation/http/routes/v1/station.routes';
+import { LoanRoutes } from './presentation/http/routes/v1/loan.routes'; // NUEVA IMPORTACIÓN
 
 dotenv.config();
 
@@ -30,7 +33,8 @@ const container = DIContainer.getInstance();
 const userRoutes = new UserRoutes();
 app.use('/api/v1/users', userRoutes.getRouter());
 app.use('/api/v1/transports', TransportRoutes.create());
-app.use('/api/v1/stations', StationRoutes.create()); // NUEVA RUTA
+app.use('/api/v1/stations', StationRoutes.create());
+app.use('/api/v1/loans', LoanRoutes.create()); // NUEVA RUTA
 
 // Ruta raíz
 app.get('/', (req, res) => {
@@ -47,7 +51,8 @@ app.get('/', (req, res) => {
         admin: '/api/v1/users/admin/*'
       },
       transports: '/api/v1/transports/*',
-      stations: '/api/v1/stations/*', // AGREGADO
+      stations: '/api/v1/stations/*',
+      loans: '/api/v1/loans/*', // AGREGADO
       documentation: '/api/v1/docs (coming soon)'
     }
   });
@@ -78,7 +83,8 @@ app.use((req, res, next) => {
       health: 'GET /api/v1/health',
       users: 'GET /api/v1/users/health',
       transports: 'GET /api/v1/transports/health',
-      stations: 'GET /api/v1/stations/health' // AGREGADO
+      stations: 'GET /api/v1/stations/health',
+      loans: 'GET /api/v1/loans/health' // AGREGADO
     }
   });
 });
@@ -100,7 +106,8 @@ const startServer = async (): Promise<void> => {
       console.log(`👤 Profile: http://localhost:${PORT}/api/v1/users/profile`);
       console.log(`⚙️  Admin: http://localhost:${PORT}/api/v1/users/admin/`);
       console.log(`🚲 Transports: http://localhost:${PORT}/api/v1/transports/`);
-      console.log(`🏢 Stations: http://localhost:${PORT}/api/v1/stations/`); // AGREGADO
+      console.log(`🏢 Stations: http://localhost:${PORT}/api/v1/stations/`);
+      console.log(`📝 Loans: http://localhost:${PORT}/api/v1/loans/`); // AGREGADO
       console.log(`📚 Architecture: Clean Architecture + SOLID Principles`);
     });
   } catch (error) {
