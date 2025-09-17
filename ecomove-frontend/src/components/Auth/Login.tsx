@@ -1,124 +1,171 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Leaf, Mail, Lock, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const { login, isLoading } = useAuth();
-  const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
+  const { login, loading, error, clearError } = useAuth();
+
+  useEffect(() => {
+    // Limpiar errores cuando el componente se monta
+    clearError();
+  }, [clearError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    clearError();
+    
+    if (!email || !password) {
+      return;
+    }
 
-    const success = await login(email, password);
+    const success = await login({
+      correo: email,
+      password: password,
+    });
+
     if (success) {
-      navigate('/stations');
-    } else {
-      setError('Credenciales incorrectas o cuenta bloqueada');
+      // El redireccionamiento se manejará automáticamente por el cambio de estado del usuario
+      console.log('Login exitoso');
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-500 via-teal-600 to-blue-600 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-blue-50 to-purple-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="max-w-md w-full space-y-8"
+        transition={{ duration: 0.5 }}
+        className="max-w-md w-full"
       >
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <div className="text-center">
+        <div className="bg-white rounded-2xl shadow-xl p-8">
+          <div className="text-center mb-8">
             <motion.div
-              whileHover={{ rotate: 10 }}
-              className="mx-auto h-16 w-16 bg-emerald-500 rounded-2xl flex items-center justify-center mb-4"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+              className="mx-auto h-16 w-16 bg-gradient-to-r from-emerald-500 to-blue-600 rounded-full flex items-center justify-center mb-4"
             >
-              <Leaf className="h-8 w-8 text-white" />
+              <span className="text-white text-2xl font-bold">E</span>
             </motion.div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">EcoMove</h2>
-            <p className="text-gray-600">Inicia sesión en tu cuenta</p>
+            <h2 className="text-3xl font-bold text-gray-900">Bienvenido</h2>
+            <p className="mt-2 text-gray-600">Inicia sesión en EcoMove</p>
           </div>
 
-          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
               <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
                 className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-3"
               >
-                <AlertCircle className="h-5 w-5 text-red-500" />
-                <span className="text-sm text-red-700">{error}</span>
+                <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
+                <p className="text-red-700 text-sm">{error}</p>
               </motion.div>
             )}
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Correo electrónico
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                    placeholder="tu@email.com"
-                  />
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                Correo Electrónico
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-gray-400" />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Contraseña
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                    placeholder="••••••••"
-                  />
-                </div>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors"
+                  placeholder="tu@email.com"
+                  required
+                  disabled={loading}
+                />
               </div>
             </div>
 
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                Contraseña
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors"
+                  placeholder="••••••••"
+                  required
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowPassword(!showPassword)}
+                  disabled={loading}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  ) : (
+                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <button
               type="submit"
-              disabled={isLoading}
-              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              disabled={loading || !email || !password}
+              className="w-full bg-gradient-to-r from-emerald-500 to-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:from-emerald-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
             >
-              {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
-            </motion.button>
+              {loading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Iniciando sesión...</span>
+                </>
+              ) : (
+                <span>Iniciar Sesión</span>
+              )}
+            </button>
 
             <div className="text-center">
-              <span className="text-sm text-gray-600">
-                ¿No tienes cuenta?{' '}
-                <Link to="/register" className="font-medium text-emerald-600 hover:text-emerald-500">
+              <p className="text-gray-600">
+                ¿No tienes una cuenta?{' '}
+                <Link
+                  to="/register"
+                  className="font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
+                >
                   Regístrate aquí
                 </Link>
-              </span>
+              </p>
             </div>
           </form>
-
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <div className="text-xs text-gray-500 space-y-1">
-              <p><strong>Cuentas de prueba:</strong></p>
-              <p>Usuario: usuario@ecomove.com / usuario123</p>
-              <p>Admin: admin@ecomove.com / admin123</p>
-            </div>
-          </div>
         </div>
+
+        {/* Datos de prueba para desarrollo */}
+        {import.meta.env.NODE_ENV === 'development' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="mt-6 bg-gray-50 rounded-lg p-4"
+          >
+            <p className="text-xs text-gray-500 mb-2">Datos de prueba (desarrollo):</p>
+            <div className="text-xs space-y-1">
+              <p><strong>Usuario:</strong> user@test.com / password123</p>
+              <p><strong>Admin:</strong> admin@test.com / admin123</p>
+            </div>
+          </motion.div>
+        )}
       </motion.div>
     </div>
   );

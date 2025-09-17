@@ -1,5 +1,10 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, ReactNode } from 'react';
+import { useStations } from '../hooks/useStations';
+import { useLoans } from '../hooks/useLoans';
+import { Station as ApiStation, Vehicle as ApiVehicle, Loan as ApiLoan } from '../services/api.service';
 
+
+// Interfaces para compatibilidad con el frontend existente
 export interface Station {
   id: string;
   name: string;
@@ -7,6 +12,7 @@ export interface Station {
   coordinates: { lat: number; lng: number };
   capacity: number;
   isActive: boolean;
+  currentOccupancy?: number;
 }
 
 export interface Vehicle {
@@ -32,196 +38,220 @@ export interface Loan {
 }
 
 interface DataContextType {
+  // Stations
   stations: Station[];
-  vehicles: Vehicle[];
+  stationsLoading: boolean;
+  stationsError: string | null;
+  refreshStations: () => Promise<void>;
+  getNearbyStations: (lat: number, lng: number, radius?: number) => Promise<Station[]>;
+  
+  // Vehicles
+  getVehiclesByStation: (stationId: string) => Promise<Vehicle[]>;
+  
+  // Loans
   loans: Loan[];
+  loansLoading: boolean;
+  loansError: string | null;
+  refreshLoans: () => Promise<void>;
+  createLoan: (loan: { vehicleId: string; originStationId: string }) => Promise<string | null>;
+  completeLoan: (loanId: string, destinationStationId: string) => Promise<boolean>;
+  cancelLoan: (loanId: string) => Promise<boolean>;
+  extendLoan: (loanId: string, newDurationMinutes: number) => Promise<boolean>;
+  calculateFare: (vehicleType: string, durationMinutes: number) => Promise<{ fare: number; breakdown: any } | null>;
+  
+  // Utilities
+  getActiveLoans: () => Loan[];
+  getUserLoans: (userId: string) => Loan[];
+  getActiveLoan: () => Loan | null;
+  
+  // Legacy methods (mantener compatibilidad)
   addStation: (station: Omit<Station, 'id'>) => void;
   updateStation: (id: string, updates: Partial<Station>) => void;
   deleteStation: (id: string) => void;
   addVehicle: (vehicle: Omit<Vehicle, 'id'>) => void;
   updateVehicle: (id: string, updates: Partial<Vehicle>) => void;
   deleteVehicle: (id: string) => void;
-  createLoan: (loan: Omit<Loan, 'id' | 'startTime' | 'cost'>) => string;
-  completeLoan: (loanId: string, destinationStationId: string) => void;
-  getVehiclesByStation: (stationId: string) => Vehicle[];
-  getActiveLoans: () => Loan[];
-  getUserLoans: (userId: string) => Loan[];
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-// Mock data
-const initialStations: Station[] = [
-  {
-    id: '1',
-    name: 'Estación Centro',
-    address: 'Plaza Principal #123',
-    coordinates: { lat: 4.6097, lng: -74.0817 },
-    capacity: 20,
-    isActive: true
-  },
-  {
-    id: '2',
-    name: 'Estación Universidad',
-    address: 'Av. Universidad #456',
-    coordinates: { lat: 4.6288, lng: -74.0647 },
-    capacity: 15,
-    isActive: true
-  },
-  {
-    id: '3',
-    name: 'Estación Parque',
-    address: 'Parque Central #789',
-    coordinates: { lat: 4.5981, lng: -74.0758 },
-    capacity: 25,
-    isActive: true
-  }
-];
+interface DataProviderProps {
+  children: ReactNode;
+}
 
-const initialVehicles: Vehicle[] = [
-  // Station 1 vehicles
-  { id: '1', type: 'bicycle', model: 'EcoBike Pro', stationId: '1', status: 'available' },
-  { id: '2', type: 'bicycle', model: 'EcoBike Pro', stationId: '1', status: 'available' },
-  { id: '3', type: 'scooter', model: 'EcoScoot X1', stationId: '1', status: 'available', batteryLevel: 85 },
-  { id: '4', type: 'electric-scooter', model: 'EcoElectric Pro', stationId: '1', status: 'available', batteryLevel: 92 },
-  
-  // Station 2 vehicles
-  { id: '5', type: 'bicycle', model: 'EcoBike Lite', stationId: '2', status: 'available' },
-  { id: '6', type: 'scooter', model: 'EcoScoot X2', stationId: '2', status: 'available', batteryLevel: 78 },
-  { id: '7', type: 'electric-scooter', model: 'EcoElectric Pro', stationId: '2', status: 'available', batteryLevel: 88 },
-  
-  // Station 3 vehicles
-  { id: '8', type: 'bicycle', model: 'EcoBike Pro', stationId: '3', status: 'available' },
-  { id: '9', type: 'bicycle', model: 'EcoBike Lite', stationId: '3', status: 'available' },
-  { id: '10', type: 'scooter', model: 'EcoScoot X1', stationId: '3', status: 'available', batteryLevel: 94 }
-];
+// Funciones para transformar datos del backend al formato del frontend
+const transformStation = (apiStation: ApiStation): Station => ({
+  id: apiStation.id,
+  name: apiStation.name,
+  address: apiStation.address,
+  coordinates: apiStation.coordinates,
+  capacity: apiStation.capacity,
+  isActive: apiStation.isActive,
+  currentOccupancy: apiStation.currentOccupancy,
+});
 
-const initialLoans: Loan[] = [];
+const transformVehicle = (apiVehicle: ApiVehicle): Vehicle => ({
+  id: apiVehicle.id,
+  type: apiVehicle.type === 'electric-scooter' ? 'electric-scooter' : 'bicycle',
+  model: apiVehicle.model,
+  stationId: apiVehicle.stationId,
+  status: apiVehicle.status,
+  batteryLevel: apiVehicle.batteryLevel,
+});
 
-export function DataProvider({ children }: { children: ReactNode }) {
-  const [stations, setStations] = useState<Station[]>(initialStations);
-  const [vehicles, setVehicles] = useState<Vehicle[]>(initialVehicles);
-  const [loans, setLoans] = useState<Loan[]>(initialLoans);
+const transformLoan = (apiLoan: ApiLoan): Loan => ({
+  id: apiLoan.id,
+  userId: apiLoan.userId,
+  vehicleId: apiLoan.vehicleId,
+  startTime: new Date(apiLoan.startTime),
+  endTime: apiLoan.endTime ? new Date(apiLoan.endTime) : undefined,
+  originStationId: apiLoan.originStationId,
+  destinationStationId: apiLoan.destinationStationId,
+  cost: apiLoan.totalCost,
+  status: apiLoan.status === 'cancelled' ? 'completed' : apiLoan.status,
+  duration: apiLoan.duration,
+});
 
-  const addStation = (station: Omit<Station, 'id'>) => {
-    const newStation: Station = {
-      ...station,
-      id: Date.now().toString()
-    };
-    setStations(prev => [...prev, newStation]);
+export function DataProvider({ children }: DataProviderProps) {
+  const stationsHook = useStations();
+  const loansHook = useLoans();
+
+  // Transform API data to frontend format
+  const stations = stationsHook.stations.map(transformStation);
+  const loans = loansHook.loans.map(transformLoan);
+
+  const getVehiclesByStation = async (stationId: string): Promise<Vehicle[]> => {
+    try {
+      const vehicles = await stationsHook.getStationAvailability(stationId);
+      return vehicles.map(transformVehicle);
+    } catch (error) {
+      console.error('Error getting vehicles by station:', error);
+      return [];
+    }
   };
 
-  const updateStation = (id: string, updates: Partial<Station>) => {
-    setStations(prev => prev.map(station => 
-      station.id === id ? { ...station, ...updates } : station
-    ));
+  const createLoan = async (data: { vehicleId: string; originStationId: string }): Promise<string | null> => {
+    try {
+      const newLoan = await loansHook.createLoan(data);
+      return newLoan ? newLoan.id : null;
+    } catch (error) {
+      console.error('Error creating loan:', error);
+      return null;
+    }
   };
 
-  const deleteStation = (id: string) => {
-    setStations(prev => prev.filter(station => station.id !== id));
-    // Move vehicles from deleted station to null
-    setVehicles(prev => prev.map(vehicle =>
-      vehicle.stationId === id ? { ...vehicle, stationId: null, status: 'maintenance' } : vehicle
-    ));
+  const completeLoan = async (loanId: string, destinationStationId: string): Promise<boolean> => {
+    try {
+      const updatedLoan = await loansHook.completeLoan(loanId, { destinationStationId });
+      return !!updatedLoan;
+    } catch (error) {
+      console.error('Error completing loan:', error);
+      return false;
+    }
   };
 
-  const addVehicle = (vehicle: Omit<Vehicle, 'id'>) => {
-    const newVehicle: Vehicle = {
-      ...vehicle,
-      id: Date.now().toString()
-    };
-    setVehicles(prev => [...prev, newVehicle]);
+  const cancelLoan = async (loanId: string): Promise<boolean> => {
+    try {
+      const updatedLoan = await loansHook.cancelLoan(loanId);
+      return !!updatedLoan;
+    } catch (error) {
+      console.error('Error cancelling loan:', error);
+      return false;
+    }
   };
 
-  const updateVehicle = (id: string, updates: Partial<Vehicle>) => {
-    setVehicles(prev => prev.map(vehicle =>
-      vehicle.id === id ? { ...vehicle, ...updates } : vehicle
-    ));
+  const extendLoan = async (loanId: string, newDurationMinutes: number): Promise<boolean> => {
+    try {
+      const updatedLoan = await loansHook.extendLoan(loanId, newDurationMinutes);
+      return !!updatedLoan;
+    } catch (error) {
+      console.error('Error extending loan:', error);
+      return false;
+    }
   };
 
-  const deleteVehicle = (id: string) => {
-    setVehicles(prev => prev.filter(vehicle => vehicle.id !== id));
-  };
-
-  const calculateCost = (vehicleType: string, duration: number): number => {
-    const rates = {
-      bicycle: 0.5, // $0.5 per minute
-      scooter: 0.8, // $0.8 per minute
-      'electric-scooter': 1.2 // $1.2 per minute
-    };
-    return Math.round((rates[vehicleType as keyof typeof rates] || 0.5) * duration * 100) / 100;
-  };
-
-  const createLoan = (loan: Omit<Loan, 'id' | 'startTime' | 'cost'>): string => {
-    const vehicle = vehicles.find(v => v.id === loan.vehicleId);
-    if (!vehicle) throw new Error('Vehicle not found');
-
-    const newLoan: Loan = {
-      ...loan,
-      id: Date.now().toString(),
-      startTime: new Date(),
-      cost: 0,
-      status: 'active'
-    };
-
-    setLoans(prev => [...prev, newLoan]);
-    
-    // Update vehicle status
-    updateVehicle(loan.vehicleId, { status: 'in-use', stationId: null });
-    
-    return newLoan.id;
-  };
-
-  const completeLoan = (loanId: string, destinationStationId: string) => {
-    const loan = loans.find(l => l.id === loanId);
-    if (!loan) return;
-
-    const endTime = new Date();
-    const duration = Math.ceil((endTime.getTime() - loan.startTime.getTime()) / (1000 * 60)); // minutes
-    const vehicle = vehicles.find(v => v.id === loan.vehicleId);
-    const cost = calculateCost(vehicle?.type || 'bicycle', duration);
-
-    setLoans(prev => prev.map(l =>
-      l.id === loanId
-        ? { ...l, endTime, destinationStationId, duration, cost, status: 'completed' }
-        : l
-    ));
-
-    // Return vehicle to station
-    updateVehicle(loan.vehicleId, { status: 'available', stationId: destinationStationId });
-  };
-
-  const getVehiclesByStation = (stationId: string): Vehicle[] => {
-    return vehicles.filter(v => v.stationId === stationId && v.status === 'available');
+  const calculateFare = async (vehicleType: string, durationMinutes: number) => {
+    return await loansHook.calculateFare(vehicleType, durationMinutes);
   };
 
   const getActiveLoans = (): Loan[] => {
-    return loans.filter(l => l.status === 'active');
+    return loans.filter(loan => loan.status === 'active');
   };
 
   const getUserLoans = (userId: string): Loan[] => {
-    return loans.filter(l => l.userId === userId).sort((a, b) => 
-      new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
-    );
+    return loans.filter(loan => loan.userId === userId);
+  };
+
+  const getActiveLoan = (): Loan | null => {
+    return loans.find(loan => loan.status === 'active') || null;
+  };
+
+  // Legacy methods - mantener compatibilidad pero mostrar advertencias
+  const addStation = (_station: Omit<Station, 'id'>) => {
+    console.warn('addStation: This method is not implemented with real API. Use admin panel instead.');
+  };
+
+  const updateStation = (_id: string, _updates: Partial<Station>) => {
+    console.warn('updateStation: This method is not implemented with real API. Use admin panel instead.');
+  };
+
+  const deleteStation = (_id: string) => {
+    console.warn('deleteStation: This method is not implemented with real API. Use admin panel instead.');
+  };
+
+  const addVehicle = (_vehicle: Omit<Vehicle, 'id'>) => {
+    console.warn('addVehicle: This method is not implemented with real API. Use admin panel instead.');
+  };
+
+  const updateVehicle = (_id: string, _updates: Partial<Vehicle>) => {
+    console.warn('updateVehicle: This method is not implemented with real API. Use admin panel instead.');
+  };
+
+  const deleteVehicle = (_id: string) => {
+    console.warn('deleteVehicle: This method is not implemented with real API. Use admin panel instead.');
+  };
+
+  const contextValue: DataContextType = {
+    // Stations
+    stations,
+    stationsLoading: stationsHook.loading,
+    stationsError: stationsHook.error,
+    refreshStations: stationsHook.refreshStations,
+    getNearbyStations: async (lat, lng, radius) => {
+      const nearbyStations = await stationsHook.getNearbyStations(lat, lng, radius);
+      return nearbyStations.map(transformStation);
+    },
+    
+    // Vehicles
+    getVehiclesByStation,
+    
+    // Loans
+    loans,
+    loansLoading: loansHook.loading,
+    loansError: loansHook.error,
+    refreshLoans: loansHook.refreshLoans,
+    createLoan,
+    completeLoan,
+    cancelLoan,
+    extendLoan,
+    calculateFare,
+    
+    // Utilities
+    getActiveLoans,
+    getUserLoans,
+    getActiveLoan,
+    
+    // Legacy methods
+    addStation,
+    updateStation,
+    deleteStation,
+    addVehicle,
+    updateVehicle,
+    deleteVehicle,
   };
 
   return (
-    <DataContext.Provider value={{
-      stations,
-      vehicles,
-      loans,
-      addStation,
-      updateStation,
-      deleteStation,
-      addVehicle,
-      updateVehicle,
-      deleteVehicle,
-      createLoan,
-      completeLoan,
-      getVehiclesByStation,
-      getActiveLoans,
-      getUserLoans
-    }}>
+    <DataContext.Provider value={contextValue}>
       {children}
     </DataContext.Provider>
   );

@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { NetworkStatus } from './components/NetworkStatus';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
 import Layout from './components/Layout/Layout';
@@ -17,6 +18,7 @@ import ProfilePage from './pages/User/ProfilePage';
 // Admin pages
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import AdminStations from './pages/Admin/AdminStations';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -104,12 +106,15 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <DataProvider>
-        <Router>
-          <AppRoutes />
-        </Router>
-      </DataProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <DataProvider>
+          <Router>
+            <NetworkStatus />
+            <AppRoutes />
+          </Router>
+        </DataProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
