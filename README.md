@@ -286,6 +286,614 @@ ecomove-backend/
 
 ---
 
+## 📊 Diagramas UML del Sistema
+
+### 🏗️ Diagrama de Clases - Domain Layer
+
+```mermaid
+classDiagram
+    %% Abstract Classes
+    class Transport {
+        <<abstract>>
+        -id: number
+        -code: string
+        -status: TransportStatus
+        -location: Coordinates
+        -createdAt: Date
+        -updatedAt: Date
+        +changeStatus(status: TransportStatus): void
+        +updateLocation(coordinates: Coordinates): void
+        +isAvailableForLoan(): boolean
+        +getMaintenanceInfo(): MaintenanceInfo*
+        +calculateOperatingCost(): Money*
+        #validateStatusTransition(status: TransportStatus): void*
+    }
+
+    %% Concrete Classes
+    class Bicycle {
+        -gearCount: number
+        -frameSize: string
+        +getMaintenanceInfo(): MaintenanceInfo
+        +calculateOperatingCost(): Money
+        #validateStatusTransition(status: TransportStatus): void
+        +getGearCount(): number
+        +getFrameSize(): string
+    }
+
+    class ElectricScooter {
+        -batteryLevel: number
+        -maxSpeed: number
+        -batteryCapacity: number
+        +getMaintenanceInfo(): MaintenanceInfo
+        +calculateOperatingCost(): Money
+        #validateStatusTransition(status: TransportStatus): void
+        +updateBatteryLevel(level: number): void
+        +getBatteryStatus(): BatteryStatus
+        +getMaxSpeed(): number
+    }
+
+    class User {
+        -id: number
+        -name: string
+        -email: Email
+        -documentNumber: DocumentNumber
+        -phone: Phone
+        -role: UserRole
+        -isActive: boolean
+        +activate(): void
+        +deactivate(): void
+        +updateProfile(data: UpdateProfileData): void
+        +changePassword(newPassword: string): void
+        +canCreateLoan(): boolean
+    }
+
+    class Station {
+        -id: number
+        -name: string
+        -address: string
+        -coordinates: Coordinates
+        -capacity: number
+        -isOperational: boolean
+        +activate(): void
+        +deactivate(): void
+        +getAvailableSpots(): number
+        +canAcceptTransport(): boolean
+        +addTransport(transport: Transport): void
+        +removeTransport(transport: Transport): void
+    }
+
+    class Loan {
+        -id: number
+        -user: User
+        -transport: Transport
+        -startStation: Station
+        -endStation: Station
+        -startTime: Date
+        -endTime: Date
+        -status: LoanStatus
+        -totalAmount: Money
+        +complete(endStation: Station): void
+        +cancel(reason: string): void
+        +extend(additionalTime: number): void
+        +calculateFare(): Money
+        +isActive(): boolean
+    }
+
+    %% Value Objects
+    class Email {
+        -value: string
+        +getValue(): string
+        +isValid(): boolean
+    }
+
+    class DocumentNumber {
+        -value: string
+        +getValue(): string
+        +isValid(): boolean
+    }
+
+    class Phone {
+        -value: string
+        +getValue(): string
+        +isValid(): boolean
+    }
+
+    class Coordinates {
+        -latitude: number
+        -longitude: number
+        +getLatitude(): number
+        +getLongitude(): number
+        +distanceTo(other: Coordinates): number
+    }
+
+    class Money {
+        -amount: number
+        -currency: string
+        +add(other: Money): Money
+        +subtract(other: Money): Money
+        +multiply(factor: number): Money
+        +equals(other: Money): boolean
+    }
+
+    %% Enums
+    class TransportStatus {
+        <<enumeration>>
+        AVAILABLE
+        IN_USE
+        MAINTENANCE
+        OUT_OF_SERVICE
+        CHARGING
+    }
+
+    class UserRole {
+        <<enumeration>>
+        USER
+        ADMIN
+    }
+
+    class LoanStatus {
+        <<enumeration>>
+        ACTIVE
+        COMPLETED
+        CANCELLED
+        EXTENDED
+    }
+
+    %% Relationships
+    Transport <|-- Bicycle
+    Transport <|-- ElectricScooter
+    User *-- Email
+    User *-- DocumentNumber
+    User *-- Phone
+    Station *-- Coordinates
+    Transport *-- Coordinates
+    Loan --> User
+    Loan --> Transport
+    Loan --> Station : startStation
+    Loan --> Station : endStation
+    Loan *-- Money
+    Transport --> TransportStatus
+    User --> UserRole
+    Loan --> LoanStatus
+```
+
+### 🔄 Diagrama de Casos de Uso
+
+```mermaid
+graph TB
+    %% Actores
+    subgraph "👤 Usuario"
+        U1[Registrarse]
+        U2[Iniciar Sesión]
+        U3[Ver Perfil]
+        U4[Actualizar Perfil]
+        U5[Buscar Transportes]
+        U6[Crear Préstamo]
+        U7[Completar Préstamo]
+        U8[Cancelar Préstamo]
+        U9[Ver Historial]
+        U10[Buscar Estaciones]
+    end
+    
+    subgraph "👨‍💼 Administrador"
+        A1[Gestionar Usuarios]
+        A2[Crear Bicicletas]
+        A3[Crear Scooters]
+        A4[Gestionar Estaciones]
+        A5[Ver Estadísticas]
+        A6[Generar Reportes]
+        A7[Configurar Tarifas]
+        A8[Administrar Préstamos]
+    end
+
+    subgraph "🔧 Sistema"
+        S1[Calcular Tarifas]
+        S2[Procesar Pagos]
+        S3[Enviar Notificaciones]
+        S4[Actualizar Ubicaciones]
+        S5[Gestionar Mantenimiento]
+    end
+
+    %% Relaciones
+    U6 --> S1
+    U6 --> S2
+    U7 --> S1
+    U8 --> S3
+    A7 --> S1
+    A2 --> S4
+    A3 --> S4
+    A8 --> S5
+```
+
+### 🏛️ Diagrama de Arquitectura Clean Architecture
+
+```mermaid
+graph TB
+    subgraph "🌐 External World"
+        EXT1[HTTP Requests]
+        EXT2[Database]
+        EXT3[Email Service]
+        EXT4[Payment Gateway]
+    end
+
+    subgraph "🎨 Presentation Layer"
+        CTRL1[AuthController]
+        CTRL2[UserController]
+        CTRL3[TransportController]
+        CTRL4[StationController]
+        CTRL5[LoanController]
+        
+        ROUTE1[Auth Routes]
+        ROUTE2[User Routes]
+        ROUTE3[Transport Routes]
+        ROUTE4[Station Routes]
+        ROUTE5[Loan Routes]
+        
+        MIDDLE1[Authentication]
+        MIDDLE2[Validation]
+        MIDDLE3[Error Handler]
+    end
+
+    subgraph "🎯 Application Layer"
+        UC1[RegisterUserUseCase]
+        UC2[LoginUserUseCase]
+        UC3[CreateBicycleUseCase]
+        UC4[CreateElectricScooterUseCase]
+        UC5[CreateStationUseCase]
+        UC6[CreateLoanUseCase]
+        UC7[CompleteLoanUseCase]
+        UC8[FindAvailableTransportsUseCase]
+        UC9[FindNearbyStationsUseCase]
+    end
+
+    subgraph "🏛️ Domain Layer"
+        subgraph "Entities"
+            ENT1[User]
+            ENT2[Transport]
+            ENT3[Bicycle]
+            ENT4[ElectricScooter]
+            ENT5[Station]
+            ENT6[Loan]
+        end
+        
+        subgraph "Value Objects"
+            VO1[Email]
+            VO2[DocumentNumber]
+            VO3[Coordinates]
+            VO4[Money]
+        end
+        
+        subgraph "Repository Interfaces"
+            REPO1[UserRepository]
+            REPO2[TransportRepository]
+            REPO3[StationRepository]
+            REPO4[LoanRepository]
+        end
+        
+        subgraph "Service Interfaces"
+            SERV1[PasswordService]
+            SERV2[TokenService]
+            SERV3[PaymentService]
+            SERV4[NotificationService]
+        end
+    end
+
+    subgraph "🔧 Infrastructure Layer"
+        subgraph "Repository Implementations"
+            IMPL1[PostgreSQLUserRepository]
+            IMPL2[PostgreSQLTransportRepository]
+            IMPL3[PostgreSQLStationRepository]
+            IMPL4[PostgreSQLLoanRepository]
+        end
+        
+        subgraph "Service Implementations"
+            IMPL5[BcryptPasswordService]
+            IMPL6[JWTTokenService]
+            IMPL7[StripePaymentService]
+            IMPL8[EmailNotificationService]
+        end
+    end
+
+    %% External connections
+    EXT1 --> ROUTE1
+    EXT1 --> ROUTE2
+    EXT1 --> ROUTE3
+    EXT1 --> ROUTE4
+    EXT1 --> ROUTE5
+
+    %% Presentation to Application
+    CTRL1 --> UC1
+    CTRL1 --> UC2
+    CTRL3 --> UC3
+    CTRL3 --> UC4
+    CTRL4 --> UC5
+    CTRL5 --> UC6
+    CTRL5 --> UC7
+    CTRL3 --> UC8
+    CTRL4 --> UC9
+
+    %% Application to Domain
+    UC1 --> ENT1
+    UC1 --> REPO1
+    UC1 --> SERV1
+    UC1 --> SERV2
+    UC2 --> ENT1
+    UC2 --> REPO1
+    UC3 --> ENT3
+    UC3 --> REPO2
+    UC4 --> ENT4
+    UC4 --> REPO2
+    UC6 --> ENT6
+    UC6 --> REPO4
+
+    %% Infrastructure implementations
+    IMPL1 -.-> REPO1
+    IMPL2 -.-> REPO2
+    IMPL3 -.-> REPO3
+    IMPL4 -.-> REPO4
+    IMPL5 -.-> SERV1
+    IMPL6 -.-> SERV2
+    IMPL7 -.-> SERV3
+    IMPL8 -.-> SERV4
+
+    %% Infrastructure to External
+    IMPL1 --> EXT2
+    IMPL2 --> EXT2
+    IMPL3 --> EXT2
+    IMPL4 --> EXT2
+    IMPL8 --> EXT3
+    IMPL7 --> EXT4
+```
+
+### 🔄 Diagrama de Secuencia - Crear Préstamo
+
+```mermaid
+sequenceDiagram
+    participant Client as Frontend Client
+    participant Controller as LoanController
+    participant UseCase as CreateLoanUseCase
+    participant UserRepo as UserRepository
+    participant TransportRepo as TransportRepository
+    participant StationRepo as StationRepository
+    participant LoanRepo as LoanRepository
+    participant PaymentSvc as PaymentService
+    participant NotificationSvc as NotificationService
+    participant LoanEntity as Loan Entity
+
+    Client->>Controller: POST /loans
+    Note over Client,Controller: { userId, transportId, stationId }
+    
+    Controller->>UseCase: execute(createLoanInput)
+    
+    UseCase->>UserRepo: findById(userId)
+    UserRepo-->>UseCase: User entity
+    
+    UseCase->>TransportRepo: findById(transportId)
+    TransportRepo-->>UseCase: Transport entity
+    
+    UseCase->>StationRepo: findById(stationId)
+    StationRepo-->>UseCase: Station entity
+    
+    UseCase->>UseCase: validateLoanCreation()
+    Note over UseCase: Business rules validation
+    
+    UseCase->>LoanEntity: create(user, transport, station)
+    LoanEntity-->>UseCase: Loan instance
+    
+    UseCase->>LoanEntity: calculateFare()
+    LoanEntity-->>UseCase: Total amount
+    
+    UseCase->>PaymentSvc: processPayment(amount, user)
+    PaymentSvc-->>UseCase: Payment result
+    
+    UseCase->>LoanRepo: save(loan)
+    LoanRepo-->>UseCase: Saved loan
+    
+    UseCase->>TransportRepo: updateStatus(transport, IN_USE)
+    TransportRepo-->>UseCase: Updated transport
+    
+    UseCase->>NotificationSvc: sendLoanStarted(user, loan)
+    NotificationSvc-->>UseCase: Notification sent
+    
+    UseCase-->>Controller: Loan created successfully
+    Controller-->>Client: 201 Created + Loan details
+```
+
+### 📦 Diagrama de Componentes
+
+```mermaid
+graph TB
+    subgraph "📱 Frontend (React)"
+        COMP1[Authentication]
+        COMP2[Dashboard]
+        COMP3[Transport Search]
+        COMP4[Station Map]
+        COMP5[Loan Management]
+        COMP6[User Profile]
+    end
+
+    subgraph "🌐 API Gateway"
+        GATEWAY[Express Server]
+        MIDDLEWARE[Middleware Stack]
+    end
+
+    subgraph "🎯 Application Services"
+        subgraph "User Module"
+            USER_UC[User Use Cases]
+            USER_CTRL[User Controllers]
+        end
+        
+        subgraph "Transport Module"
+            TRANSPORT_UC[Transport Use Cases]
+            TRANSPORT_CTRL[Transport Controllers]
+        end
+        
+        subgraph "Station Module"
+            STATION_UC[Station Use Cases]
+            STATION_CTRL[Station Controllers]
+        end
+        
+        subgraph "Loan Module"
+            LOAN_UC[Loan Use Cases]
+            LOAN_CTRL[Loan Controllers]
+        end
+    end
+
+    subgraph "🏛️ Domain Core"
+        ENTITIES[Domain Entities]
+        VALUE_OBJECTS[Value Objects]
+        DOMAIN_SERVICES[Domain Services]
+        REPO_INTERFACES[Repository Interfaces]
+    end
+
+    subgraph "🔧 Infrastructure"
+        subgraph "Data Access"
+            POSTGRES[PostgreSQL DB]
+            REDIS[Redis Cache]
+        end
+        
+        subgraph "External Services"
+            STRIPE[Stripe Payments]
+            EMAIL[Email Service]
+            SMS[SMS Service]
+        end
+        
+        subgraph "Monitoring"
+            LOGS[Logging]
+            METRICS[Metrics]
+            HEALTH[Health Checks]
+        end
+    end
+
+    %% Connections
+    COMP1 --> GATEWAY
+    COMP2 --> GATEWAY
+    COMP3 --> GATEWAY
+    COMP4 --> GATEWAY
+    COMP5 --> GATEWAY
+    COMP6 --> GATEWAY
+
+    GATEWAY --> USER_CTRL
+    GATEWAY --> TRANSPORT_CTRL
+    GATEWAY --> STATION_CTRL
+    GATEWAY --> LOAN_CTRL
+
+    USER_CTRL --> USER_UC
+    TRANSPORT_CTRL --> TRANSPORT_UC
+    STATION_CTRL --> STATION_UC
+    LOAN_CTRL --> LOAN_UC
+
+    USER_UC --> ENTITIES
+    TRANSPORT_UC --> ENTITIES
+    STATION_UC --> ENTITIES
+    LOAN_UC --> ENTITIES
+
+    ENTITIES --> POSTGRES
+    DOMAIN_SERVICES --> STRIPE
+    DOMAIN_SERVICES --> EMAIL
+    DOMAIN_SERVICES --> SMS
+
+    GATEWAY --> LOGS
+    GATEWAY --> METRICS
+    GATEWAY --> HEALTH
+```
+
+### 🗄️ Diagrama de Base de Datos (ERD)
+
+```mermaid
+erDiagram
+    USERS ||--o{ LOANS : creates
+    TRANSPORTS ||--o{ LOANS : "used in"
+    STATIONS ||--o{ TRANSPORTS : contains
+    STATIONS ||--o{ LOANS : "start point"
+    STATIONS ||--o{ LOANS : "end point"
+    COORDINATES ||--|| STATIONS : "has location"
+    COORDINATES ||--|| TRANSPORTS : "has location"
+    
+    USERS {
+        int id PK
+        string nombre
+        string correo UK
+        string password_hash
+        string documento UK
+        string telefono
+        enum role
+        boolean is_active
+        timestamp created_at
+        timestamp updated_at
+    }
+    
+    TRANSPORTS {
+        int id PK
+        enum type
+        string code UK
+        enum status
+        int battery_level "nullable"
+        int gear_count "nullable"
+        string frame_size "nullable"
+        int max_speed "nullable"
+        int battery_capacity "nullable"
+        int coordinate_id FK
+        int station_id FK "nullable"
+        timestamp created_at
+        timestamp updated_at
+    }
+    
+    STATIONS {
+        int id PK
+        string name
+        string address
+        int coordinate_id FK
+        int capacity
+        boolean is_operational
+        timestamp created_at
+        timestamp updated_at
+    }
+    
+    COORDINATES {
+        int id PK
+        decimal latitude
+        decimal longitude
+        timestamp created_at
+    }
+    
+    LOANS {
+        int id PK
+        int user_id FK
+        int transport_id FK
+        int start_station_id FK
+        int end_station_id FK "nullable"
+        timestamp start_time
+        timestamp end_time "nullable"
+        int estimated_duration
+        int actual_duration "nullable"
+        decimal base_fare
+        decimal additional_fees
+        decimal total_amount
+        enum status
+        enum payment_status
+        string cancellation_reason "nullable"
+        timestamp created_at
+        timestamp updated_at
+    }
+    
+    MAINTENANCE_RECORDS {
+        int id PK
+        int transport_id FK
+        enum action_type
+        string description
+        decimal cost
+        timestamp scheduled_date
+        timestamp completed_date "nullable"
+        string technician_notes "nullable"
+        timestamp created_at
+    }
+    
+    TRANSPORTS ||--o{ MAINTENANCE_RECORDS : "has maintenance"
+```
+
+---
+
 ## 🌐 Diagrama de Arquitectura Completo
 
 ```mermaid
