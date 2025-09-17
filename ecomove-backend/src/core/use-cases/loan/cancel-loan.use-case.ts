@@ -1,6 +1,7 @@
 import { Loan } from '../../domain/entities/loan.entity';
 import { LoanRepository } from '../../domain/repositories/loan.repository';
 import { TransportRepository } from '../../domain/repositories/transport.repository';
+import { TransportStatus } from '../../../shared/enums/transport.enums';
 import { ValidationException } from '../../../shared/exceptions/validation-exception';
 
 export class CancelLoanUseCase {
@@ -28,11 +29,7 @@ export class CancelLoanUseCase {
     const updatedLoan = await this.loanRepository.update(loan);
 
     // Cambiar estado del transporte de vuelta a 'available'
-    const transport = await this.transportRepository.findById(loan.getTransportId());
-    if (transport) {
-      transport.changeStatus('available');
-      await this.transportRepository.update(transport, { status: 'available' });
-    }
+    await this.transportRepository.update(loan.getTransportId(), { status: TransportStatus.AVAILABLE });
 
     return updatedLoan;
   }

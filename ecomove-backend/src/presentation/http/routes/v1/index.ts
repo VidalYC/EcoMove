@@ -1,8 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { UserRoutes } from './user.routes';
-import { TransportRoutes } from './transport.routes';
-import { StationRoutes } from './station.routes';
-import { LoanRoutes } from './loan.routes'; // NUEVO
+import { LoanRoutes } from './loan.routes';
 import { DIContainer } from '../../../../config/container';
 
 export class MainRoutes {
@@ -20,21 +18,7 @@ export class MainRoutes {
     const userRoutes = new UserRoutes();
     this.router.use('/users', userRoutes.getRouter());
 
-    // Rutas de transportes
-    const transportRoutes = new TransportRoutes(
-      this.container.getTransportController(),
-      this.container.getAuthMiddleware()
-    );
-    this.router.use('/transports', transportRoutes.getRouter());
-
-    // Rutas de estaciones
-    const stationRoutes = new StationRoutes(
-      this.container.getStationController(),
-      this.container.getAuthMiddleware()
-    );
-    this.router.use('/stations', stationRoutes.getRouter());
-
-    // Rutas de préstamos (NUEVO)
+    // Rutas de préstamos
     const loanRoutes = new LoanRoutes(
       this.container.getLoanController(),
       this.container.getAuthMiddleware()
@@ -55,16 +39,12 @@ export class MainRoutes {
           status: healthCheck.status,
           modules: {
             users: 'active',
-            transports: 'active',
-            stations: 'active',
-            loans: 'active' // NUEVO
+            loans: 'active'
           },
           dependencies: healthCheck.dependencies,
           endpoints: {
             users: 'GET /api/v1/users/health',
-            transports: 'GET /api/v1/transports/health',
-            stations: 'GET /api/v1/stations/health',
-            loans: 'GET /api/v1/loans/health' // NUEVO
+            loans: 'GET /api/v1/loans/health'
           }
         });
       } catch (error) {
@@ -83,4 +63,5 @@ export class MainRoutes {
   }
 }
 
-;
+// REEMPLAZA completamente el contenido de tu archivo index.ts con este código
+// Esto elimina las referencias a TransportRoutes y StationRoutes que están causando problemas

@@ -3,6 +3,7 @@ import { LoanRepository } from '../../domain/repositories/loan.repository';
 import { TransportRepository } from '../../domain/repositories/transport.repository';
 import { StationRepository } from '../../domain/repositories/station.repository';
 import { PaymentMethod } from '../../../shared/enums/payment.enums';
+import { TransportStatus } from '../../../shared/enums/transport.enums';
 import { ValidationException } from '../../../shared/exceptions/validation-exception';
 
 export interface CompleteLoanRequest {
@@ -43,16 +44,11 @@ export class CompleteLoanUseCase {
     // Actualizar el préstamo
     const updatedLoan = await this.loanRepository.update(loan);
 
-    // Mover el transporte a la estación de destino y cambiar estado a 'available'
-    const transport = await this.transportRepository.findById(loan.getTransportId());
-    if (transport) {
-      transport.moveToStation(request.destinationStationId);
-      transport.changeStatus('available');
-      await this.transportRepository.update(transport, { 
-        currentStationId: request.destinationStationId,
-        status: 'available' 
-      });
-    }
+    // Actualizar el transporte: mover a estación destino y cambiar estado
+    await this.transportRepository.update(loan.getTransportId(), {
+      currentStationId: request.destinationStationId,
+      status: TransportStatus.AVAILABLE
+    });
 
     return updatedLoan;
   }

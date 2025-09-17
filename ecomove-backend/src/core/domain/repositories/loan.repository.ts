@@ -1,3 +1,4 @@
+// src/core/domain/repositories/loan.repository.ts
 import { Loan } from '../entities/loan.entity';
 import { LoanStatus } from '../../../shared/enums/loan.enums';
 import { PaymentMethod } from '../../../shared/enums/payment.enums';
@@ -101,4 +102,7 @@ export interface LoanRepository {
   // Consultas de administración
   findOverdueLoans(): Promise<LoanWithDetails[]>;
   findLoansByRevenue(minRevenue: number): Promise<LoanWithDetails[]>;
+
+  // Método para manejar herencia de transportes
+  findTransportWithInheritance(transportId: number): Promise<any>;
 }

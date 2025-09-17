@@ -1,3 +1,7 @@
+-- Migración para tabla de préstamos
+-- Archivo: src/infrastructure/database/migrations/004_create_loan_table.sql
+
+-- Verificar si la tabla prestamo ya existe, si no, crearla
 CREATE TABLE IF NOT EXISTS prestamo (
   id SERIAL PRIMARY KEY,
   usuario_id INTEGER NOT NULL,

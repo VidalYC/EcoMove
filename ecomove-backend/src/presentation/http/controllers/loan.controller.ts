@@ -29,7 +29,7 @@ import {
 } from '../../../shared/interfaces/loan-dtos';
 import { ApiResponse } from '../../../shared/interfaces/api-response';
 import { Loan } from '../../../core/domain/entities/loan.entity';
-import { LoanWithDetails, UserLoanHistory } from '../../../core/domain/repositories/loan.repository';
+import { LoanFilters, LoanWithDetails, UserLoanHistory } from '../../../core/domain/repositories/loan.repository';
 import { LoanStatus } from '../../../shared/enums/loan.enums';
 import { PaymentMethod } from '../../../shared/enums/payment.enums';
 
@@ -224,18 +224,21 @@ export class LoanController {
   // Obtener todos los préstamos con filtros
   async getAllLoans(req: Request, res: Response): Promise<void> {
     try {
-      const filters: LoanFiltersDto = {
-        usuario_id: req.query.usuario_id ? parseInt(req.query.usuario_id as string) : undefined,
-        transporte_id: req.query.transporte_id ? parseInt(req.query.transporte_id as string) : undefined,
-        estacion_origen_id: req.query.estacion_origen_id ? parseInt(req.query.estacion_origen_id as string) : undefined,
-        estacion_destino_id: req.query.estacion_destino_id ? parseInt(req.query.estacion_destino_id as string) : undefined,
-        estado: req.query.estado as LoanStatus,
-        fecha_inicio: req.query.fecha_inicio as string,
-        fecha_fin: req.query.fecha_fin as string,
-        metodo_pago: req.query.metodo_pago as PaymentMethod,
+      // CORREGIDO: Usar nombres en inglés consistentes con LoanFilters interface
+      const filters: LoanFilters = {
+        userId: req.query.usuario_id ? parseInt(req.query.usuario_id as string) : undefined,
+        transportId: req.query.transporte_id ? parseInt(req.query.transporte_id as string) : undefined,
+        originStationId: req.query.estacion_origen_id ? parseInt(req.query.estacion_origen_id as string) : undefined,
+        destinationStationId: req.query.estacion_destino_id ? parseInt(req.query.estacion_destino_id as string) : undefined,
+        status: req.query.estado as LoanStatus,
+        startDate: req.query.fecha_inicio ? new Date(req.query.fecha_inicio as string) : undefined,
+        endDate: req.query.fecha_fin ? new Date(req.query.fecha_fin as string) : undefined,
+        paymentMethod: req.query.metodo_pago as PaymentMethod,
         page: req.query.page ? parseInt(req.query.page as string) : 1,
         limit: req.query.limit ? parseInt(req.query.limit as string) : 10
       };
+
+      console.log('🔍 Filters being sent to use case:', filters); // Debug
 
       const result = await this.getAllLoansUseCase.execute(filters);
 
@@ -252,6 +255,7 @@ export class LoanController {
 
       res.json(response);
     } catch (error) {
+      console.error('❌ Error in getAllLoans:', error); // Debug adicional
       const response: ApiResponse = {
         success: false,
         message: (error as Error).message || 'Error al obtener préstamos'

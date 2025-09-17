@@ -2,150 +2,158 @@
 import { Router, Request, Response } from 'express';
 import { LoanController } from '../../controllers/loan.controller';
 import { LoanValidator } from '../../validators/loan.validator';
-import { ValidationErrorHandler } from '../../middleware/validation-error-handler.middleware';
 import { AuthenticationMiddleware } from '../../middleware/authentication.middleware';
+import { DIContainer } from '../../../../config/container';
 
 export class LoanRoutes {
-  private router: Router;
-
-  constructor(
-    private readonly loanController: LoanController,
-    private readonly authMiddleware: AuthenticationMiddleware
-  ) {
-    this.router = Router();
-    this.setupRoutes();
-  }
-
-  private setupRoutes(): void {
-    // ========== RUTAS PÚBLICAS DE CÁLCULO ==========
+  static create(): Router {
+    const router = Router();
+    const container = DIContainer.getInstance();
     
-    // Calcular tarifa de préstamo
-    this.router.post('/calcular-tarifa',
-      LoanValidator.validateCalculateFare(),
-      LoanValidator.handleValidationErrors,
-      (req: Request, res: Response) => this.loanController.calculateFare(req, res)
-    );
+    const loanController = container.getLoanController();
+    const authMiddleware = container.getAuthMiddleware();
 
-    // ========== RUTAS QUE REQUIEREN AUTENTICACIÓN ==========
+    // ========== RUTAS ESPECÍFICAS PRIMERO (ANTES DE /:id) ==========
     
-    // Middleware de autenticación para todas las rutas siguientes
-    this.router.use(this.authMiddleware.authenticate.bind(this.authMiddleware));
-
-    // Crear nuevo préstamo
-    this.router.post('/',
-      LoanValidator.validateCreateLoan(),
-      LoanValidator.handleValidationErrors,
-      (req: Request, res: Response) => this.loanController.createLoan(req, res)
-    );
-
-    // Obtener préstamo por ID
-    this.router.get('/:id',
-      LoanValidator.validateLoanId(),
-      LoanValidator.handleValidationErrors,
-      (req: Request, res: Response) => this.loanController.getLoanById(req, res)
-    );
-
-    // Obtener préstamo con detalles por ID
-    this.router.get('/:id/detalles',
-      LoanValidator.validateLoanId(),
-      LoanValidator.handleValidationErrors,
-      (req: Request, res: Response) => this.loanController.getLoanWithDetailsById(req, res)
-    );
-
-    // Completar préstamo
-    this.router.put('/:id/completar',
-      LoanValidator.validateCompleteLoan(),
-      LoanValidator.handleValidationErrors,
-      (req: Request, res: Response) => this.loanController.completeLoan(req, res)
-    );
-
-    // Cancelar préstamo
-    this.router.put('/:id/cancelar',
-      LoanValidator.validateLoanId(),
-      LoanValidator.handleValidationErrors,
-      (req: Request, res: Response) => this.loanController.cancelLoan(req, res)
-    );
-
-    // Extender préstamo
-    this.router.put('/:id/extender',
-      LoanValidator.validateExtendLoan(),
-      LoanValidator.handleValidationErrors,
-      (req: Request, res: Response) => this.loanController.extendLoan(req, res)
-    );
-
-    // Obtener todos los préstamos (con filtros)
-    this.router.get('/',
-      LoanValidator.validateLoanFilters(),
-      LoanValidator.handleValidationErrors,
-      (req: Request, res: Response) => this.loanController.getAllLoans(req, res)
-    );
-
-    // ========== RUTAS DE USUARIO (requieren ser propietario o admin) ==========
-
-    // Obtener historial de préstamos de un usuario
-    this.router.get('/usuario/:usuarioId',
-      LoanValidator.validateUserHistory(),
-      LoanValidator.handleValidationErrors,
-      LoanValidator.requireOwnershipOrAdmin('usuarioId'),
-      (req: Request, res: Response) => this.loanController.getUserLoanHistory(req, res)
-    );
-
-    // ========== RUTAS ADMINISTRATIVAS (requieren permisos admin) ==========
-
-    // Obtener estadísticas de préstamos
-    this.router.get('/admin/estadisticas',
-      LoanValidator.requireAdmin,
-      (req: Request, res: Response) => this.loanController.getLoanStats(req, res)
-    );
-
-    // Obtener reporte de préstamos por período
-    this.router.get('/admin/reporte',
-      LoanValidator.requireAdmin,
-      LoanValidator.validatePeriodReport(),
-      LoanValidator.handleValidationErrors,
-      LoanValidator.validateDateRange,
-      (req: Request, res: Response) => this.loanController.getPeriodReport(req, res)
-    );
-
-    // Obtener todos los préstamos activos (admin)
-    this.router.get('/admin/activos',
-      LoanValidator.requireAdmin,
-      LoanValidator.validateActiveLoans(),
-      LoanValidator.handleValidationErrors,
-      (req: Request, res: Response) => this.loanController.getActiveLoans(req, res)
-    );
-
-    // Health check del módulo
-    this.router.get('/health', (req: Request, res: Response) => {
+    // Health check
+    router.get('/health', (req: Request, res: Response) => {
       res.json({
         success: true,
         message: 'Módulo de préstamos funcionando correctamente',
         timestamp: new Date().toISOString(),
         endpoints: {
-          public: {
-            calculateFare: 'POST /api/v1/loans/calcular-tarifa'
-          },
-          user: {
-            create: 'POST /api/v1/loans',
-            getById: 'GET /api/v1/loans/:id',
-            getDetails: 'GET /api/v1/loans/:id/detalles',
-            complete: 'PUT /api/v1/loans/:id/completar',
-            cancel: 'PUT /api/v1/loans/:id/cancelar',
-            extend: 'PUT /api/v1/loans/:id/extender',
-            getAll: 'GET /api/v1/loans',
-            getUserHistory: 'GET /api/v1/loans/usuario/:usuarioId'
-          },
-          admin: {
-            stats: 'GET /api/v1/loans/admin/estadisticas',
-            report: 'GET /api/v1/loans/admin/reporte',
-            activeLoans: 'GET /api/v1/loans/admin/activos'
-          }
+          public: [
+            'POST /api/v1/loans/calcular-tarifa - Calcular tarifa'
+          ],
+          user: [
+            'GET /api/v1/loans - Listar préstamos',
+            'POST /api/v1/loans - Crear préstamo',
+            'GET /api/v1/loans/:id - Obtener préstamo por ID',
+            'GET /api/v1/loans/:id/detalles - Obtener préstamo con detalles',
+            'PUT /api/v1/loans/:id/completar - Completar préstamo',
+            'PUT /api/v1/loans/:id/cancelar - Cancelar préstamo',
+            'PUT /api/v1/loans/:id/extender - Extender préstamo',
+            'GET /api/v1/loans/usuario/:usuarioId - Historial de usuario'
+          ],
+          admin: [
+            'GET /api/v1/loans/admin/estadisticas - Estadísticas generales',
+            'GET /api/v1/loans/admin/reporte - Reporte por período',
+            'GET /api/v1/loans/admin/activos - Préstamos activos'
+          ]
         }
       });
     });
-  }
 
-  getRouter(): Router {
-    return this.router;
+    // ========== RUTAS PÚBLICAS ==========
+    
+    // Calcular tarifa de préstamo
+    router.post('/calcular-tarifa',
+      LoanValidator.validateCalculateFare(),
+      LoanValidator.handleValidationErrors,
+      (req: Request, res: Response) => loanController.calculateFare(req, res)
+    );
+
+    // ========== RUTAS ADMINISTRATIVAS (ANTES de rutas con parámetros) ==========
+    
+    // Obtener estadísticas de préstamos
+    router.get('/admin/estadisticas',
+      authMiddleware.authenticate,
+      LoanValidator.requireAdmin,
+      (req: Request, res: Response) => loanController.getLoanStats(req, res)
+    );
+
+    // Obtener reporte de préstamos por período
+    router.get('/admin/reporte',
+      authMiddleware.authenticate,
+      LoanValidator.requireAdmin,
+      LoanValidator.validatePeriodReport(),
+      LoanValidator.handleValidationErrors,
+      LoanValidator.validateDateRange,
+      (req: Request, res: Response) => loanController.getPeriodReport(req, res)
+    );
+
+    // Obtener todos los préstamos activos (admin)
+    router.get('/admin/activos',
+      authMiddleware.authenticate,
+      LoanValidator.requireAdmin,
+      LoanValidator.validateActiveLoans(),
+      LoanValidator.handleValidationErrors,
+      (req: Request, res: Response) => loanController.getActiveLoans(req, res)
+    );
+
+    // ========== RUTAS DE USUARIO CON PARÁMETROS ESPECÍFICOS ==========
+    
+    // Obtener historial de préstamos de un usuario
+    router.get('/usuario/:usuarioId',
+      authMiddleware.authenticate,
+      LoanValidator.validateUserHistory(),
+      LoanValidator.handleValidationErrors,
+      LoanValidator.requireOwnershipOrAdmin('usuarioId'),
+      (req: Request, res: Response) => loanController.getUserLoanHistory(req, res)
+    );
+
+    // ========== RUTAS PROTEGIDAS CON AUTENTICACIÓN ==========
+    
+    // Listar todos los préstamos (con filtros)
+    router.get('/',
+      authMiddleware.authenticate,
+      LoanValidator.validateLoanFilters(),
+      LoanValidator.handleValidationErrors,
+      (req: Request, res: Response) => loanController.getAllLoans(req, res)
+    );
+
+    // Crear nuevo préstamo
+    router.post('/',
+      authMiddleware.authenticate,
+      LoanValidator.validateCreateLoan(),
+      LoanValidator.handleValidationErrors,
+      (req: Request, res: Response) => loanController.createLoan(req, res)
+    );
+
+    // ========== RUTAS CON ACCIONES ESPECÍFICAS (ANTES de /:id genérico) ==========
+    
+    // Completar préstamo
+    router.put('/:id/completar',
+      authMiddleware.authenticate,
+      LoanValidator.validateCompleteLoan(),
+      LoanValidator.handleValidationErrors,
+      (req: Request, res: Response) => loanController.completeLoan(req, res)
+    );
+
+    // Cancelar préstamo
+    router.put('/:id/cancelar',
+      authMiddleware.authenticate,
+      LoanValidator.validateLoanId(),
+      LoanValidator.handleValidationErrors,
+      (req: Request, res: Response) => loanController.cancelLoan(req, res)
+    );
+
+    // Extender préstamo
+    router.put('/:id/extender',
+      authMiddleware.authenticate,
+      LoanValidator.validateExtendLoan(),
+      LoanValidator.handleValidationErrors,
+      (req: Request, res: Response) => loanController.extendLoan(req, res)
+    );
+
+    // Obtener préstamo con detalles
+    router.get('/:id/detalles',
+      authMiddleware.authenticate,
+      LoanValidator.validateLoanId(),
+      LoanValidator.handleValidationErrors,
+      (req: Request, res: Response) => loanController.getLoanWithDetailsById(req, res)
+    );
+
+    // ========== RUTAS DINÁMICAS AL FINAL (/:id) ==========
+    
+    // Obtener préstamo por ID (DEBE IR AL FINAL)
+    router.get('/:id',
+      authMiddleware.authenticate,
+      LoanValidator.validateLoanId(),
+      LoanValidator.handleValidationErrors,
+      (req: Request, res: Response) => loanController.getLoanById(req, res)
+    );
+
+    return router;
   }
 }

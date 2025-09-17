@@ -3,6 +3,7 @@ import { LoanRepository } from '../../domain/repositories/loan.repository';
 import { UserRepository } from '../../domain/repositories/user.repository';
 import { TransportRepository } from '../../domain/repositories/transport.repository';
 import { StationRepository } from '../../domain/repositories/station.repository';
+import { TransportStatus } from '../../../shared/enums/transport.enums';
 import { ValidationException } from '../../../shared/exceptions/validation-exception';
 
 export interface CreateLoanRequest {
@@ -36,12 +37,12 @@ export class CreateLoanUseCase {
       throw new ValidationException('El usuario ya tiene un préstamo activo');
     }
 
-    // Validar que el transporte existe y está disponible
-    const transport = await this.transportRepository.findById(request.transportId);
+    // Validar que el transporte existe y está disponible (usando herencia)
+    const transport = await this.loanRepository.findTransportWithInheritance(request.transportId);
     if (!transport) {
       throw new ValidationException('Transporte no encontrado');
     }
-    if (transport.status !== 'available') {
+    if (transport.estado !== 'available') {
       throw new ValidationException('Transporte no está disponible');
     }
 
@@ -52,7 +53,7 @@ export class CreateLoanUseCase {
     }
 
     // Validar que el transporte está en la estación de origen
-    if (transport.currentStationId !== request.originStationId) {
+    if (transport.current_station_id !== request.originStationId) {
       throw new ValidationException('El transporte no está en la estación de origen especificada');
     }
 
@@ -67,12 +68,8 @@ export class CreateLoanUseCase {
     // Guardar el préstamo
     const savedLoan = await this.loanRepository.save(loan);
 
-    // Cambiar estado del transporte a 'in_use' usando el método correcto
-    const updatedTransport = await this.transportRepository.findById(request.transportId);
-    if (updatedTransport) {
-      updatedTransport.changeStatus('in_use');
-      await this.transportRepository.update(updatedTransport, { status: 'in_use' });
-    }
+    // Cambiar estado del transporte a 'in_use'
+    await this.transportRepository.update(transport.id, { status: TransportStatus.IN_USE });
 
     return savedLoan;
   }

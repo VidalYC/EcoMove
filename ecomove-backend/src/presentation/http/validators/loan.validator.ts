@@ -1,6 +1,5 @@
-// src/presentation/http/validators/loan.validator.ts
 import { Request, Response, NextFunction } from 'express';
-import { body, param, query, validationResult } from 'express-validator';
+const { body, param, query, validationResult } = require('express-validator');
 import { LoanStatus } from '../../../shared/enums/loan.enums';
 import { PaymentMethod } from '../../../shared/enums/payment.enums';
 import { ApiResponse } from '../../../shared/interfaces/api-response';
@@ -162,7 +161,7 @@ export class LoanValidator {
         .withMessage('fecha_fin es requerida y debe tener formato ISO 8601'),
       
       query('fecha_inicio')
-        .custom((value, { req }) => {
+        .custom((value: string, { req }: { req: any }) => {
           const startDate = new Date(value);
           const endDate = new Date((req.query?.fecha_fin as string) || '');
           

@@ -8,7 +8,7 @@ import { ErrorHandlerMiddleware } from './presentation/http/middleware/error-han
 import { UserRoutes } from './presentation/http/routes/v1/user.routes';
 import { TransportRoutes } from './presentation/http/routes/v1/transport.routes';
 import { StationRoutes } from './presentation/http/routes/v1/station.routes';
-import { LoanRoutes } from './presentation/http/routes/v1/loan.routes'; // NUEVA IMPORTACIÓN
+import { LoanRoutes } from './presentation/http/routes/v1/loan.routes';
 
 dotenv.config();
 
@@ -34,7 +34,7 @@ const userRoutes = new UserRoutes();
 app.use('/api/v1/users', userRoutes.getRouter());
 app.use('/api/v1/transports', TransportRoutes.create());
 app.use('/api/v1/stations', StationRoutes.create());
-app.use('/api/v1/loans', LoanRoutes.create()); // NUEVA RUTA
+app.use('/api/v1/loans', LoanRoutes.create());
 
 // Ruta raíz
 app.get('/', (req, res) => {
@@ -52,7 +52,7 @@ app.get('/', (req, res) => {
       },
       transports: '/api/v1/transports/*',
       stations: '/api/v1/stations/*',
-      loans: '/api/v1/loans/*', // AGREGADO
+      loans: '/api/v1/loans/*',
       documentation: '/api/v1/docs (coming soon)'
     }
   });
@@ -84,7 +84,8 @@ app.use((req, res, next) => {
       users: 'GET /api/v1/users/health',
       transports: 'GET /api/v1/transports/health',
       stations: 'GET /api/v1/stations/health',
-      loans: 'GET /api/v1/loans/health' // AGREGADO
+      loans: 'GET /api/v1/loans/health',
+      
     }
   });
 });
@@ -107,8 +108,7 @@ const startServer = async (): Promise<void> => {
       console.log(`⚙️  Admin: http://localhost:${PORT}/api/v1/users/admin/`);
       console.log(`🚲 Transports: http://localhost:${PORT}/api/v1/transports/`);
       console.log(`🏢 Stations: http://localhost:${PORT}/api/v1/stations/`);
-      console.log(`📝 Loans: http://localhost:${PORT}/api/v1/loans/`); // AGREGADO
-      console.log(`📚 Architecture: Clean Architecture + SOLID Principles`);
+      console.log(`📋 Loans: http://localhost:${PORT}/api/v1/loans/`);
     });
   } catch (error) {
     console.error('❌ Error starting server:', error);
