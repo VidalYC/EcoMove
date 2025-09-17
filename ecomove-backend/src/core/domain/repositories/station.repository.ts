@@ -1,5 +1,5 @@
-import { Station } from '../entities/station.entity';
-import { StationAvailability } from '../entities/station-availability.entity';
+import { Station } from '../entities/station/station.entity';
+import { StationAvailability } from '../entities/station/station-availability.entity';
 import { StationFilters } from '../value-objects/station-filters';
 import { Coordinate } from '../../../shared/interfaces/coordinate.interface';
 

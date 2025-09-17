@@ -1,4 +1,4 @@
-import { User } from '../../domain/entities/user.entity';
+import { User } from '../../domain/entities/user/user.entity';
 import { UserRepository } from '../../domain/repositories/user.repository';
 import { NotFoundException } from '../../../shared/exceptions/not-found-exception';
 

@@ -18,9 +18,9 @@ import {
   UpdateTransportDto,
   TransportResponseDto 
 } from '../../../shared/interfaces/transport-dtos';
-import { Transport } from '../../../core/domain/entities/transport.entity';
-import { Bicycle } from '../../../core/domain/entities/bicycle.entity';
-import { ElectricScooter } from '../../../core/domain/entities/electric-scooter.entity';
+import { Transport } from '../../../core/domain/entities/transport/transport.entity';
+import { Bicycle } from '../../../core/domain/entities/transport/bicycle.entity';
+import { ElectricScooter } from '../../../core/domain/entities/transport/electric-scooter.entity';
 import { TransportType, TransportStatus } from '../../../shared/enums/transport.enums';
 import { TransportFilters } from '../../../core/domain/value-objects/transport-filters';
 import { ApiResponse } from '../../../shared/interfaces/api-response';

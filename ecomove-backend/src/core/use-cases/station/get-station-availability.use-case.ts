@@ -1,4 +1,4 @@
-import { StationAvailability } from '../../domain/entities/station-availability.entity';
+import { StationAvailability } from '../../domain/entities/station/station-availability.entity';
 import { StationRepository } from '../../domain/repositories/station.repository';
 
 export class GetStationAvailabilityUseCase {

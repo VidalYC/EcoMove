@@ -1,5 +1,5 @@
-import { Email } from '../value-objects/email.vo';
-import { DocumentNumber } from '../value-objects/document-number.vo';
+import { Email } from '../../value-objects/email.vo';
+import { DocumentNumber } from '../../value-objects/document-number.vo';
 
 export enum UserStatus {
   ACTIVE = 'active',

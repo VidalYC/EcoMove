@@ -1,4 +1,4 @@
-import { Bicycle } from '../../domain/entities/bicycle.entity';
+import { Bicycle } from '../../domain/entities/transport/bicycle.entity';
 import { TransportRepository } from '../../domain/repositories/transport.repository';
 import { CreateBicycleDto } from '../../../shared/interfaces/transport-dtos';
 

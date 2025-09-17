@@ -2,11 +2,11 @@
 // CORREGIDO PARA TU ESQUEMA REAL
 
 import { Pool } from 'pg';
-import { Station } from '../../../core/domain/entities/station.entity';
+import { Station } from '../../../core/domain/entities/station/station.entity';
 import { Coordinate } from '../../../shared/interfaces/coordinate.interface';
 import { StationRepository } from '../../../core/domain/repositories/station.repository';
 import { StationFilters } from '../../../core/domain/value-objects/station-filters';
-import { StationAvailability } from '../../../core/domain/entities/station-availability.entity';
+import { StationAvailability } from '../../../core/domain/entities/station/station-availability.entity';
 
 export class PostgreSQLStationRepository implements StationRepository {
   constructor(private readonly pool: Pool) {}

@@ -1,7 +1,7 @@
-import { Transport } from '../entities/transport.entity';
+import { Transport } from '../entities/transport/transport.entity';
 import { TransportStatus, TransportType } from '../../../shared/enums/transport.enums';
-import { Bicycle } from '../entities/bicycle.entity';
-import { ElectricScooter } from '../entities/electric-scooter.entity';
+import { Bicycle } from '../entities/transport/bicycle.entity';
+import { ElectricScooter } from '../entities/transport/electric-scooter.entity';
 import { TransportFilters } from '../value-objects/transport-filters';
 
 export interface TransportRepository {

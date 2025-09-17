@@ -1,4 +1,4 @@
-import { Coordinate } from '../../../shared/interfaces/coordinate.interface';
+import { Coordinate } from '../../../../shared/interfaces/coordinate.interface';
 
 export class Station {
   constructor(

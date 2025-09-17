@@ -1,5 +1,5 @@
 import { Pool, PoolClient } from 'pg';
-import { User, UserRole, UserStatus } from '../../../core/domain/entities/user.entity';
+import { User, UserRole, UserStatus } from '../../../core/domain/entities/user/user.entity';
 import { Email } from '../../../core/domain/value-objects/email.vo';
 import { DocumentNumber } from '../../../core/domain/value-objects/document-number.vo';
 import { UserRepository, PaginatedResponse, UserStats } from '../../../core/domain/repositories/user.repository';

@@ -1,5 +1,5 @@
 import { StationFilters } from '@/core/domain/value-objects/station-filters';
-import { Station } from '../../domain/entities/station.entity';
+import { Station } from '../../domain/entities/station/station.entity';
 import { StationRepository } from '../../domain/repositories/station.repository';
 
 export class GetAllStationsUseCase {

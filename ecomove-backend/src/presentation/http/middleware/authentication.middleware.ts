@@ -2,7 +2,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { TokenService } from '../../../core/domain/services/token.service';
 import { UserRepository } from '../../../core/domain/repositories/user.repository';
-import { User, UserRole, UserStatus } from '../../../core/domain/entities/user.entity';
+import { User, UserRole, UserStatus } from '../../../core/domain/entities/user/user.entity';
 
 export interface AuthenticatedRequest extends Request {
   user?: {

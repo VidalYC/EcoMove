@@ -1,5 +1,5 @@
 import { Transport } from './transport.entity';
-import { TransportStatus, TransportType } from '../../../shared/enums/transport.enums';
+import { TransportStatus, TransportType } from '../../../../shared/enums/transport.enums';
 
 export class ElectricScooter extends Transport {
   constructor(

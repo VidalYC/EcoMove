@@ -1,4 +1,4 @@
-import { Station } from '../../domain/entities/station.entity';
+import { Station } from '../../domain/entities/station/station.entity';
 import { Coordinate } from '../../../shared/interfaces/coordinate.interface';
 import { StationRepository } from '../../domain/repositories/station.repository';
 

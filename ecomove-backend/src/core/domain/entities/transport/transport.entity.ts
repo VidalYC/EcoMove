@@ -1,4 +1,4 @@
-import { TransportStatus, TransportType } from "../../../shared/enums/transport.enums";
+import { TransportStatus, TransportType } from "../../../../shared/enums/transport.enums";
 
 export class Transport {
   [x: string]: any;

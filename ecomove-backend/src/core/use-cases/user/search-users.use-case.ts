@@ -1,5 +1,5 @@
 import { UserRepository, PaginatedResponse } from '../../domain/repositories/user.repository';
-import { User } from '../../domain/entities/user.entity';
+import { User } from '../../domain/entities/user/user.entity';
 
 export class SearchUsersUseCase {
   constructor(private readonly userRepository: UserRepository) {}

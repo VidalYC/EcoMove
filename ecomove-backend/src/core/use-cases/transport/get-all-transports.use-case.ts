@@ -1,4 +1,4 @@
-import { Transport} from '../../domain/entities/transport.entity';
+import { Transport} from '../../domain/entities/transport/transport.entity';
 import { TransportRepository } from '../../domain/repositories/transport.repository';
 import { TransportFilters } from '../../domain/value-objects/transport-filters';
 

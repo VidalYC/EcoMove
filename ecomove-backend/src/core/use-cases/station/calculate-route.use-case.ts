@@ -1,5 +1,5 @@
 import { StationRepository } from '../../domain/repositories/station.repository';
-import { Station } from '../../domain/entities/station.entity';
+import { Station } from '../../domain/entities/station/station.entity';
 
 export class CalculateRouteUseCase {
   constructor(private readonly stationRepository: StationRepository) {}

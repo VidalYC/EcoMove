@@ -1,4 +1,4 @@
-import { User } from '../../domain/entities/user.entity';
+import { User } from '../../domain/entities/user/user.entity';
 import { UserRepository } from '../../domain/repositories/user.repository';
 import { PasswordService } from '../../domain/services/password.service';
 import { TokenService } from '../../domain/services/token.service';

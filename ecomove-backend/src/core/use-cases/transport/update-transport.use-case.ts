@@ -1,4 +1,4 @@
-import { Transport} from '../../domain/entities/transport.entity';
+import { Transport} from '../../domain/entities/transport/transport.entity';
 import { TransportStatus } from '../../../shared/enums/transport.enums';
 import { TransportRepository } from '../../domain/repositories/transport.repository';
 import { UpdateTransportDto } from '../../../shared/interfaces/transport-dtos';
