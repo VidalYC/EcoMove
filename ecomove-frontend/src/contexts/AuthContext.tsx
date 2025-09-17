@@ -1,119 +1,32 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  document: string;
-  role: 'user' | 'admin';
-  isBlocked?: boolean;
-  createdAt: Date;
-}
+// src/contexts/AuthContext.tsx - CON REGISTRO BACKEND REAL
+import { createContext, useContext, ReactNode } from 'react';
+import { useAuth as useAuthHook } from '../hooks/useAuth';
+import { User, LoginData, RegisterData } from '../services/api.service';
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (userData: Omit<User, 'id' | 'createdAt'> & { password: string }) => Promise<boolean>;
-  logout: () => void;
-  isLoading: boolean;
+  token: string | null;
+  loading: boolean;
+  error: string | null;
+  login: (credentials: LoginData) => Promise<boolean>;
+  register: (userData: RegisterData) => Promise<boolean>;
+  logout: () => Promise<void>;
+  updateProfile: (updates: Partial<User>) => Promise<boolean>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
+  clearError: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock users data
-const mockUsers: (User & { password: string })[] = [
-  {
-    id: '1',
-    name: 'Usuario Demo',
-    email: 'usuario@ecomove.com',
-    document: '12345678',
-    role: 'user',
-    password: 'usuario123',
-    createdAt: new Date('2024-01-15')
-  },
-  {
-    id: '2',
-    name: 'Admin EcoMove',
-    email: 'admin@ecomove.com',
-    document: '87654321',
-    role: 'admin',
-    password: 'admin123',
-    createdAt: new Date('2024-01-01')
-  }
-];
+interface AuthProviderProps {
+  children: ReactNode;
+}
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    // Check for stored user session
-    const storedUser = localStorage.getItem('ecomove_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
-  }, []);
-
-  const login = async (email: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const foundUser = mockUsers.find(u => u.email === email && u.password === password);
-    
-    if (foundUser && !foundUser.isBlocked) {
-      const userWithoutPassword = { ...foundUser };
-      delete (userWithoutPassword as any).password;
-      
-      setUser(userWithoutPassword);
-      localStorage.setItem('ecomove_user', JSON.stringify(userWithoutPassword));
-      setIsLoading(false);
-      return true;
-    }
-    
-    setIsLoading(false);
-    return false;
-  };
-
-  const register = async (userData: Omit<User, 'id' | 'createdAt'> & { password: string }): Promise<boolean> => {
-    setIsLoading(true);
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Check if user already exists
-    const existingUser = mockUsers.find(u => u.email === userData.email);
-    if (existingUser) {
-      setIsLoading(false);
-      return false;
-    }
-    
-    const newUser = {
-      ...userData,
-      id: Date.now().toString(),
-      createdAt: new Date()
-    };
-    
-    mockUsers.push(newUser);
-    
-    const userWithoutPassword = { ...newUser };
-    delete (userWithoutPassword as any).password;
-    
-    setUser(userWithoutPassword);
-    localStorage.setItem('ecomove_user', JSON.stringify(userWithoutPassword));
-    setIsLoading(false);
-    return true;
-  };
-
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('ecomove_user');
-  };
+export function AuthProvider({ children }: AuthProviderProps) {
+  const authData = useAuthHook();
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, isLoading }}>
+    <AuthContext.Provider value={authData}>
       {children}
     </AuthContext.Provider>
   );
@@ -125,4 +38,64 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
+}
+
+// Para compatibilidad con tu código existente
+export interface AuthUser {
+  id: string;
+  name: string;  // Mapear desde 'nombre'
+  email: string; // Mapear desde 'correo'
+  role: 'user' | 'admin';
+  documento?: string;
+  telefono?: string;
+  document?: string; // Alias para compatibilidad
+}
+
+// Hook wrapper para mantener compatibilidad con Register.tsx
+export function useAuthCompat() {
+  const { user, login, register, logout, loading, error, clearError } = useAuth();
+  
+  // Transformar el usuario del backend al formato esperado por el frontend
+  const transformedUser: AuthUser | null = user ? {
+    id: user.id,
+    name: user.nombre,
+    email: user.correo,
+    role: user.role,
+    documento: user.documento,
+    telefono: user.telefono,
+    document: user.documento, // Para compatibilidad con Register.tsx
+  } : null;
+
+  const loginCompat = async (email: string, password: string): Promise<boolean> => {
+    return await login({
+      correo: email,
+      password: password,
+    });
+  };
+
+  const registerCompat = async (userData: { 
+    name: string; 
+    email: string; 
+    password: string;
+    document?: string;
+    telefono?: string;
+  }): Promise<boolean> => {
+    return await register({
+      nombre: userData.name,
+      correo: userData.email,
+      password: userData.password,
+      documento: userData.document || '',
+      telefono: userData.telefono || '',
+    });
+  };
+
+  return {
+    user: transformedUser,
+    login: loginCompat,
+    register: registerCompat,
+    logout,
+    isLoading: loading,
+    error,
+    clearError,
+  };
 }
