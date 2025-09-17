@@ -1,115 +1,54 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { DataProvider } from './contexts/DataContext';
-import Layout from './components/Layout/Layout';
-import ProtectedRoute from './components/ProtectedRoute';
+import { RouterProvider } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'react-hot-toast';
+import { router } from './config/router';
 
-// Auth components
-import Login from './components/Auth/Login';
-import Register from './components/Auth/Register';
+// Create a client for React Query
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
 
-// User pages
-import StationsPage from './pages/User/StationsPage';
-import HistoryPage from './pages/User/HistoryPage';
-import ProfilePage from './pages/User/ProfilePage';
-
-// Admin pages
-import AdminDashboard from './pages/Admin/AdminDashboard';
-import AdminStations from './pages/Admin/AdminStations';
-
-function AppRoutes() {
-  const { user } = useAuth();
-
-  if (!user) {
-    return (
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    );
-  }
-
+function App() {
   return (
-    <Layout>
-      <Routes>
-        {/* User routes */}
-        <Route 
-          path="/stations" 
-          element={
-            <ProtectedRoute>
-              <StationsPage />
-            </ProtectedRoute>
-          } 
+    <QueryClientProvider client={queryClient}>
+      <div className="App">
+        <RouterProvider router={router} />
+        
+        {/* Global toast notifications */}
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#363636',
+              color: '#fff',
+            },
+            success: {
+              duration: 3000,
+              iconTheme: {
+                primary: '#10b981',
+                secondary: '#fff',
+              },
+            },
+            error: {
+              duration: 5000,
+              iconTheme: {
+                primary: '#ef4444',
+                secondary: '#fff',
+              },
+            },
+          }}
         />
-        <Route 
-          path="/history" 
-          element={
-            <ProtectedRoute>
-              <HistoryPage />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/profile" 
-          element={
-            <ProtectedRoute>
-              <ProfilePage />
-            </ProtectedRoute>
-          } 
-        />
-
-        {/* Admin routes */}
-        <Route 
-          path="/admin/dashboard" 
-          element={
-            <ProtectedRoute requireAdmin>
-              <AdminDashboard />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/admin/stations" 
-          element={
-            <ProtectedRoute requireAdmin>
-              <AdminStations />
-            </ProtectedRoute>
-          } 
-        />
-
-        {/* Default redirects */}
-        <Route 
-          path="/" 
-          element={
-            <Navigate 
-              to={user.role === 'admin' ? '/admin/dashboard' : '/stations'} 
-              replace 
-            />
-          } 
-        />
-        <Route 
-          path="*" 
-          element={
-            <Navigate 
-              to={user.role === 'admin' ? '/admin/dashboard' : '/stations'} 
-              replace 
-            />
-          } 
-        />
-      </Routes>
-    </Layout>
+      </div>
+    </QueryClientProvider>
   );
 }
 
-export default function App() {
-  return (
-    <AuthProvider>
-      <DataProvider>
-        <Router>
-          <AppRoutes />
-        </Router>
-      </DataProvider>
-    </AuthProvider>
-  );
-}
+export default App;
