@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+// src/components/Auth/Register.tsx - CON VALIDACIONES COMPLETAS
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Eye, EyeOff, Mail, Lock, User, Phone, FileText, AlertCircle, Loader2 } from 'lucide-react';
+import { Leaf, Mail, Lock, User, FileText, Phone, AlertCircle, Check, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function Register() {
@@ -11,29 +12,48 @@ export default function Register() {
     documento: '',
     telefono: '',
     password: '',
-    confirmPassword: '',
+    confirmPassword: ''
   });
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordError, setPasswordError] = useState('');
+  const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
   const { register, loading, error, clearError } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Limpiar errores cuando el componente se monta
     clearError();
   }, [clearError]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
     
     // Limpiar error de contraseña cuando el usuario empiece a escribir
     if (name === 'password' || name === 'confirmPassword') {
       setPasswordError('');
     }
+
+    // Mostrar requisitos cuando empiece a escribir la contraseña
+    if (name === 'password') {
+      setShowPasswordRequirements(value.length > 0);
+    }
+  };
+
+  // Verificar requisitos de contraseña
+  const passwordRequirements = {
+    length: formData.password.length >= 6,
+    uppercase: /[A-Z]/.test(formData.password),
+    lowercase: /[a-z]/.test(formData.password),
+    number: /\d/.test(formData.password),
+    match: formData.password === formData.confirmPassword && formData.password.length > 0
   };
 
   const validateForm = (): boolean => {
+    // Limpiar errores previos
+    setPasswordError('');
+
     // Validar que las contraseñas coincidan
     if (formData.password !== formData.confirmPassword) {
       setPasswordError('Las contraseñas no coinciden');
@@ -43,6 +63,24 @@ export default function Register() {
     // Validar longitud de contraseña
     if (formData.password.length < 6) {
       setPasswordError('La contraseña debe tener al menos 6 caracteres');
+      return false;
+    }
+
+    // Validar que tenga al menos una mayúscula
+    if (!/[A-Z]/.test(formData.password)) {
+      setPasswordError('La contraseña debe contener al menos una letra mayúscula');
+      return false;
+    }
+
+    // Validar que tenga al menos una minúscula
+    if (!/[a-z]/.test(formData.password)) {
+      setPasswordError('La contraseña debe contener al menos una letra minúscula');
+      return false;
+    }
+
+    // Validar que tenga al menos un número
+    if (!/\d/.test(formData.password)) {
+      setPasswordError('La contraseña debe contener al menos un número');
       return false;
     }
 
@@ -56,9 +94,9 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    clearError();
     setPasswordError('');
-    
+    clearError();
+
     if (!validateForm()) {
       return;
     }
@@ -72,13 +110,23 @@ export default function Register() {
     });
 
     if (success) {
-      // El redireccionamiento se manejará automáticamente por el cambio de estado del usuario
-      console.log('Registro exitoso');
+      navigate('/stations');
     }
   };
 
+  const RequirementIndicator = ({ met, text }: { met: boolean; text: string }) => (
+    <div className={`flex items-center space-x-2 text-sm ${met ? 'text-green-600' : 'text-gray-500'}`}>
+      {met ? (
+        <Check className="h-4 w-4 text-green-600" />
+      ) : (
+        <X className="h-4 w-4 text-gray-400" />
+      )}
+      <span>{text}</span>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-blue-50 to-purple-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-blue-50 to-purple-50 flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -93,10 +141,10 @@ export default function Register() {
               transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
               className="mx-auto h-16 w-16 bg-gradient-to-r from-emerald-500 to-blue-600 rounded-full flex items-center justify-center mb-4"
             >
-              <span className="text-white text-2xl font-bold">E</span>
+              <Leaf className="h-8 w-8 text-white" />
             </motion.div>
-            <h2 className="text-3xl font-bold text-gray-900">Crear Cuenta</h2>
-            <p className="mt-2 text-gray-600">Únete a EcoMove</p>
+            <h2 className="text-3xl font-bold text-gray-900">Únete a EcoMove</h2>
+            <p className="mt-2 text-gray-600">Crea tu cuenta y comienza a moverte de forma sostenible</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -123,44 +171,38 @@ export default function Register() {
             )}
 
             <div>
-              <label htmlFor="nombre" className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Nombre Completo *
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-gray-400" />
-                </div>
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input
-                  id="nombre"
-                  name="nombre"
                   type="text"
-                  value={formData.nombre}
-                  onChange={handleInputChange}
-                  className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors"
-                  placeholder="Juan Pérez"
+                  name="nombre"
                   required
+                  value={formData.nombre}
+                  onChange={handleChange}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  placeholder="Juan Pérez"
                   disabled={loading}
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="correo" className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Correo Electrónico *
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                </div>
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input
-                  id="correo"
-                  name="correo"
                   type="email"
-                  value={formData.correo}
-                  onChange={handleInputChange}
-                  className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors"
-                  placeholder="tu@email.com"
+                  name="correo"
                   required
+                  value={formData.correo}
+                  onChange={handleChange}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  placeholder="tu@email.com"
                   disabled={loading}
                 />
               </div>
@@ -168,20 +210,17 @@ export default function Register() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="documento" className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Documento
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FileText className="h-5 w-5 text-gray-400" />
-                  </div>
+                  <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <input
-                    id="documento"
-                    name="documento"
                     type="text"
+                    name="documento"
                     value={formData.documento}
-                    onChange={handleInputChange}
-                    className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors"
+                    onChange={handleChange}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
                     placeholder="12345678"
                     disabled={loading}
                   />
@@ -189,21 +228,18 @@ export default function Register() {
               </div>
 
               <div>
-                <label htmlFor="telefono" className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Teléfono
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Phone className="h-5 w-5 text-gray-400" />
-                  </div>
+                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <input
-                    id="telefono"
-                    name="telefono"
                     type="tel"
+                    name="telefono"
                     value={formData.telefono}
-                    onChange={handleInputChange}
-                    className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors"
-                    placeholder="300123456"
+                    onChange={handleChange}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                    placeholder="3001234567"
                     disabled={loading}
                   />
                 </div>
@@ -211,82 +247,74 @@ export default function Register() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Contraseña *
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input
-                  id="password"
+                  type="password"
                   name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className="block w-full pl-10 pr-12 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors"
-                  placeholder="••••••••"
                   required
                   minLength={6}
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  placeholder="••••••••"
                   disabled={loading}
                 />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}
-                  disabled={loading}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  )}
-                </button>
               </div>
+
+              {/* Indicadores de requisitos de contraseña */}
+              {showPasswordRequirements && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="mt-3 p-3 bg-gray-50 rounded-lg space-y-2"
+                >
+                  <p className="text-sm font-medium text-gray-700 mb-2">Requisitos de contraseña:</p>
+                  <RequirementIndicator met={passwordRequirements.length} text="Al menos 6 caracteres" />
+                  <RequirementIndicator met={passwordRequirements.uppercase} text="Al menos una mayúscula (A-Z)" />
+                  <RequirementIndicator met={passwordRequirements.lowercase} text="Al menos una minúscula (a-z)" />
+                  <RequirementIndicator met={passwordRequirements.number} text="Al menos un número (0-9)" />
+                </motion.div>
+              )}
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Confirmar Contraseña *
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input
-                  id="confirmPassword"
+                  type="password"
                   name="confirmPassword"
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  className="block w-full pl-10 pr-12 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors"
-                  placeholder="••••••••"
                   required
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                  placeholder="••••••••"
                   disabled={loading}
                 />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  disabled={loading}
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  )}
-                </button>
               </div>
+
+              {/* Indicador de coincidencia de contraseñas */}
+              {formData.confirmPassword.length > 0 && (
+                <div className="mt-2">
+                  <RequirementIndicator met={passwordRequirements.match} text="Las contraseñas coinciden" />
+                </div>
+              )}
             </div>
 
             <button
               type="submit"
-              disabled={loading || !formData.nombre || !formData.correo || !formData.password}
+              disabled={loading || !formData.nombre || !formData.correo || !formData.password || !Object.values(passwordRequirements).every(req => req)}
               className="w-full bg-gradient-to-r from-emerald-500 to-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:from-emerald-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
             >
               {loading ? (
                 <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
                   <span>Creando cuenta...</span>
                 </>
               ) : (

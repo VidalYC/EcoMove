@@ -1,3 +1,4 @@
+// src/contexts/AuthContext.tsx - CON REGISTRO BACKEND REAL
 import { createContext, useContext, ReactNode } from 'react';
 import { useAuth as useAuthHook } from '../hooks/useAuth';
 import { User, LoginData, RegisterData } from '../services/api.service';
@@ -47,9 +48,10 @@ export interface AuthUser {
   role: 'user' | 'admin';
   documento?: string;
   telefono?: string;
+  document?: string; // Alias para compatibilidad
 }
 
-// Hook wrapper para mantener compatibilidad
+// Hook wrapper para mantener compatibilidad con Register.tsx
 export function useAuthCompat() {
   const { user, login, register, logout, loading, error, clearError } = useAuth();
   
@@ -61,12 +63,13 @@ export function useAuthCompat() {
     role: user.role,
     documento: user.documento,
     telefono: user.telefono,
+    document: user.documento, // Para compatibilidad con Register.tsx
   } : null;
 
-  const loginCompat = async (userData: { email: string; password: string }): Promise<boolean> => {
+  const loginCompat = async (email: string, password: string): Promise<boolean> => {
     return await login({
-      correo: userData.email,
-      password: userData.password,
+      correo: email,
+      password: password,
     });
   };
 
@@ -74,14 +77,14 @@ export function useAuthCompat() {
     name: string; 
     email: string; 
     password: string;
-    documento?: string;
+    document?: string;
     telefono?: string;
   }): Promise<boolean> => {
     return await register({
       nombre: userData.name,
       correo: userData.email,
       password: userData.password,
-      documento: userData.documento || '',
+      documento: userData.document || '',
       telefono: userData.telefono || '',
     });
   };

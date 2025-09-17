@@ -107,21 +107,33 @@ class ApiService {
     }
 
     const config: RequestInit = {
-        ...options,
-        headers: {
-            ...defaultHeaders,
-            ...options.headers,
-        },
+      ...options,
+      headers: {
+        ...defaultHeaders,
+        ...options.headers,
+      },
     };
 
     try {
       const response = await fetch(url, config);
-      const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.message || `HTTP error! status: ${response.status}`);
+        // Si es error 401, limpiar token inválido
+        if (response.status === 401) {
+          this.setToken(null);
+        }
+        
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch {
+          errorData = { message: `HTTP error! status: ${response.status}` };
+        }
+        
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
       
+      const data = await response.json();
       return data;
     } catch (error) {
       console.error('API request error:', error);
@@ -153,17 +165,21 @@ class ApiService {
   }
 
   async register(userData: RegisterData): Promise<ApiResponse<AuthResponse>> {
+    console.log('📤 API Service - Enviando datos:', userData);
+    
     const response = await this.request<AuthResponse>('/users/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(userData),
+        method: 'POST',
+        body: JSON.stringify(userData),
     });
     
+    console.log('📥 API Service - Respuesta:', response);
+    
     if (response.success && response.data?.token) {
-      this.setToken(response.data.token);
+        this.setToken(response.data.token);
     }
     
     return response;
-  }
+    }
 
   async logout(): Promise<void> {
     // Si hay endpoint de logout en el backend
@@ -194,6 +210,7 @@ class ApiService {
       body: JSON.stringify(data),
     });
   }
+  
 
   // ============ STATION METHODS ============
   async getStations(): Promise<ApiResponse<Station[]>> {

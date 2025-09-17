@@ -1,3 +1,4 @@
+// src/components/User/StationCard.tsx - CORREGIDO
 import React from 'react';
 import { MapPin, Bike, Zap, Battery } from 'lucide-react';
 import { Station, Vehicle } from '../../contexts/DataContext';
@@ -10,9 +11,15 @@ interface StationCardProps {
 }
 
 export default function StationCard({ station, vehicles, onSelectStation }: StationCardProps) {
-  const bicycles = vehicles.filter(v => v.type === 'bicycle');
-  const scooters = vehicles.filter(v => v.type === 'scooter');
-  const electricScooters = vehicles.filter(v => v.type === 'electric-scooter');
+  // Asegurar que vehicles sea siempre un array
+  const safeVehicles = Array.isArray(vehicles) ? vehicles : [];
+  
+  const bicycles = safeVehicles.filter(v => v.type === 'bicycle');
+  const scooters = safeVehicles.filter(v => v.type === 'scooter');
+  const electricScooters = safeVehicles.filter(v => v.type === 'electric-scooter');
+  
+  const totalVehicles = safeVehicles.length;
+  const occupancyPercentage = station.capacity > 0 ? (totalVehicles / station.capacity) * 100 : 0;
 
   return (
     <motion.div
@@ -66,14 +73,17 @@ export default function StationCard({ station, vehicles, onSelectStation }: Stat
       <div className="mt-4 pt-4 border-t border-gray-100">
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-600">Capacidad total:</span>
-          <span className="font-medium text-gray-900">{vehicles.length}/{station.capacity}</span>
+          <span className="font-medium text-gray-900">{totalVehicles}/{station.capacity}</span>
         </div>
         <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
           <div 
             className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
-            style={{ width: `${(vehicles.length / station.capacity) * 100}%` }}
+            style={{ width: `${Math.min(occupancyPercentage, 100)}%` }}
           />
         </div>
+        {totalVehicles === 0 && (
+          <p className="text-xs text-gray-500 mt-1">Sin vehículos disponibles</p>
+        )}
       </div>
     </motion.div>
   );

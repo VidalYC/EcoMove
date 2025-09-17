@@ -1,8 +1,8 @@
-import React from 'react';
+// src/App.tsx - VERSIÓN COMPLETA
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { NetworkStatus } from './components/NetworkStatus';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import Layout from './components/Layout/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -18,10 +18,21 @@ import ProfilePage from './pages/User/ProfilePage';
 // Admin pages
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import AdminStations from './pages/Admin/AdminStations';
-import { ErrorBoundary } from './components/ErrorBoundary';
 
 function AppRoutes() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+
+  // Show loading while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-emerald-500 border-t-transparent mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
@@ -110,7 +121,6 @@ export default function App() {
       <AuthProvider>
         <DataProvider>
           <Router>
-            <NetworkStatus />
             <AppRoutes />
           </Router>
         </DataProvider>

@@ -46,7 +46,7 @@ export function useLoans(): UseLoansReturn {
       const response = await apiService.createLoan(data);
       
       if (response.success && response.data) {
-        setLoans(prev => [...prev, response.data as Loan]);
+        setLoans(prev => [...prev, response.data!]);
         return response.data;
       } else {
         setError(response.message || 'Failed to create loan');
