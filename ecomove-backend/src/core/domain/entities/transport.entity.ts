@@ -1,6 +1,7 @@
 import { TransportStatus, TransportType } from "../../../shared/enums/transport.enums";
 
 export class Transport {
+  [x: string]: any;
   constructor(
     public readonly id: number,
     public readonly type: TransportType,

@@ -16,6 +16,7 @@ export interface TransportRepository {
   }>;
   update(id: number, updates: Partial<Transport>): Promise<Transport | null>;
   delete(id: number): Promise<boolean>;
+  
 
   // Specialized operations
   createBicycle(data: {
