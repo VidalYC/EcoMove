@@ -1,5 +1,7 @@
 import { TransportRepository } from '../../domain/repositories/transport.repository';
+import { PricingService, FareCalculation } from '../../domain/services/enhanced-pricing.service';
 import { ValidationException } from '../../../shared/exceptions/validation-exception';
+import { NotFoundException } from '../../../shared/exceptions/not-found-exception';
 
 export interface CalculateFareRequest {
   transportId: number;
@@ -7,20 +9,29 @@ export interface CalculateFareRequest {
 }
 
 export interface CalculateFareResponse {
-  baseFare: number;
-  durationMinutes: number;
-  totalCost: number;
-  appliedDiscounts?: number;
-  taxes?: number;
+  transportId: number;
+  transportType: string;
+  transportModel: string;
+  fareCalculation: FareCalculation;
 }
 
 export class CalculateFareUseCase {
-  constructor(private readonly transportRepository: TransportRepository) {}
+  constructor(
+    private readonly transportRepository: TransportRepository,
+    private readonly pricingService: PricingService
+  ) {}
 
   async execute(request: CalculateFareRequest): Promise<CalculateFareResponse> {
     const { transportId, durationMinutes } = request;
 
-    // Validar parámetros
+    // ✅ AGREGAR: Logging de inicio del cálculo
+    console.log('🧮 Calculating fare', {
+      transportId,
+      durationMinutes,
+      timestamp: new Date().toISOString()
+    });
+
+    // Validaciones
     if (transportId <= 0) {
       throw new ValidationException('ID de transporte inválido');
     }
@@ -32,35 +43,27 @@ export class CalculateFareUseCase {
     // Buscar el transporte
     const transport = await this.transportRepository.findById(transportId);
     if (!transport) {
-      throw new ValidationException('Transporte no encontrado');
+      throw new NotFoundException('Transporte no encontrado');
     }
 
-    // Calcular tarifa
-    const baseFare = transport.hourlyRate;
-    const hourlyRate = baseFare;
-    const hours = durationMinutes / 60;
-    let totalCost = hourlyRate * hours;
+    // Calcular tarifa usando el servicio consolidado
+    const fareCalculation = await this.pricingService.calculateFare(transport, durationMinutes);
 
-    // Aplicar descuentos por tiempo (ejemplo: descuento por más de 2 horas)
-    let appliedDiscounts = 0;
-    if (durationMinutes > 120) { // Más de 2 horas
-      appliedDiscounts = totalCost * 0.1; // 10% de descuento
-      totalCost -= appliedDiscounts;
-    }
-
-    // Aplicar impuestos (ejemplo: 19% IVA)
-    const taxes = totalCost * 0.19;
-    totalCost += taxes;
-
-    // Redondear a 2 decimales
-    totalCost = Math.round(totalCost * 100) / 100;
+    // ✅ AGREGAR: Logging del resultado
+    console.log('✅ Fare calculated successfully', {
+      transportId,
+      transportType: transport.type,
+      baseFare: fareCalculation.baseFare,
+      totalCost: fareCalculation.totalCost,
+      hasDiscount: fareCalculation.appliedDiscounts && fareCalculation.appliedDiscounts > 0,
+      timestamp: new Date().toISOString()
+    });
 
     return {
-      baseFare,
-      durationMinutes,
-      totalCost,
-      appliedDiscounts,
-      taxes
+      transportId: transport.id,
+      transportType: transport.type,
+      transportModel: transport.model,
+      fareCalculation
     };
   }
 }

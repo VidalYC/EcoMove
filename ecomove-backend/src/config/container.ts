@@ -1,5 +1,8 @@
 import { Pool } from 'pg';
 import { DatabaseConfig } from './database.config';
+import { LoggerService, WinstonLoggerService } from '../infrastructure/services/winston-logger.service';
+import { RequestLoggerMiddleware } from '../presentation/http/middleware/request-logger.middleware';
+import { HealthCheckUseCase } from '../core/use-cases/system/health-check.use-case';
 
 // Repositories - USUARIOS (existentes)
 import { UserRepository } from '../core/domain/repositories/user.repository';
@@ -93,14 +96,14 @@ import { StationController } from '../presentation/http/controllers/station.cont
 // Repositories - PRÉSTAMOS (nuevos)
 import { LoanRepository } from '../core/domain/repositories/loan.repository';
 import { PostgreSQLLoanRepository } from '../infrastructure/database/repositories/postgresql-loan.repository';
+import { PricingService } from '../core/domain/services/enhanced-pricing.service';
+import { ConsolidatedPricingService } from '../infrastructure/services/consolidated-pricing.service';
 
 // Services - PRÉSTAMOS (nuevos)
 import { PaymentService } from '../core/domain/services/payment.service';
 import { StripePaymentService } from '../infrastructure/services/stripe-payment.service';
 import { NotificationService } from '../core/domain/services/notification.service';
 import { EmailNotificationService } from '../infrastructure/services/email-notification.service';
-import { PricingService } from '../core/domain/services/pricing.service';
-import { DefaultPricingService } from '../infrastructure/services/default-pricing.service';
 
 // Use Cases - PRÉSTAMOS (nuevos)
 import {
@@ -129,6 +132,8 @@ export class DIContainer {
   private static instance: DIContainer;
   private pool: Pool;
 
+  private healthCheckUseCase!: HealthCheckUseCase;
+
   // ====================================================================
   // USUARIOS - EXISTENTES (sin cambios)
   // ====================================================================
@@ -139,6 +144,8 @@ export class DIContainer {
   // Services
   private passwordService!: PasswordService;
   private tokenService!: TokenService;
+  private logger!: LoggerService;
+  private requestLoggerMiddleware!: RequestLoggerMiddleware;
 
   // Use Cases
   private registerUserUseCase!: RegisterUserUseCase;
@@ -272,6 +279,7 @@ export class DIContainer {
   }
 
   private initializeServices(): void {
+    this.logger = new WinstonLoggerService();
     // USUARIOS (existentes - sin cambios)
     this.passwordService = new BcryptPasswordService();
     this.tokenService = new JwtTokenService(
@@ -284,25 +292,30 @@ export class DIContainer {
       process.env.STRIPE_SECRET_KEY || 'your-stripe-secret-key'
     );
     this.notificationService = new EmailNotificationService();
-    this.pricingService = new DefaultPricingService();
+    this.pricingService = new ConsolidatedPricingService();
   }
 
   private initializeUseCases(): void {
     // ====================================================================
     // USUARIOS - Use Cases (existentes - sin cambios)
     // ====================================================================
-    
+    this.healthCheckUseCase = new HealthCheckUseCase(
+      this.pool,
+      this.logger
+    );
     // Use Cases de autenticación
     this.registerUserUseCase = new RegisterUserUseCase(
       this.userRepository,
       this.passwordService,
-      this.tokenService
+      this.tokenService,
+      this.logger 
     );
 
     this.loginUserUseCase = new LoginUserUseCase(
       this.userRepository,
       this.passwordService,
-      this.tokenService
+      this.tokenService,
+      this.logger
     );
 
     // Use Cases de perfil
@@ -363,7 +376,8 @@ export class DIContainer {
       this.loanRepository,
       this.userRepository,
       this.transportRepository,
-      this.stationRepository
+      this.stationRepository,
+      this.logger
     );
 
     this.completeLoanUseCase = new CompleteLoanUseCase(
@@ -396,7 +410,10 @@ export class DIContainer {
 
     this.getPeriodReportUseCase = new GetPeriodReportUseCase(this.loanRepository);
 
-    this.calculateFareUseCase = new CalculateFareUseCase(this.transportRepository);
+    this.calculateFareUseCase = new CalculateFareUseCase(
+      this.transportRepository,
+      this.pricingService // ✅ AGREGAR SEGUNDO PARÁMETRO
+    );
   }
 
   private initializeControllers(): void {
@@ -486,6 +503,11 @@ export class DIContainer {
   }
 
   private initializeMiddleware(): void {
+    this.requestLoggerMiddleware = new RequestLoggerMiddleware(this.logger);
+    
+    // Configurar el logger en el error handler
+    const { ErrorHandlerMiddleware } = require('../presentation/http/middleware/error-handler.middleware');
+    ErrorHandlerMiddleware.setLogger(this.logger);
     this.authenticationMiddleware = new AuthenticationMiddleware(
       this.tokenService,
       this.userRepository
@@ -493,6 +515,14 @@ export class DIContainer {
   }
 
   // ========== GETTERS - USUARIOS (existentes - sin cambios) ==========
+
+  getLogger(): LoggerService {
+    return this.logger;
+  }
+
+  getRequestLoggerMiddleware(): RequestLoggerMiddleware {
+    return this.requestLoggerMiddleware;
+  }
 
   // Database
   getPool(): Pool {
@@ -580,45 +610,65 @@ export class DIContainer {
     return this.loanController;
   }
 
+  getCalculateFareUseCase(): CalculateFareUseCase {
+    return this.calculateFareUseCase;
+  }
+
   // ========== UTILIDADES ==========
+
+  getHealthCheckUseCase(): HealthCheckUseCase {
+    return this.healthCheckUseCase;
+  }
 
   async healthCheck(): Promise<{
     status: string;
     dependencies: Record<string, boolean>;
   }> {
     try {
-      await this.pool.query('SELECT 1');
+      // ✅ MEJORADO: Usar el nuevo HealthCheckUseCase
+      const detailedHealth = await this.healthCheckUseCase.execute();
       
+      // ✅ MANTENER: El formato que espera tu código existente
       return {
-        status: 'healthy',
+        status: detailedHealth.status,
         dependencies: {
-          database: true,
+          // ✅ MEJORADO: Basado en health checks reales
+          database: detailedHealth.dependencies.database.status === 'up',
+          pricing: detailedHealth.dependencies.external_services.pricing.status === 'up',
+          logging: detailedHealth.dependencies.external_services.logging.status === 'up',
+          
+          // ✅ MANTENER: Verificaciones de componentes internos
           userRepositories: !!this.userRepository,
           transportRepositories: !!this.transportRepository,
           stationRepositories: !!this.stationRepository,
-          loanRepositories: !!this.loanRepository, // NUEVO
-          services: !!this.passwordService && !!this.tokenService,
+          loanRepositories: !!this.loanRepository,
+          services: !!this.passwordService && !!this.tokenService && !!this.pricingService,
           userControllers: !!this.authController && !!this.userProfileController && !!this.userAdminController,
           transportControllers: !!this.transportController,
           stationControllers: !!this.stationController,
-          loanControllers: !!this.loanController, // NUEVO
+          loanControllers: !!this.loanController,
           middleware: !!this.authenticationMiddleware
         }
       };
     } catch (error) {
+      this.logger?.error('Health check failed', error);
+      
       return {
         status: 'unhealthy',
         dependencies: {
+          // ✅ MEJORADO: En caso de error, aún verificar componentes internos
           database: false,
+          pricing: false,
+          logging: !!this.logger, // Al menos verificar si el logger existe
           userRepositories: !!this.userRepository,
           transportRepositories: !!this.transportRepository,
           stationRepositories: !!this.stationRepository,
-          loanRepositories: !!this.loanRepository, // NUEVO
-          services: !!this.passwordService && !!this.tokenService,
+          loanRepositories: !!this.loanRepository,
+          services: !!this.passwordService && !!this.tokenService && !!this.pricingService,
           userControllers: !!this.authController && !!this.userProfileController && !!this.userAdminController,
           transportControllers: !!this.transportController,
           stationControllers: !!this.stationController,
-          loanControllers: !!this.loanController, // NUEVO
+          loanControllers: !!this.loanController,
           middleware: !!this.authenticationMiddleware
         }
       };

@@ -43,7 +43,7 @@ export class ElectricScooter extends Transport {
     return this._batteryLevel < 20;
   }
 
-  canBeRented(): boolean {
+  override canBeRented(): boolean {
     return super.canBeRented() && this._batteryLevel > 10;
   }
 
