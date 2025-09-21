@@ -62,6 +62,15 @@ function App() {
               <Route path="*" element={
                 <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
                   <div className="text-center">
+                    {/* GIF agregado aquí */}
+                    <div className="flex justify-center mb-8">
+                      <img 
+                        src="https://i.postimg.cc/2yrFyxKv/giphy.gif" 
+                        alt="404 animation"
+                        className="max-w-xs md:max-w-sm"
+                      />
+                    </div>
+                    
                     <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">404</h1>
                     <p className="text-gray-600 dark:text-gray-300 mb-8">Página no encontrada</p>
                     <button
