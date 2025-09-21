@@ -3,6 +3,7 @@ import { AuthRoutes } from './auth.routes';
 import { UserProfileRoutes } from './user-profile.routes';
 import { UserAdminRoutes } from './user-admin.routes';
 import { DIContainer } from '../../../../config/container';
+import { authLimiter } from '../../middleware/rate-limiter.middleware';
 
 /**
  * Enrutador principal de usuarios
