@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { HealthCheckUseCase } from '../../../core/use-cases/system/health-check.use-case';
 import { LoggerService } from '../../../infrastructure/services/winston-logger.service';
+import { DIContainer } from '../../../config/container';
 
 export class HealthController {
   constructor(
@@ -133,6 +134,25 @@ export class HealthController {
       case 'degraded': return 200; // Aún funcional
       case 'unhealthy': return 503;
       default: return 503;
+    }
+  }
+
+  async cacheStats(req: Request, res: Response): Promise<void> {
+    try {
+      const container = DIContainer.getInstance();
+      const stats = container.getCacheStats();
+      
+      res.json({
+        success: true,
+        cache: stats,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      this.logger.error('Cache stats error', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error retrieving cache stats'
+      });
     }
   }
 }

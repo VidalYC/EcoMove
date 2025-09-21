@@ -9,6 +9,7 @@ import { TransportRoutes } from './presentation/http/routes/v1/transport.routes'
 import { StationRoutes } from './presentation/http/routes/v1/station.routes';
 import { LoanRoutes } from './presentation/http/routes/v1/loan.routes';
 import { HealthRoutes } from './presentation/http/routes/v1/health.routes';
+import { generalLimiter } from './presentation/http/middleware/rate-limiter.middleware';
 
 dotenv.config();
 
@@ -40,6 +41,7 @@ logger.info('Starting EcoMove Server', {
 const userRoutes = new UserRoutes();
 const healthRoutes = new HealthRoutes();
 
+app.use('/api/', generalLimiter);
 app.use('/api/v1/users', userRoutes.getRouter());
 app.use('/api/v1/transports', TransportRoutes.create());
 app.use('/api/v1/stations', StationRoutes.create());

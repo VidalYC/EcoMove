@@ -3,6 +3,9 @@ import { DatabaseConfig } from './database.config';
 import { LoggerService, WinstonLoggerService } from '../infrastructure/services/winston-logger.service';
 import { RequestLoggerMiddleware } from '../presentation/http/middleware/request-logger.middleware';
 import { HealthCheckUseCase } from '../core/use-cases/system/health-check.use-case';
+import { CacheService, CacheStats, MemoryCacheService } from '../infrastructure/services/memory-cache.service';
+import { CachedTransportRepository } from '../infrastructure/database/repositories/cached-transport.repository';
+import { CachedStationRepository } from '../infrastructure/database/repositories/cached-station.repository';
 
 // Repositories - USUARIOS (existentes)
 import { UserRepository } from '../core/domain/repositories/user.repository';
@@ -131,6 +134,7 @@ import { LoanController } from '../presentation/http/controllers/loan.controller
 export class DIContainer {
   private static instance: DIContainer;
   private pool: Pool;
+  private cache!: CacheService;
 
   private healthCheckUseCase!: HealthCheckUseCase;
 
@@ -257,8 +261,8 @@ export class DIContainer {
   }
 
   private initializeDependencies(): void {
-    this.initializeRepositories();
     this.initializeServices();
+    this.initializeRepositories();
     this.initializeUseCases();
     this.initializeControllers();
     this.initializeMiddleware();
@@ -269,17 +273,37 @@ export class DIContainer {
     this.userRepository = new PostgreSQLUserRepository(this.pool);
     
     // TRANSPORTES (existentes)
-    this.transportRepository = new PostgreSQLTransportRepository(this.pool);
+    console.log('🏗️ Initializing repositories...');
+    console.log('🔍 Cache available:', !!this.cache);
+    console.log('🔍 Logger available:', !!this.logger);
+    const baseTransportRepository = new PostgreSQLTransportRepository(this.pool);
+    this.transportRepository = new CachedTransportRepository(
+      baseTransportRepository,
+      this.cache,
+      this.logger
+    );
+    console.log('✅ CachedTransportRepository created');
 
     // ESTACIONES (existentes)
-    this.stationRepository = new PostgreSQLStationRepository(this.pool);
+    const baseStationRepository = new PostgreSQLStationRepository(this.pool);
+    this.stationRepository = new CachedStationRepository(
+      baseStationRepository,
+      this.cache,
+      this.logger
+    );
+    console.log('✅ CachedStationRepository created');
 
     // PRÉSTAMOS (nuevos)
     this.loanRepository = new PostgreSQLLoanRepository(this.pool);
+
+    console.log('✅ CachedTransportRepository created');
   }
 
   private initializeServices(): void {
+    console.log('🏗️ Initializing services...');
     this.logger = new WinstonLoggerService();
+    this.cache = new MemoryCacheService(this.logger);
+    console.log('✅ Cache initialized:', !!this.cache);
     // USUARIOS (existentes - sin cambios)
     this.passwordService = new BcryptPasswordService();
     this.tokenService = new JwtTokenService(
@@ -571,6 +595,14 @@ export class DIContainer {
   // Controllers
   getTransportController(): TransportController {
     return this.transportController;
+  }
+
+  getCache(): CacheService {
+    return this.cache;
+  }
+
+  getCacheStats(): CacheStats {
+    return this.cache.getStats();
   }
 
   // ========== GETTERS - ESTACIONES (existentes - sin cambios) ==========

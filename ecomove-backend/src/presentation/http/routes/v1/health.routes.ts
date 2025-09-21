@@ -21,6 +21,8 @@ export class HealthRoutes {
   private setupRoutes(): void {
     // Health check básico - muy rápido (para load balancers)
     this.router.get('/', (req, res) => this.healthController.basicHealth(req, res));
+
+    this.router.get('/cache', (req, res) => this.healthController.cacheStats(req, res));
     
     // Health check básico alternativo
     this.router.get('/basic', (req, res) => this.healthController.basicHealth(req, res));
