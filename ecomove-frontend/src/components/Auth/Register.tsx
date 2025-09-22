@@ -1,4 +1,4 @@
-// src/components/Auth/Register.tsx - Estilo neumórfico completo
+// src/components/Auth/Register.tsx - Formulario optimizado sin desperdiciar espacio
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -133,28 +133,51 @@ export default function Register() {
   );
 
   return (
-    <div className="h-screen bg-white dark:bg-gray-900 flex items-center justify-center px-4 sm:px-6 lg:px-8 relative transition-colors duration-200 overflow-hidden">
+    <div className="min-h-screen bg-white dark:bg-gray-900 flex transition-colors duration-200 relative">
+      {/* Elementos decorativos blob - dos capas giradas */}
+      <div 
+        className="absolute top-1/2 right-[20%] transform -translate-y-1/2 pointer-events-none z-0"
+        style={{
+          width: '500px',
+          height: '500px',
+          background: 'linear-gradient(135deg, #06B6D4 0%, #10B981 50%, #3B82F6 100%)',
+          borderRadius: '30% 70% 70% 30% / 30% 30% 70% 70%',
+          opacity: 0.2,
+        }}
+      />
+      
+      {/* Segundo blob girado */}
+      <div 
+        className="absolute top-1/2 right-[18%] transform -translate-y-1/2 rotate-45 pointer-events-none z-0"
+        style={{
+          width: '400px',
+          height: '400px',
+          background: 'linear-gradient(200deg, #22D3EE 0%, #34D399 70%)',
+          borderRadius: '40% 60% 60% 40% / 40% 40% 60% 60%',
+          opacity: 0.15,
+        }}
+      />
+      
       {/* Toggle de tema en la esquina superior derecha */}
-      <div className="absolute top-6 right-6 z-20">
+      <div className="absolute top-4 right-4 z-20">
         <ThemeToggle size="md" />
       </div>
 
-      {/* Formulario */}
+      {/* Formulario - Centrado y optimizado */}
       <motion.div
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className="w-full max-w-lg lg:w-1/2 lg:max-w-xl lg:px-8 lg:order-1 flex items-center justify-center"
+        className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-6"
       >
-        {/* Formulario principal con estilo neumórfico */}
-        <div className="w-full">
+        <div className="w-full max-w-md">
           <motion.form
             onSubmit={handleSubmit}
             className="neumorphic-form"
             whileHover={{ 
-              x: -8, 
-              y: -8,
-              transition: { duration: 0.4, ease: "easeInOut" }
+              x: -6, 
+              y: -6,
+              transition: { duration: 0.3, ease: "easeInOut" }
             }}
             whileTap={{ 
               x: 0, 
@@ -162,33 +185,32 @@ export default function Register() {
               transition: { duration: 0.2 }
             }}
           >
+            {/* Logo y título compactos */}
+            <div className="flex flex-col items-center mb-6">
+              <motion.div
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ delay: 0.3, duration: 0.6, type: "spring", stiffness: 200 }}
+                className="w-12 h-12 rounded-full bg-gradient-to-r from-emerald-400 to-blue-500 flex items-center justify-center mb-3 shadow-lg overflow-hidden"
+              >
+                <img 
+                  src="/planet.png" 
+                  alt="Planet logo" 
+                  className="w-7 h-7 object-contain"
+                />
+              </motion.div>
 
-          {/* Logo con imagen */}
-          <motion.div
-            initial={{ scale: 0, rotate: -180 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ delay: 0.3, duration: 0.6, type: "spring", stiffness: 200 }}
-            className="mx-auto w-14 h-14 rounded-full bg-gradient-to-r from-emerald-400 to-blue-500 flex items-center justify-center mb-4 shadow-lg overflow-hidden flex-shrink-0"
-          >
-            <img 
-              src="/planet.png" 
-              alt="Planet logo" 
-              className="w-8 h-8 object-contain"
-            />
-          </motion.div>
+              <h2 className="neumorphic-heading">
+                Crear Cuenta
+              </h2>
+            </div>
 
-          {/* Título */}
-          <h2 className="neumorphic-heading mb-4">
-            Crear Cuenta
-          </h2>
-
-          <div className="flex-1 flex flex-col justify-between">
-            {/* Error Alerts */}
+            {/* Mensajes de error compactos */}
             {error && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center space-x-3 flex-shrink-0"
+                className="mb-4 p-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center space-x-2"
               >
                 <AlertCircle className="h-4 w-4 text-red-500 dark:text-red-400 flex-shrink-0" />
                 <p className="text-red-700 dark:text-red-400 text-sm">{error}</p>
@@ -199,90 +221,88 @@ export default function Register() {
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center space-x-3 flex-shrink-0"
+                className="mb-4 p-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center space-x-2"
               >
                 <AlertCircle className="h-4 w-4 text-red-500 dark:text-red-400 flex-shrink-0" />
                 <p className="text-red-700 dark:text-red-400 text-sm">{passwordError}</p>
               </motion.div>
             )}
 
-            <div className="space-y-3 flex-1">
+            {/* Campos del formulario con espaciado optimizado */}
+            <div className="space-y-3">
               {/* Nombre */}
-              <div className="relative">
+              <div>
                 <input
                   type="text"
                   name="nombre"
                   required
                   value={formData.nombre}
                   onChange={handleChange}
-                  className="neumorphic-input pl-10"
+                  className="neumorphic-input"
                   placeholder="Nombre completo *"
                   disabled={loading}
                 />
               </div>
 
               {/* Email */}
-              <div className="relative">
+              <div>
                 <input
                   type="email"
                   name="correo"
                   required
                   value={formData.correo}
                   onChange={handleChange}
-                  className="neumorphic-input pl-10"
+                  className="neumorphic-input"
                   placeholder="Correo electrónico *"
                   disabled={loading}
                 />
               </div>
 
-              {/* Documento y Teléfono en grid */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="relative">
-                  <input
-                    type="text"
-                    name="documento"
-                    value={formData.documento}
-                    onChange={handleChange}
-                    className="neumorphic-input pl-10"
-                    placeholder="Documento"
-                    disabled={loading}
-                  />
-                </div>
-                <div className="relative">
-                  <input
-                    type="tel"
-                    name="telefono"
-                    value={formData.telefono}
-                    onChange={handleChange}
-                    className="neumorphic-input pl-10"
-                    placeholder="Teléfono"
-                    disabled={loading}
-                  />
-                </div>
+              {/* Documento y Teléfono en grid compacto */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <input
+                  type="text"
+                  name="documento"
+                  value={formData.documento}
+                  onChange={handleChange}
+                  className="neumorphic-input"
+                  placeholder="Documento"
+                  disabled={loading}
+                />
+                <input
+                  type="tel"
+                  name="telefono"
+                  value={formData.telefono}
+                  onChange={handleChange}
+                  className="neumorphic-input"
+                  placeholder="Teléfono"
+                  disabled={loading}
+                />
               </div>
 
               {/* Contraseña */}
-              <div className="relative">
+              <div>
                 <input
                   type="password"
                   name="password"
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className="neumorphic-input pl-10"
+                  className="neumorphic-input"
                   placeholder="Contraseña *"
                   disabled={loading}
                 />
               </div>
 
-              {/* Requisitos de contraseña */}
+              {/* Requisitos de contraseña compactos */}
               {showPasswordRequirements && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
-                  className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 space-y-1"
+                  exit={{ opacity: 0, height: 0 }}
+                  className="p-2.5 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 space-y-1"
                 >
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Requisitos de contraseña:
                   </p>
                   <RequirementIndicator met={passwordRequirements.length} text="Al menos 6 caracteres" />
@@ -293,36 +313,34 @@ export default function Register() {
               )}
 
               {/* Confirmar Contraseña */}
-              <div className="relative">
+              <div>
                 <input
                   type="password"
                   name="confirmPassword"
                   required
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className="neumorphic-input pl-10"
+                  className="neumorphic-input"
                   placeholder="Confirmar contraseña *"
                   disabled={loading}
                 />
               </div>
 
-              {/* Indicador de coincidencia */}
+              {/* Indicador de coincidencia compacto */}
               {formData.confirmPassword.length > 0 && (
-                <div>
-                  <RequirementIndicator met={passwordRequirements.match} text="Las contraseñas coinciden" />
-                </div>
+                <RequirementIndicator met={passwordRequirements.match} text="Las contraseñas coinciden" />
               )}
             </div>
 
-            {/* Submit Button */}
+            {/* Botón de submit */}
             <motion.button
               type="submit"
               disabled={loading || !formData.nombre || !formData.correo || !formData.password || !Object.values(passwordRequirements).every(req => req)}
-              className="neumorphic-button mt-4"
+              className="neumorphic-button w-full mt-5"
               whileHover={{ 
-                x: -8, 
-                y: -8,
-                transition: { duration: 0.4, ease: "easeInOut" }
+                x: -6, 
+                y: -6,
+                transition: { duration: 0.3, ease: "easeInOut" }
               }}
               whileTap={{ 
                 x: 0, 
@@ -331,8 +349,8 @@ export default function Register() {
               }}
             >
               {loading ? (
-                <div className="flex items-center space-x-2">
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-gray-600 dark:border-gray-300 border-t-transparent"></div>
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-600 dark:border-gray-300 border-t-transparent"></div>
                   <span>Creando cuenta...</span>
                 </div>
               ) : (
@@ -340,7 +358,7 @@ export default function Register() {
               )}
             </motion.button>
 
-            {/* Login Link */}
+            {/* Enlaces compactos */}
             <div className="text-center mt-4">
               <p className="text-gray-600 dark:text-gray-400 text-sm">
                 ¿Ya tienes una cuenta?{' '}
@@ -352,11 +370,10 @@ export default function Register() {
                 </Link>
               </p>
             </div>
-          </div>
-                  </motion.form>
+          </motion.form>
 
           {/* Back to home */}
-          <div className="text-center mt-4">
+          <div className="text-center mt-3">
             <Link
               to="/"
               className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
@@ -367,80 +384,64 @@ export default function Register() {
         </div>
       </motion.div>
 
-      {/* Imagen lateral - solo visible en pantallas grandes */}
-      <div className="hidden lg:flex lg:w-1/2 items-start justify-center p-1 pt-8 lg:order-2">
-        <motion.div
-          initial={{ opacity: 0, x: 50 }}
+      {/* Imagen lateral - contenedor más grande */}
+      <div className="hidden lg:flex lg:w-[55%] items-center justify-start relative overflow-visible">
+        <motion.img
+          initial={{ opacity: 0, x: 30 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="w-full h-full flex items-start justify-center"
-        >
-          <img 
-            src="/der-login.png" 
-            alt="Register illustration" 
-            className="w-full h-full object-contain min-h-[90vh] max-h-[100vh]"
-            style={{
-              filter: 'drop-shadow(20px 20px 40px rgba(0, 0, 0, 0.3)) drop-shadow(-10px -10px 30px rgba(255, 255, 255, 0.1))',
-              transform: 'translateY(-8vh)'
-            }}
-          />
-        </motion.div>
+          src="/der-login.png" 
+          alt="Register illustration" 
+          className="block"
+          style={{
+            filter: 'drop-shadow(20px 20px 40px rgba(0, 0, 0, 0.3)) drop-shadow(-10px -10px 30px rgba(255, 255, 255, 0.1))',
+            width: '800px',
+            height: '800px',
+            objectFit: 'contain',
+            transform: 'translateX(-15%)',
+            maxWidth: 'none'
+          }}
+        />
       </div>
 
-      {/* Estilos CSS completos para el efecto neumórfico */}
+      {/* Estilos CSS optimizados */}
       <style>{`
-        /* Sombras dinámicas para la imagen en modo oscuro */
         .dark img[src="/der-login.png"] {
           filter: drop-shadow(20px 20px 40px rgba(0, 0, 0, 0.6)) drop-shadow(-10px -10px 30px rgba(255, 255, 255, 0.05)) !important;
         }
 
         .neumorphic-form {
-          display: flex;
-          flex-direction: column;
-          gap: 0;
           background-color: #f8fafc;
-          padding: 1.75rem;
+          padding: 2.5rem;
           border-radius: 25px;
-          transition: all 0.4s ease-in-out;
-          box-shadow: 20px 20px 60px #d0d7de, -20px -20px 60px #ffffff;
+          transition: all 0.3s ease-in-out;
+          box-shadow: 12px 12px 35px #d0d7de, -12px -12px 35px #ffffff;
           border: 1px solid transparent;
-          height: 88vh;
-          overflow-y: auto;
           max-width: 100%;
-          justify-content: space-between;
-          /* Ocultar scrollbar pero mantener funcionalidad */
-          scrollbar-width: none; /* Firefox */
-          -ms-overflow-style: none; /* IE y Edge */
-        }
-
-        /* Ocultar scrollbar en Webkit (Chrome, Safari, Opera) */
-        .neumorphic-form::-webkit-scrollbar {
-          display: none;
+          min-width: 480px;
         }
 
         .dark .neumorphic-form {
           background-color: #111827;
-          box-shadow: 20px 20px 60px #0a0d12, -20px -20px 60px #1a1f2e;
+          box-shadow: 12px 12px 35px #0a0d12, -12px -12px 35px #1a1f2e;
         }
 
         .neumorphic-form:hover {
           border: 1px solid #e5e7eb;
-          box-shadow: 10px 10px 30px #bcc3cf, -10px -10px 30px #ffffff, inset 2px 2px 10px rgba(0,0,0,0.1);
+          box-shadow: 6px 6px 18px #bcc3cf, -6px -6px 18px #ffffff, inset 1px 1px 5px rgba(0,0,0,0.1);
         }
 
         .dark .neumorphic-form:hover {
           border: 1px solid #374151;
-          box-shadow: 10px 10px 30px #070911, -10px -10px 30px #1a1f2e, inset 2px 2px 10px rgba(255,255,255,0.03);
+          box-shadow: 6px 6px 18px #070911, -6px -6px 18px #1a1f2e, inset 1px 1px 5px rgba(255,255,255,0.03);
         }
 
         .neumorphic-heading {
           color: #1f2937;
-          padding-bottom: 0.5rem;
           text-align: center;
           font-weight: bold;
-          font-size: 1.5rem;
-          margin-bottom: 0;
-          flex-shrink: 0;
+          font-size: 1.375rem;
+          margin: 0;
         }
 
         .dark .neumorphic-heading {
@@ -449,23 +450,23 @@ export default function Register() {
 
         .neumorphic-input {
           width: 100%;
-          border-radius: 10px;
+          border-radius: 12px;
           border: 1px solid #e5e7eb;
           background-color: #f8fafc;
           outline: none;
-          padding: 0.875rem 1rem;
+          padding: 1rem 1.25rem;
           transition: all 0.3s ease-in-out;
           color: #1f2937;
-          box-shadow: inset 5px 5px 10px #d0d7de, inset -5px -5px 10px #ffffff;
-          font-size: 0.875rem;
-          height: 3rem;
+          box-shadow: inset 4px 4px 8px #d0d7de, inset -4px -4px 8px #ffffff;
+          font-size: 1rem;
+          height: 3.5rem;
         }
 
         .dark .neumorphic-input {
           border: 1px solid #374151;
           background-color: #111827;
           color: #f9fafb;
-          box-shadow: inset 5px 5px 10px #0a0d12, inset -5px -5px 10px #1a1f2e;
+          box-shadow: inset 4px 4px 8px #0a0d12, inset -4px -4px 8px #1a1f2e;
         }
 
         .neumorphic-input::placeholder {
@@ -477,58 +478,57 @@ export default function Register() {
         }
 
         .neumorphic-input:hover {
-          box-shadow: inset 7px 7px 14px #bcc3cf, inset -7px -7px 14px #ffffff;
+          box-shadow: inset 6px 6px 12px #bcc3cf, inset -6px -6px 12px #ffffff;
           border-color: #d1d5db;
         }
 
         .dark .neumorphic-input:hover {
-          box-shadow: inset 7px 7px 14px #070911, inset -7px -7px 14px #1a1f2e;
+          box-shadow: inset 6px 6px 12px #070911, inset -6px -6px 12px #1a1f2e;
           border-color: #4b5563;
         }
 
         .neumorphic-input:focus {
           background: #ffffff;
-          box-shadow: inset 10px 10px 20px #bcc3cf, inset -10px -10px 20px #ffffff;
+          box-shadow: inset 8px 8px 16px #bcc3cf, inset -8px -8px 16px #ffffff;
           border-color: #3b82f6;
         }
 
         .dark .neumorphic-input:focus {
           background: #0d1117;
-          box-shadow: inset 10px 10px 20px #070911, inset -10px -10px 20px #131821;
+          box-shadow: inset 8px 8px 16px #070911, inset -8px -8px 16px #131821;
           border-color: #3b82f6;
         }
 
         .neumorphic-button {
-          margin-top: 1rem;
-          align-self: center;
-          padding: 0.75rem 1.5rem;
-          border-radius: 14px;
+          padding: 1rem 1.5rem;
+          border-radius: 15px;
           border: none;
           color: #1f2937;
           background-color: #f8fafc;
           font-weight: 600;
           transition: all 0.3s ease-in-out;
-          box-shadow: 7px 7px 14px #d0d7de, -7px -7px 14px #ffffff;
+          box-shadow: 8px 8px 20px #d0d7de, -8px -8px 20px #ffffff;
           cursor: pointer;
-          min-width: 140px;
-          font-size: 0.875rem;
-          flex-shrink: 0;
-          height: 2.75rem;
+          font-size: 1rem;
+          height: 3.5rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
         .dark .neumorphic-button {
           color: #f9fafb;
           background-color: #111827;
-          box-shadow: 7px 7px 14px #0a0d12, -7px -7px 14px #1a1f2e;
+          box-shadow: 8px 8px 20px #0a0d12, -8px -8px 20px #1a1f2e;
         }
 
         .neumorphic-button:hover:not(:disabled) {
-          box-shadow: 4px 4px 8px #bcc3cf, -4px -4px 8px #ffffff, inset 2px 2px 8px rgba(0,0,0,0.1);
+          box-shadow: 4px 4px 10px #bcc3cf, -4px -4px 10px #ffffff, inset 1px 1px 4px rgba(0,0,0,0.1);
           transform: translate(2px, 2px);
         }
 
         .dark .neumorphic-button:hover:not(:disabled) {
-          box-shadow: 4px 4px 8px #070911, -4px -4px 8px #1a1f2e, inset 2px 2px 8px rgba(255,255,255,0.03);
+          box-shadow: 4px 4px 10px #070911, -4px -4px 10px #1a1f2e, inset 1px 1px 4px rgba(255,255,255,0.03);
           transform: translate(2px, 2px);
         }
 
@@ -547,23 +547,22 @@ export default function Register() {
           box-shadow: inset 4px 4px 8px #070911, inset -4px -4px 8px #1a1f2e;
         }
 
-        @media (max-width: 640px) {
+        @media (max-width: 1024px) {
           .neumorphic-form {
             padding: 1.5rem;
-            border-radius: 20px;
-            box-shadow: 15px 15px 45px #d0d7de, -15px -15px 45px #ffffff;
+            border-radius: 18px;
+            box-shadow: 10px 10px 30px #d0d7de, -10px -10px 30px #ffffff;
           }
           
           .dark .neumorphic-form {
-            box-shadow: 15px 15px 45px #0a0d12, -15px -15px 45px #1a1f2e;
+            box-shadow: 10px 10px 30px #0a0d12, -10px -10px 30px #1a1f2e;
           }
-          
-          .neumorphic-form:hover {
-            box-shadow: 8px 8px 24px #bcc3cf, -8px -8px 24px #ffffff, inset 1px 1px 6px rgba(0,0,0,0.1);
-          }
-          
-          .dark .neumorphic-form:hover {
-            box-shadow: 8px 8px 24px #070911, -8px -8px 24px #1a1f2e, inset 1px 1px 6px rgba(255,255,255,0.03);
+        }
+
+        @media (max-width: 640px) {
+          .neumorphic-form {
+            padding: 1.25rem;
+            border-radius: 16px;
           }
         }
       `}</style>
