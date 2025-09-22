@@ -1,0 +1,153 @@
+/* Variables CSS para el botón custom */
+:root {
+  --custom-button-bg: #059669; /* Verde emerald para EcoMove */
+}
+
+/* From Uiverse.io by SupportHotline - Adaptado para EcoMove */ 
+.custom-button {
+  background: var(--custom-button-bg);
+  border-radius: 0.5em;
+  box-shadow:
+    inset 0px -6px 18px -6px rgba(3, 15, 20, 0),
+    inset rgba(54, 69, 75, 1) -1px -1px 6px 0px,
+    inset 12px 0px 12px -6px rgba(3, 15, 20, 0),
+    inset -12px 0px 12px -6px rgba(3, 15, 20, 0),
+    rgba(54, 69, 75, 1) -1px -1px 6px 0px;
+  border: solid 2px #030f14;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0.6em 1.4em;
+  outline: none;
+  transition: all 0.3s;
+  user-select: none;
+  position: relative;
+  overflow: hidden;
+  font-family: inherit;
+  font-weight: 600;
+}
+
+.custom-button:hover {
+  box-shadow:
+    inset 0px -6px 18px -6px rgba(3, 15, 20, 1),
+    inset 0px 6px 18px -6px rgba(3, 15, 20, 1),
+    inset 12px 0px 12px -6px rgba(3, 15, 20, 0),
+    inset -12px 0px 12px -6px rgba(3, 15, 20, 0),
+    -1px -1px 6px 0px rgba(54, 69, 75, 1);
+}
+
+.custom-button:active {
+  box-shadow:
+    inset 0px -12px 12px -6px rgba(3, 15, 20, 1),
+    inset 0px 12px 12px -6px rgba(3, 15, 20, 1),
+    inset 12px 0px 12px -6px rgba(3, 15, 20, 1),
+    inset -12px 0px 12px -6px rgba(3, 15, 20, 1),
+    -1px -1px 6px 0px rgba(54, 69, 75, 1);
+}
+
+.custom-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.custom-button-text {
+  color: #ffffff;
+  font-weight: 700;
+  margin: auto;
+  transition: all 0.3s;
+  width: fit-content;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.custom-button:hover .custom-button-text {
+  transform: scale(0.9);
+}
+
+.custom-button:active .custom-button-text {
+  transform: scale(0.8);
+}
+
+/* Variantes de color para diferentes temas */
+.custom-button.gold {
+  --custom-button-bg: #d4af37;
+}
+
+.custom-button.gold .custom-button-text {
+  color: #1a1a1a;
+}
+
+.custom-button.dark {
+  --custom-button-bg: #1f2937;
+}
+
+.custom-button.dark .custom-button-text {
+  color: #d0a756;
+}
+
+.custom-button.emerald {
+  --custom-button-bg: #059669;
+}
+
+.custom-button.emerald .custom-button-text {
+  color: #ffffff;
+}
+
+/* ============================================ */
+/* NUEVAS VARIANTES CUSTOM CON DIFERENTES COLORES */
+/* ============================================ */
+
+/* Variante Secondary - Azul elegante */
+.custom-button.secondary {
+  --custom-button-bg: #2563eb; /* Azul intenso */
+}
+
+.custom-button.secondary .custom-button-text {
+  color: #ffffff;
+}
+
+/* Variante Tertiary - Gris oscuro sofisticado */
+.custom-button.tertiary {
+  --custom-button-bg: #374151; /* Gris oscuro */
+}
+
+.custom-button.tertiary .custom-button-text {
+  color: #f3f4f6; /* Texto gris claro */
+}
+
+/* Responsive design */
+@media (max-width: 640px) {
+  .custom-button {
+    font-size: 14px;
+    padding: 0.5em 1.2em;
+  }
+}
+
+@media (max-width: 480px) {
+  .custom-button {
+    font-size: 13px;
+    padding: 0.4em 1em;
+  }
+}
+
+/* Loading state para la variante custom */
+.custom-button:disabled .custom-button-text {
+  opacity: 0.7;
+}
+
+/* Focus state para accesibilidad */
+.custom-button:focus {
+  outline: 2px solid #10b981;
+  outline-offset: 2px;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .custom-button {
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .custom-button:focus {
+    outline-color: #34d399;
+  }
+}

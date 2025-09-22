@@ -1,9 +1,10 @@
 import React from 'react';
 import { IconComponent } from '../../types/icons';
+import './Button.css'; // 👈 NUEVO: Import de estilos CSS
 
 // Interface para las props del botón - Principio de Segregación de Interfaces
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'custom' | 'custom-secondary' | 'custom-tertiary'; // 👈 NUEVAS: Variantes custom
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   children: React.ReactNode;
   icon?: IconComponent;
@@ -25,7 +26,78 @@ export const Button: React.FC<ButtonProps> = ({
   disabled,
   ...props
 }) => {
-  // Clases base para todos los botones
+  // 👈 ACTUALIZADO: Si es cualquier variante custom, usar clases CSS especiales
+  if (variant === 'custom' || variant === 'custom-secondary' || variant === 'custom-tertiary') {
+    const customClass = variant === 'custom' ? 'custom-button emerald' : 
+                       variant === 'custom-secondary' ? 'custom-button secondary' : 
+                       'custom-button tertiary';
+    
+    return (
+      <button
+        className={`${customClass} ${className}`}
+        disabled={disabled || loading}
+        {...props}
+      >
+        <span className="custom-button-text">
+          {iconPosition === 'left' && Icon && (
+            loading ? (
+              <svg 
+                className="animate-spin h-5 w-5 mr-2" 
+                xmlns="http://www.w3.org/2000/svg" 
+                fill="none" 
+                viewBox="0 0 24 24"
+              >
+                <circle 
+                  className="opacity-25" 
+                  cx="12" 
+                  cy="12" 
+                  r="10" 
+                  stroke="currentColor" 
+                  strokeWidth="4"
+                />
+                <path 
+                  className="opacity-75" 
+                  fill="currentColor" 
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+            ) : (
+              <Icon className="h-5 w-5 mr-2" />
+            )
+          )}
+          {children}
+          {iconPosition === 'right' && Icon && (
+            loading ? (
+              <svg 
+                className="animate-spin h-5 w-5 ml-2" 
+                xmlns="http://www.w3.org/2000/svg" 
+                fill="none" 
+                viewBox="0 0 24 24"
+              >
+                <circle 
+                  className="opacity-25" 
+                  cx="12" 
+                  cy="12" 
+                  r="10" 
+                  stroke="currentColor" 
+                  strokeWidth="4"
+                />
+                <path 
+                  className="opacity-75" 
+                  fill="currentColor" 
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+            ) : (
+              <Icon className="h-5 w-5 ml-2" />
+            )
+          )}
+        </span>
+      </button>
+    );
+  }
+
+  // Clases base para todos los botones (variantes normales)
   const baseClasses = [
     'inline-flex items-center justify-center',
     'font-semibold rounded-lg',

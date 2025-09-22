@@ -13,7 +13,7 @@
     "@react-three/drei": "^9.88.13",
     "@react-three/fiber": "^8.15.19",
     "date-fns": "^4.1.0",
-    "framer-motion": "^12.23.12",
+    "framer-motion": "^12.23.16",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
