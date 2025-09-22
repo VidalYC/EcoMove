@@ -5,6 +5,7 @@ import { HeroSection } from '../components/Landing/HeroSection';
 import { FeaturesSection } from '../components/Landing/FeaturesSection';
 import { StatsSection } from '../components/Landing/StatsSection';
 import { Footer } from '../components/Layout/Footer';
+import { Logo } from '../components/UI/Logo';
 
 // Interface para las props de la landing page
 interface LandingPageProps {
@@ -185,12 +186,17 @@ const PageTransition: React.FC<{ isVisible: boolean }> = ({ isVisible }) => (
       >
         <div className="flex items-center justify-center h-full">
           <motion.div
-            className="text-2xl font-bold text-emerald-600"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.3 }}
           >
-            EcoMove
+            <Logo 
+              size="lg"
+              imageUrl="/planet.png"
+              fallbackToIcon={true}
+              showText={false}
+              className="scale-150"
+            />
           </motion.div>
         </div>
       </motion.div>
