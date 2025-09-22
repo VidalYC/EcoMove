@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { AuthController } from '../../controllers/auth.controller';
 import { AuthValidator } from '../../validators/auth.validator';
 import { ValidationErrorHandler } from '../../middleware/validation-error-handler.middleware';
+import { authLimiter } from '../../middleware/rate-limiter.middleware';
 
 /**
  * Rutas de autenticación
@@ -18,6 +19,7 @@ export class AuthRoutes {
   private setupRoutes(): void {
     // Registro de usuario
     this.router.post('/register',
+      authLimiter,
       AuthValidator.validateRegister(),
       ValidationErrorHandler.handle,
       (req: Request, res: Response) => this.authController.register(req, res)
@@ -25,6 +27,7 @@ export class AuthRoutes {
 
     // Login de usuario
     this.router.post('/login', 
+      authLimiter,
       AuthValidator.validateLogin(),
       ValidationErrorHandler.handle,
       (req: Request, res: Response) => this.authController.login(req, res)

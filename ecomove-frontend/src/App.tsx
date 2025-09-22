@@ -1,130 +1,93 @@
-// src/App.tsx - VERSIÓN COMPLETA
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { DataProvider } from './contexts/DataContext';
-import { ErrorBoundary } from './components/ErrorBoundary';
-import Layout from './components/Layout/Layout';
-import ProtectedRoute from './components/ProtectedRoute';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { AuthProvider } from './contexts/AuthContext';
 
-// Auth components
+// Landing Page
+import { LandingPage } from './pages/LandingPage';
+
+// Páginas de autenticación existentes
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
 
-// User pages
-import StationsPage from './pages/User/StationsPage';
-import HistoryPage from './pages/User/HistoryPage';
+// Páginas de usuario existentes
 import ProfilePage from './pages/User/ProfilePage';
 
-// Admin pages
-import AdminDashboard from './pages/Admin/AdminDashboard';
-import AdminStations from './pages/Admin/AdminStations';
-
-function AppRoutes() {
-  const { user, loading } = useAuth();
-
-  // Show loading while checking authentication
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-2 border-emerald-500 border-t-transparent mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    );
-  }
-
-  return (
-    <Layout>
-      <Routes>
-        {/* User routes */}
-        <Route 
-          path="/stations" 
-          element={
-            <ProtectedRoute>
-              <StationsPage />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/history" 
-          element={
-            <ProtectedRoute>
-              <HistoryPage />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/profile" 
-          element={
-            <ProtectedRoute>
-              <ProfilePage />
-            </ProtectedRoute>
-          } 
-        />
-
-        {/* Admin routes */}
-        <Route 
-          path="/admin/dashboard" 
-          element={
-            <ProtectedRoute requireAdmin>
-              <AdminDashboard />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/admin/stations" 
-          element={
-            <ProtectedRoute requireAdmin>
-              <AdminStations />
-            </ProtectedRoute>
-          } 
-        />
-
-        {/* Default redirects */}
-        <Route 
-          path="/" 
-          element={
-            <Navigate 
-              to={user.role === 'admin' ? '/admin/dashboard' : '/stations'} 
-              replace 
-            />
-          } 
-        />
-        <Route 
-          path="*" 
-          element={
-            <Navigate 
-              to={user.role === 'admin' ? '/admin/dashboard' : '/stations'} 
-              replace 
-            />
-          } 
-        />
-      </Routes>
-    </Layout>
-  );
+// Componente de ruta protegida
+interface ProtectedRouteProps {
+  children: React.ReactNode;
 }
 
-export default function App() {
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
+  // Aquí puedes agregar lógica de autenticación
+  // Por ahora, simplemente retorna los children
+  return <>{children}</>;
+};
+
+// Componente App principal - Principio de Inversión de Dependencias
+function App() {
   return (
-    <ErrorBoundary>
+    <ThemeProvider>
       <AuthProvider>
-        <DataProvider>
-          <Router>
-            <AppRoutes />
-          </Router>
-        </DataProvider>
+        <Router>
+          <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors">
+            <Routes>
+              {/* Ruta principal - Landing Page */}
+              <Route path="/" element={<LandingPage />} />
+              
+              {/* Rutas de autenticación */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              
+              {/* Rutas protegidas de usuario */}
+              <Route 
+                path="/profile" 
+                element={
+                  <ProtectedRoute>
+                    <ProfilePage />
+                  </ProtectedRoute>
+                } 
+              />
+              
+              {/* Rutas futuras - Placeholder */}
+              <Route path="/dashboard" element={<div>Dashboard - Próximamente</div>} />
+              <Route path="/estaciones" element={<div>Mapa de Estaciones - Próximamente</div>} />
+              <Route path="/transportes" element={<div>Lista de Transportes - Próximamente</div>} />
+              <Route path="/prestamos" element={<div>Gestión de Préstamos - Próximamente</div>} />
+              
+              {/* Rutas de administración */}
+              <Route path="/admin" element={<div>Panel de Administración - Próximamente</div>} />
+              
+              {/* Ruta 404 */}
+              <Route path="*" element={
+                <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
+                  <div className="text-center">
+                    {/* GIF agregado aquí */}
+                    <div className="flex justify-center mb-8">
+                      <img 
+                        src="https://i.postimg.cc/2yrFyxKv/giphy.gif" 
+                        alt="404 animation"
+                        className="max-w-xs md:max-w-sm"
+                      />
+                    </div>
+                    
+                    <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">404</h1>
+                    <p className="text-gray-600 dark:text-gray-300 mb-8">Página no encontrada</p>
+                    <button
+                      onClick={() => window.location.href = '/'}
+                      className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition-colors"
+                    >
+                      Volver al Inicio
+                    </button>
+                  </div>
+                </div>
+              } />
+            </Routes>
+          </div>
+        </Router>
       </AuthProvider>
-    </ErrorBoundary>
+    </ThemeProvider>
   );
 }
+
+export default App;

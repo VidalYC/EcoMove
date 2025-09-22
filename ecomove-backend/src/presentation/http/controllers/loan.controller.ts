@@ -400,11 +400,20 @@ export class LoanController {
         success: true,
         message: 'Tarifa calculada exitosamente',
         data: {
-          tarifa_base: result.baseFare,
-          duracion_minutos: result.durationMinutes,
-          costo_total: result.totalCost,
-          descuentos_aplicados: result.appliedDiscounts,
-          impuestos: result.taxes
+          transporte_id: result.transportId,
+          tipo_transporte: result.transportType,
+          modelo_transporte: result.transportModel,
+          tarifa_base: result.fareCalculation.baseFare,
+          duracion_minutos: result.fareCalculation.breakdown.duration,
+          costo_total: result.fareCalculation.totalCost,
+          descuentos_aplicados: result.fareCalculation.appliedDiscounts,
+          impuestos: result.fareCalculation.taxes,
+          desglose: {
+            tarifa_por_hora: result.fareCalculation.breakdown.hourlyRate,
+            duracion_horas: result.fareCalculation.breakdown.duration / 60,
+            descuento_porcentaje: result.fareCalculation.breakdown.discountPercentage,
+            impuesto_porcentaje: result.fareCalculation.breakdown.taxPercentage
+          }
         }
       };
 
@@ -417,7 +426,6 @@ export class LoanController {
       res.status(400).json(response);
     }
   }
-
   // ========== MÉTODOS AUXILIARES DE MAPEO ==========
 
   private mapLoanToDto(loan: Loan): LoanResponseDto {

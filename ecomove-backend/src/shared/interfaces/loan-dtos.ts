@@ -110,9 +110,18 @@ export interface CalculateFareDto {
 }
 
 export interface FareCalculationDto {
+  transporte_id: number;
+  tipo_transporte: string;
+  modelo_transporte: string;
   tarifa_base: number;
   duracion_minutos: number;
   costo_total: number;
   descuentos_aplicados?: number;
   impuestos?: number;
+  desglose: {
+    tarifa_por_hora: number;
+    duracion_horas: number;
+    descuento_porcentaje?: number;
+    impuesto_porcentaje: number;
+  };
 }

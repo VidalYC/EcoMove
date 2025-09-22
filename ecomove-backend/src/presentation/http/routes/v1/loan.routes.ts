@@ -4,6 +4,7 @@ import { LoanController } from '../../controllers/loan.controller';
 import { LoanValidator } from '../../validators/loan.validator';
 import { AuthenticationMiddleware } from '../../middleware/authentication.middleware';
 import { DIContainer } from '../../../../config/container';
+import { createLimiter } from '../../middleware/rate-limiter.middleware';
 
 export class LoanRoutes {
   static create(): Router {
@@ -96,6 +97,7 @@ export class LoanRoutes {
     
     // Listar todos los préstamos (con filtros)
     router.get('/',
+      createLimiter,
       authMiddleware.authenticate,
       LoanValidator.validateLoanFilters(),
       LoanValidator.handleValidationErrors,
@@ -104,6 +106,7 @@ export class LoanRoutes {
 
     // Crear nuevo préstamo
     router.post('/',
+      createLimiter,
       authMiddleware.authenticate,
       LoanValidator.validateCreateLoan(),
       LoanValidator.handleValidationErrors,
