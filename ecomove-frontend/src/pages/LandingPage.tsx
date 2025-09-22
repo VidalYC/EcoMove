@@ -236,6 +236,74 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   // Efecto de parallax sutil para el fondo
   const backgroundY = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
 
+  // Efecto para ocultar el scroll al montar el componente
+  useEffect(() => {
+    // Crear los estilos CSS dinámicamente
+    const style = document.createElement('style');
+    style.textContent = `
+      /* Ocultar scrollbar pero mantener funcionalidad */
+      body {
+        /* Firefox */
+        scrollbar-width: none;
+        /* IE y Edge */
+        -ms-overflow-style: none;
+        /* Mantener scroll funcional */
+        overflow-y: scroll;
+        overflow-x: hidden;
+      }
+      
+      body::-webkit-scrollbar {
+        /* Safari y Chrome */
+        display: none;
+      }
+      
+      html {
+        /* Firefox */
+        scrollbar-width: none;
+        /* IE y Edge */
+        -ms-overflow-style: none;
+        /* Mantener scroll funcional */
+        overflow-y: scroll;
+        overflow-x: hidden;
+      }
+      
+      html::-webkit-scrollbar {
+        /* Safari y Chrome */
+        display: none;
+      }
+      
+      /* Scroll personalizado para elementos internos si es necesario */
+      .custom-scroll {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
+      }
+      
+      .custom-scroll::-webkit-scrollbar {
+        width: 6px;
+      }
+      
+      .custom-scroll::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      
+      .custom-scroll::-webkit-scrollbar-thumb {
+        background-color: rgba(156, 163, 175, 0.3);
+        border-radius: 3px;
+      }
+      
+      .custom-scroll::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(156, 163, 175, 0.5);
+      }
+    `;
+    
+    document.head.appendChild(style);
+    
+    // Cleanup al desmontar
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   // Handlers para navegación
   const handleLoginClick = () => {
     setShowTransition(true);

@@ -124,7 +124,7 @@ const Login: React.FC = () => {
                 initial={{ scale: 0, rotate: -180 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ delay: 0.3, duration: 0.6, type: "spring", stiffness: 200 }}
-                className="w-12 h-12 rounded-full bg-gradient-to-r from-emerald-400 to-blue-500 flex items-center justify-center mb-3 shadow-lg overflow-hidden"
+                className="w-12 h-12 rounded-full bg-gradient-to-r from-emerald-200 to-blue-200 flex items-center justify-center mb-3 shadow-lg overflow-hidden"
               >
                 <img 
                   src="/planet.png" 

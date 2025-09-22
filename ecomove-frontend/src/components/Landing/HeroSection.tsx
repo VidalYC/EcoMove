@@ -97,15 +97,22 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         id="home" 
         className="relative min-h-screen flex items-center bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 overflow-hidden pt-16"
       >
-        {/* Elementos decorativos de fondo */}
+        {/* Elementos decorativos de fondo - círculos animados flotantes */}
         <div className="absolute inset-0 overflow-hidden">
-          {/* Círculos decorativos */}
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-emerald-200 dark:bg-emerald-900 rounded-full opacity-20 animate-pulse"></div>
-          <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-teal-200 dark:bg-teal-900 rounded-full opacity-20 animate-bounce"></div>
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-cyan-200 dark:bg-cyan-900 rounded-full opacity-10 animate-ping"></div>
+          {/* Círculos flotantes con movimiento libre y blur */}
+          <div className="floating-circles">
+            <div className="floating-circle circle-1"></div>
+            <div className="floating-circle circle-2"></div>
+            <div className="floating-circle circle-3"></div>
+            <div className="floating-circle circle-4"></div>
+            <div className="floating-circle circle-5"></div>
+            <div className="floating-circle circle-6"></div>
+            <div className="floating-circle circle-7"></div>
+            <div className="floating-circle circle-8"></div>
+          </div>
           
-          {/* Grid pattern */}
-          <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+          {/* Grid pattern sutil */}
+          
         </div>
 
         {/* Contenido principal */}
@@ -115,8 +122,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             <div className="text-center lg:text-left relative z-30">
               {/* Badge de novedad */}
               <div className="inline-flex items-center px-4 py-2 bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 rounded-full text-sm font-medium mb-6">
-                <Zap className="h-4 w-4 mr-2" />
-                Nuevo: ¡Scooters eléctricos disponibles!
+                
+                ♻️Nuevo: ¡Scooters eléctricos disponibles!
               </div>
 
               {/* Título principal */}
@@ -211,10 +218,22 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             <div className="relative lg:flex hidden">
               {/* Contenedor principal de la imagen */}
               <div className="relative z-20 w-[200%] mx-auto -mt-32">
+                {/* Sombra debajo de la imagen */}
+                <div 
+                  className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-4 z-10"
+                  style={{
+                    width: '60%',
+                    height: '20px',
+                    background: 'radial-gradient(ellipse, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0.05) 50%, transparent 100%)',
+                    borderRadius: '50%',
+                    filter: 'blur(8px)'
+                  }}
+                />
+                
                  <ImageContainer
                       src="/vicii.png"
                       alt="EcoMove - Movilidad Sostenible"
-                      className="drop-shadow-character-lg"
+                      className="drop-shadow-character-lg relative z-20"
                     />
 
                 {/* Tarjetas flotantes con información mejoradas */}
@@ -260,6 +279,231 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         videoUrl={videoUrl}
         title="EcoMove - Video Introductorio"
       />
+
+      {/* Estilos CSS para círculos flotantes */}
+      <style>{`
+        .floating-circles {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+        }
+
+        .floating-circle {
+          position: absolute;
+          border-radius: 50%;
+          filter: blur(20px);
+          animation: float 20s infinite linear;
+          opacity: 0.4;
+        }
+
+        /* Círculo 1 - Emerald grande */
+        .circle-1 {
+          width: 400px;
+          height: 400px;
+          background: linear-gradient(45deg, #10b981, #34d399);
+          top: 10%;
+          left: -200px;
+          animation-duration: 25s;
+          animation-delay: 0s;
+        }
+
+        /* Círculo 2 - Teal mediano */
+        .circle-2 {
+          width: 300px;
+          height: 300px;
+          background: linear-gradient(135deg, #14b8a6, #5eead4);
+          top: 60%;
+          right: -150px;
+          animation-duration: 30s;
+          animation-delay: -5s;
+        }
+
+        /* Círculo 3 - Cyan pequeño */
+        .circle-3 {
+          width: 200px;
+          height: 200px;
+          background: linear-gradient(225deg, #06b6d4, #67e8f9);
+          top: 80%;
+          left: 20%;
+          animation-duration: 20s;
+          animation-delay: -10s;
+        }
+
+        /* Círculo 4 - Blue mediano */
+        .circle-4 {
+          width: 240px;
+          height: 240px;
+          background: linear-gradient(315deg, #3b82f6, #93c5fd);
+          top: 25%;
+          right: 15%;
+          animation-duration: 35s;
+          animation-delay: -15s;
+        }
+
+        /* Círculo 5 - Verde claro pequeño */
+        .circle-5 {
+          width: 160px;
+          height: 160px;
+          background: linear-gradient(45deg, #22c55e, #86efac);
+          top: 40%;
+          left: 80%;
+          animation-duration: 18s;
+          animation-delay: -8s;
+        }
+
+        /* Círculo 6 - Teal oscuro mediano */
+        .circle-6 {
+          width: 320px;
+          height: 320px;
+          background: linear-gradient(180deg, #0f766e, #2dd4bf);
+          top: -160px;
+          left: 40%;
+          animation-duration: 28s;
+          animation-delay: -20s;
+        }
+
+        /* Círculo 7 - Emerald pequeño */
+        .circle-7 {
+          width: 180px;
+          height: 180px;
+          background: linear-gradient(90deg, #059669, #6ee7b7);
+          bottom: 10%;
+          right: 30%;
+          animation-duration: 22s;
+          animation-delay: -12s;
+        }
+
+        /* Círculo 8 - Cyan grande */
+        .circle-8 {
+          width: 360px;
+          height: 360px;
+          background: linear-gradient(270deg, #0891b2, #a5f3fc);
+          bottom: -180px;
+          left: 60%;
+          animation-duration: 32s;
+          animation-delay: -25s;
+        }
+
+        /* Animación de movimiento libre */
+        @keyframes float {
+          0% {
+            transform: translateX(0) translateY(0) rotate(0deg);
+          }
+          25% {
+            transform: translateX(100px) translateY(-100px) rotate(90deg);
+          }
+          50% {
+            transform: translateX(-50px) translateY(-200px) rotate(180deg);
+          }
+          75% {
+            transform: translateX(-150px) translateY(-100px) rotate(270deg);
+          }
+          100% {
+            transform: translateX(0) translateY(0) rotate(360deg);
+          }
+        }
+
+        /* Variantes de animación para más naturalidad */
+        .circle-2 {
+          animation-name: float-reverse;
+        }
+
+        .circle-4 {
+          animation-name: float-diagonal;
+        }
+
+        .circle-6 {
+          animation-name: float-wave;
+        }
+
+        .circle-8 {
+          animation-name: float-spiral;
+        }
+
+        @keyframes float-reverse {
+          0% {
+            transform: translateX(0) translateY(0) rotate(0deg);
+          }
+          25% {
+            transform: translateX(-80px) translateY(120px) rotate(-90deg);
+          }
+          50% {
+            transform: translateX(60px) translateY(180px) rotate(-180deg);
+          }
+          75% {
+            transform: translateX(120px) translateY(80px) rotate(-270deg);
+          }
+          100% {
+            transform: translateX(0) translateY(0) rotate(-360deg);
+          }
+        }
+
+        @keyframes float-diagonal {
+          0% {
+            transform: translateX(0) translateY(0) rotate(0deg) scale(1);
+          }
+          50% {
+            transform: translateX(-200px) translateY(-150px) rotate(180deg) scale(1.2);
+          }
+          100% {
+            transform: translateX(0) translateY(0) rotate(360deg) scale(1);
+          }
+        }
+
+        @keyframes float-wave {
+          0% {
+            transform: translateX(0) translateY(0) rotate(0deg);
+          }
+          25% {
+            transform: translateX(150px) translateY(50px) rotate(90deg);
+          }
+          50% {
+            transform: translateX(100px) translateY(-100px) rotate(180deg);
+          }
+          75% {
+            transform: translateX(-100px) translateY(50px) rotate(270deg);
+          }
+          100% {
+            transform: translateX(0) translateY(0) rotate(360deg);
+          }
+        }
+
+        @keyframes float-spiral {
+          0% {
+            transform: translateX(0) translateY(0) rotate(0deg) scale(1);
+          }
+          25% {
+            transform: translateX(100px) translateY(-80px) rotate(180deg) scale(0.8);
+          }
+          50% {
+            transform: translateX(0) translateY(-160px) rotate(360deg) scale(1.1);
+          }
+          75% {
+            transform: translateX(-100px) translateY(-80px) rotate(540deg) scale(0.9);
+          }
+          100% {
+            transform: translateX(0) translateY(0) rotate(720deg) scale(1);
+          }
+        }
+
+        /* Modo oscuro - ajustar opacidad y colores */
+        .dark .floating-circle {
+          opacity: 0.3;
+        }
+
+        /* Responsivo - reducir en móviles */
+        @media (max-width: 768px) {
+          .floating-circle {
+            transform: scale(0.7);
+            opacity: 0.4;
+          }
+          
+          .dark .floating-circle {
+            opacity: 0.2;
+          }
+        }
+      `}</style>
     </>
   );
 };
