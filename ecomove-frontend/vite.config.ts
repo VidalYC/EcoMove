@@ -23,14 +23,14 @@ export default defineConfig({
   
   // Configuración del servidor de desarrollo
   server: {
-    port: 3000,
+    port: 5173,
     host: true, // Para que sea accesible desde otros dispositivos en la red
     open: true, // Abrir automáticamente en el navegador
     cors: true,
     proxy: {
       // Proxy para el API del backend
       '/api': {
-        target: 'http://localhost:3000', // URL del backend
+        target: 'http://localhost:4000', // URL del backend
         changeOrigin: true,
         secure: false,
       }
