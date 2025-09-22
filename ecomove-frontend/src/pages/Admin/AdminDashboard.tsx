@@ -1,254 +1,589 @@
-// src/pages/Admin/AdminDashboard.tsx - VERSIÓN ULTRA SIMPLIFICADA
-import { useState, useEffect } from 'react';
-import { useData } from '../../contexts/DataContext';
-import { Users, MapPin, Bike, Activity, DollarSign, TrendingUp } from 'lucide-react';
+// src/pages/Admin/AdminDashboard.tsx
+import React, { useState, useEffect } from 'react';
+import { 
+  Users, 
+  Bike, 
+  MapPin, 
+  TrendingUp,
+  DollarSign,
+  AlertTriangle,
+  Settings,
+  BarChart3,
+  Calendar,
+  Shield,
+  Activity,
+  LogOut,
+  RefreshCw
+} from 'lucide-react';
+import { Button } from '../../components/UI/Button';
+import { ThemeToggle } from '../../components/UI/ThemeToggle';
+import { useAuth } from '../../contexts/AuthContext';
 import { motion } from 'framer-motion';
 
-export default function AdminDashboard() {
-  const { stations, loans, getActiveLoans, stationsLoading, loansLoading } = useData();
-  const [allVehicles, setAllVehicles] = useState<any[]>([]);
-  const [vehiclesLoading, setVehiclesLoading] = useState(true);
+interface AdminStats {
+  totalUsers: number;
+  activeUsers: number;
+  totalVehicles: number;
+  availableVehicles: number;
+  totalStations: number;
+  dailyRevenue: number;
+  monthlyRevenue: number;
+  activeRentals: number;
+}
 
-  // Cargar vehículos de forma simple
-  useEffect(() => {
-    const loadVehicles = async () => {
-      try {
-        setVehiclesLoading(true);
-        // Simulamos datos de vehículos o los cargamos desde cada estación
-        const mockVehicles = [
-          { id: '1', model: 'Bicicleta Urban', status: 'available', stationId: '1' },
-          { id: '2', model: 'Scooter Eléctrico', status: 'in-use', stationId: '1' },
-          { id: '3', model: 'Bicicleta Mountain', status: 'available', stationId: '2' },
-          { id: '4', model: 'Scooter Pro', status: 'maintenance', stationId: '2' },
-        ];
-        setAllVehicles(mockVehicles);
-      } catch (error) {
-        console.error('Error loading vehicles:', error);
-        setAllVehicles([]);
-      } finally {
-        setVehiclesLoading(false);
-      }
-    };
+interface RecentActivity {
+  id: string;
+  type: 'user_registration' | 'rental_completed' | 'vehicle_maintenance' | 'payment_processed';
+  message: string;
+  timestamp: Date;
+  severity: 'info' | 'warning' | 'error' | 'success';
+}
 
-    if (!stationsLoading && !loansLoading) {
-      loadVehicles();
+interface QuickAction {
+  icon: React.ComponentType<any>;
+  label: string;
+  href: string;
+  color: string;
+  description: string;
+}
+
+export const AdminDashboard: React.FC = () => {
+  const { user, logout } = useAuth();
+  const [stats, setStats] = useState<AdminStats>({
+    totalUsers: 0,
+    activeUsers: 0,
+    totalVehicles: 0,
+    availableVehicles: 0,
+    totalStations: 0,
+    dailyRevenue: 0,
+    monthlyRevenue: 0,
+    activeRentals: 0
+  });
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Acciones rápidas de administración
+  const quickActions: QuickAction[] = [
+    {
+      icon: Users,
+      label: 'Gestionar Usuarios',
+      href: '/admin/usuarios',
+      color: 'bg-blue-500 hover:bg-blue-600',
+      description: 'Ver, editar y administrar usuarios'
+    },
+    {
+      icon: Bike,
+      label: 'Gestionar Vehículos',
+      href: '/admin/vehiculos',
+      color: 'bg-green-500 hover:bg-green-600',
+      description: 'Control de bicicletas y scooters'
+    },
+    {
+      icon: MapPin,
+      label: 'Gestionar Estaciones',
+      href: '/admin/estaciones',
+      color: 'bg-purple-500 hover:bg-purple-600',
+      description: 'Administrar puntos de alquiler'
+    },
+    {
+      icon: BarChart3,
+      label: 'Reportes',
+      href: '/admin/reportes',
+      color: 'bg-orange-500 hover:bg-orange-600',
+      description: 'Análisis y estadísticas detalladas'
+    },
+    {
+      icon: DollarSign,
+      label: 'Finanzas',
+      href: '/admin/finanzas',
+      color: 'bg-emerald-500 hover:bg-emerald-600',
+      description: 'Ingresos, pagos y facturación'
+    },
+    {
+      icon: Settings,
+      label: 'Configuración',
+      href: '/admin/configuracion',
+      color: 'bg-gray-500 hover:bg-gray-600',
+      description: 'Ajustes del sistema'
     }
-  }, [stationsLoading, loansLoading]);
+  ];
 
-  // Mostrar loading mientras se cargan los datos
-  if (stationsLoading || loansLoading || vehiclesLoading) {
+  useEffect(() => {
+    loadAdminData();
+  }, []);
+
+  const loadAdminData = async () => {
+    try {
+      setIsLoading(true);
+      // Simulación de carga de datos - aquí harías llamadas a tu API admin
+      setTimeout(() => {
+        setStats({
+          totalUsers: 1247,
+          activeUsers: 892,
+          totalVehicles: 450,
+          availableVehicles: 312,
+          totalStations: 28,
+          dailyRevenue: 2856000,
+          monthlyRevenue: 78450000,
+          activeRentals: 127
+        });
+
+        setRecentActivity([
+          {
+            id: '1',
+            type: 'user_registration',
+            message: 'Nuevo usuario registrado: Maria García',
+            timestamp: new Date(Date.now() - 5 * 60 * 1000),
+            severity: 'success'
+          },
+          {
+            id: '2',
+            type: 'vehicle_maintenance',
+            message: 'Bicicleta B-142 requiere mantenimiento',
+            timestamp: new Date(Date.now() - 15 * 60 * 1000),
+            severity: 'warning'
+          },
+          {
+            id: '3',
+            type: 'rental_completed',
+            message: 'Alquiler completado: $12.500 - Usuario: Carlos López',
+            timestamp: new Date(Date.now() - 30 * 60 * 1000),
+            severity: 'info'
+          },
+          {
+            id: '4',
+            type: 'payment_processed',
+            message: 'Pago mensual procesado: $45.000',
+            timestamp: new Date(Date.now() - 45 * 60 * 1000),
+            severity: 'success'
+          }
+        ]);
+
+        setIsLoading(false);
+      }, 1500);
+    } catch (error) {
+      console.error('Error loading admin data:', error);
+      setIsLoading(false);
+    }
+  };
+
+  const refreshData = async () => {
+    setIsRefreshing(true);
+    try {
+      // Simular actualización de datos
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await loadAdminData();
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0
+    }).format(amount);
+  };
+
+  const formatTimeAgo = (date: Date): string => {
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Ahora';
+    if (diffInMinutes < 60) return `${diffInMinutes}m`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h`;
+    return `${Math.floor(diffInMinutes / 1440)}d`;
+  };
+
+  const getSeverityIcon = (severity: string) => {
+    switch (severity) {
+      case 'success': return '✅';
+      case 'warning': return '⚠️';
+      case 'error': return '❌';
+      default: return 'ℹ️';
+    }
+  };
+
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'success': return 'text-green-600 dark:text-green-400';
+      case 'warning': return 'text-yellow-600 dark:text-yellow-400';
+      case 'error': return 'text-red-600 dark:text-red-400';
+      default: return 'text-blue-600 dark:text-blue-400';
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+    }
+  };
+
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-96">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-2 border-emerald-500 border-t-transparent mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando dashboard...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Cargando panel de administración...</p>
         </div>
       </div>
     );
   }
 
-  // Calcular estadísticas con datos seguros
-  const totalStations = Array.isArray(stations) ? stations.length : 0;
-  const activeStations = Array.isArray(stations) ? stations.filter(s => s.isActive).length : 0;
-  const totalVehicles = Array.isArray(allVehicles) ? allVehicles.length : 0;
-  const availableVehicles = Array.isArray(allVehicles) ? allVehicles.filter(v => v.status === 'available').length : 0;
-  
-  const activeLoansArray = getActiveLoans ? getActiveLoans() : [];
-  const activeLoansCount = Array.isArray(activeLoansArray) ? activeLoansArray.length : 0;
-  
-  const allLoans = Array.isArray(loans) ? loans : [];
-  const completedLoans = allLoans.filter(l => l.status === 'completed');
-  const totalRevenue = completedLoans.reduce((sum, loan) => sum + (loan.cost || 0), 0);
-
-  const stats = [
-    {
-      name: 'Estaciones Activas',
-      value: totalStations > 0 ? `${activeStations}/${totalStations}` : '0/0',
-      icon: MapPin,
-      color: 'bg-emerald-50 text-emerald-600',
-      iconColor: 'text-emerald-500'
-    },
-    {
-      name: 'Vehículos Disponibles',
-      value: totalVehicles > 0 ? `${availableVehicles}/${totalVehicles}` : '0/0',
-      icon: Bike,
-      color: 'bg-blue-50 text-blue-600',
-      iconColor: 'text-blue-500'
-    },
-    {
-      name: 'Préstamos Activos',
-      value: activeLoansCount.toString(),
-      icon: Activity,
-      color: 'bg-orange-50 text-orange-600',
-      iconColor: 'text-orange-500'
-    },
-    {
-      name: 'Ingresos Totales',
-      value: `$${totalRevenue.toFixed(2)}`,
-      icon: DollarSign,
-      color: 'bg-purple-50 text-purple-600',
-      iconColor: 'text-purple-500'
-    }
-  ];
-
-  // Obtener préstamos recientes
-  const recentLoans = allLoans
-    .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
-    .slice(0, 5);
-
-  const getVehicleModel = (vehicleId: string) => {
-    if (!Array.isArray(allVehicles)) return 'Desconocido';
-    const vehicle = allVehicles.find(v => v.id === vehicleId);
-    return vehicle?.model || `Vehículo ${vehicleId}`;
-  };
-
-  const getStationName = (stationId: string) => {
-    if (!Array.isArray(stations)) return 'Desconocida';
-    const station = stations.find(s => s.id === stationId);
-    return station?.name || `Estación ${stationId}`;
-  };
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-center space-x-3">
-        <TrendingUp className="h-8 w-8 text-emerald-600" />
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard Administrativo</h1>
-          <p className="text-gray-600">Resumen general del sistema EcoMove</p>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Header */}
+      <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
+                <Shield className="h-8 w-8 text-blue-500 mr-3" />
+                Panel de Administración
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                Bienvenido, {user?.nombre} - Control total del sistema EcoMove
+              </p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="bg-green-100 dark:bg-green-900/30 px-3 py-1 rounded-full">
+                <span className="text-green-800 dark:text-green-200 text-sm font-medium">
+                  Sistema Activo
+                </span>
+              </div>
+              <ThemeToggle size="md" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={refreshData}
+                disabled={isRefreshing}
+                className="flex items-center space-x-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span>Actualizar</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.location.href = '/admin/reportes'}
+                className="flex items-center space-x-2"
+              >
+                <BarChart3 size={16} />
+                <span>Reportes</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLogout}
+                className="flex items-center space-x-2 text-red-600 border-red-600 hover:bg-red-50"
+              >
+                <LogOut size={16} />
+                <span>Salir</span>
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Estadísticas Principales */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">
+                  Usuarios Totales
+                </p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {stats.totalUsers.toLocaleString()}
+                </p>
+                <p className="text-sm text-green-600 dark:text-green-400 flex items-center mt-1">
+                  <TrendingUp className="h-3 w-3 mr-1" />
+                  {stats.activeUsers} activos
+                </p>
+              </div>
+              <div className="bg-blue-500 p-3 rounded-full">
+                <Users className="h-6 w-6 text-white" />
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">
+                  Vehículos
+                </p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {stats.totalVehicles}
+                </p>
+                <p className="text-sm text-green-600 dark:text-green-400 flex items-center mt-1">
+                  <Activity className="h-3 w-3 mr-1" />
+                  {stats.availableVehicles} disponibles
+                </p>
+              </div>
+              <div className="bg-green-500 p-3 rounded-full">
+                <Bike className="h-6 w-6 text-white" />
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">
+                  Ingresos Diarios
+                </p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {formatCurrency(stats.dailyRevenue)}
+                </p>
+                <p className="text-sm text-blue-600 dark:text-blue-400 flex items-center mt-1">
+                  <Calendar className="h-3 w-3 mr-1" />
+                  {stats.activeRentals} alquileres activos
+                </p>
+              </div>
+              <div className="bg-emerald-500 p-3 rounded-full">
+                <DollarSign className="h-6 w-6 text-white" />
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">
+                  Estaciones
+                </p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {stats.totalStations}
+                </p>
+                <p className="text-sm text-purple-600 dark:text-purple-400 flex items-center mt-1">
+                  <MapPin className="h-3 w-3 mr-1" />
+                  Todas operativas
+                </p>
+              </div>
+              <div className="bg-purple-500 p-3 rounded-full">
+                <MapPin className="h-6 w-6 text-white" />
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Acciones Rápidas */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {quickActions.map((action, index) => (
             <motion.div
-              key={stat.name}
+              key={action.label}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="bg-white rounded-xl shadow-md p-6 border border-gray-100"
+              transition={{ delay: 0.4 + index * 0.1 }}
+              className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => window.location.href = action.href}
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm font-medium">{stat.name}</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">{stat.value}</p>
-                </div>
-                <div className={`p-3 rounded-lg ${stat.color}`}>
-                  <Icon className={`h-6 w-6 ${stat.iconColor}`} />
-                </div>
+              <div className={`w-12 h-12 ${action.color} rounded-lg flex items-center justify-center mb-4`}>
+                <action.icon className="h-6 w-6 text-white" />
               </div>
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
+                {action.label}
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">
+                {action.description}
+              </p>
             </motion.div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
 
-      {/* Recent Activity & System Status */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Activity */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="bg-white rounded-xl shadow-md p-6 border border-gray-100"
-        >
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Actividad Reciente</h2>
-          {recentLoans.length > 0 ? (
-            <div className="space-y-3">
-              {recentLoans.map((loan) => (
-                <div key={loan.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-900">{getVehicleModel(loan.vehicleId)}</p>
-                    <p className="text-sm text-gray-600">{getStationName(loan.originStationId)}</p>
-                    <p className="text-xs text-gray-400">
-                      {loan.startTime ? new Date(loan.startTime).toLocaleDateString() : 'Fecha no disponible'}
+        {/* Contenido Principal */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Actividad Reciente */}
+          <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Actividad Reciente
+              </h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => alert('Funcionalidad de logs completos próximamente')}
+              >
+                Ver Todo
+              </Button>
+            </div>
+            <div className="space-y-4">
+              {recentActivity.map((activity) => (
+                <div key={activity.id} className="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                  <span className="text-lg">
+                    {getSeverityIcon(activity.severity)}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium ${getSeverityColor(activity.severity)}`}>
+                      {activity.message}
                     </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-gray-900">${(loan.cost || 0).toFixed(2)}</p>
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                      loan.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {loan.status === 'completed' ? 'Completado' : 'Activo'}
-                    </span>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {formatTimeAgo(activity.timestamp)}
+                    </p>
                   </div>
                 </div>
               ))}
             </div>
-          ) : (
-            <div className="text-center py-8">
-              <Activity className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">No hay actividad reciente</p>
-            </div>
-          )}
-        </motion.div>
+          </div>
 
-        {/* System Status */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="bg-white rounded-xl shadow-md p-6 border border-gray-100"
-        >
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Estado del Sistema</h2>
+          {/* Panel de Control Rápido */}
           <div className="space-y-6">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-emerald-600 mb-2">
-                {totalStations > 0 ? Math.round((activeStations / totalStations) * 100) : 0}%
-              </div>
-              <p className="text-gray-600">Estaciones Operativas</p>
-              <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                <div 
-                  className="bg-emerald-600 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${totalStations > 0 ? (activeStations / totalStations) * 100 : 0}%` }}
-                ></div>
+            {/* Alertas del Sistema */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Alertas del Sistema
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-center p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                  <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mr-3" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                      Mantenimiento Programado
+                    </p>
+                    <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                      15 vehículos requieren revisión
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                  <Activity className="h-5 w-5 text-green-600 dark:text-green-400 mr-3" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                      Sistema Operativo
+                    </p>
+                    <p className="text-xs text-green-600 dark:text-green-400">
+                      Todos los servicios funcionando
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
-            
-            <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600 mb-2">
-                {totalVehicles > 0 ? Math.round((availableVehicles / totalVehicles) * 100) : 0}%
-              </div>
-              <p className="text-gray-600">Vehículos Disponibles</p>
-              <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                <div 
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${totalVehicles > 0 ? (availableVehicles / totalVehicles) * 100 : 0}%` }}
-                ></div>
-              </div>
-            </div>
-            
-            <div className="text-center">
-              <div className="text-3xl font-bold text-purple-600 mb-2">
-                {completedLoans.length}
-              </div>
-              <p className="text-gray-600">Préstamos Completados</p>
-            </div>
-          </div>
-        </motion.div>
-      </div>
 
-      {/* Additional Info */}
-      {(totalStations === 0 || totalVehicles === 0) && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-yellow-50 border border-yellow-200 rounded-xl p-6"
-        >
-          <div className="flex items-center space-x-3">
-            <div className="bg-yellow-100 p-2 rounded-lg">
-              <TrendingUp className="h-5 w-5 text-yellow-600" />
+            {/* Métricas Rápidas */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Resumen Mensual
+              </h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    Ingresos del Mes
+                  </span>
+                  <span className="font-semibold text-gray-900 dark:text-white">
+                    {formatCurrency(stats.monthlyRevenue)}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    Nuevos Usuarios
+                  </span>
+                  <span className="font-semibold text-green-600 dark:text-green-400">
+                    +156
+                  </span>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    Tasa de Utilización
+                  </span>
+                  <span className="font-semibold text-blue-600 dark:text-blue-400">
+                    87%
+                  </span>
+                </div>
+                
+                <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    onClick={() => alert('Reporte mensual completo próximamente')}
+                  >
+                    Ver Reporte Completo
+                  </Button>
+                </div>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-yellow-800">Sistema en Configuración</h3>
-              <p className="text-yellow-700 text-sm">
-                {totalStations === 0 && "No hay estaciones registradas. "}
-                {totalVehicles === 0 && "No hay vehículos registrados. "}
-                Contacta al administrador para configurar el sistema.
-              </p>
+
+            {/* Acciones Administrativas */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Acciones Rápidas
+              </h3>
+              <div className="space-y-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={() => alert('Funcionalidad próximamente')}
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  Crear Usuario
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={() => alert('Funcionalidad próximamente')}
+                >
+                  <Bike className="h-4 w-4 mr-2" />
+                  Agregar Vehículo
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={() => alert('Funcionalidad próximamente')}
+                >
+                  <MapPin className="h-4 w-4 mr-2" />
+                  Nueva Estación
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={() => alert('Funcionalidad próximamente')}
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Backup Sistema
+                </Button>
+              </div>
             </div>
           </div>
-        </motion.div>
-      )}
+        </div>
+      </div>
     </div>
   );
-}
+};
