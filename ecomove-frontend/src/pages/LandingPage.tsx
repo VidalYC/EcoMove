@@ -264,12 +264,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     }
   };
 
-  const handleWatchVideoClick = () => {
-    const element = document.querySelector('#features');
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
 
   // Definición de secciones
   const sections: Section[] = [
@@ -278,8 +272,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       component: HeroSection,
       props: {
         onGetStartedClick: handleGetStartedClick,
-        onViewStationsClick: handleViewStationsClick,
-        onWatchVideoClick: handleWatchVideoClick
+        onViewStationsClick: handleViewStationsClick
       }
     },
     { 
