@@ -1,188 +1,119 @@
 // src/components/Vehicle/VehicleCard.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Bike, 
   MapPin, 
-  Clock, 
+  Battery, 
+  Zap, 
+  Clock,
   DollarSign,
-  Zap,
-  CheckCircle,
-  AlertCircle
+  PlayCircle,
+  Loader2 
 } from 'lucide-react';
 import { Button } from '../UI/Button';
-import { motion } from 'framer-motion';
 
-// ============ INTERFACES ============
-
-export interface Vehicle {
-  id: string;
-  codigo: string;
-  tipo: 'bicycle' | 'electric_scooter' | 'scooter';
-  modelo: string;
-  marca?: string;
-  estado: 'available' | 'in_use' | 'maintenance' | 'damaged';
-  estacion_actual_id?: number;
-  tarifa_por_hora: number;
-  // Campos específicos
-  numero_cambios?: number; // Para bicicletas
-  tipo_frenos?: string; // Para bicicletas
-  nivel_bateria?: number; // Para scooters eléctricos
-  velocidad_maxima?: number; // Para scooters eléctricos
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Station {
-  id: number;
-  nombre: string;
-  direccion: string;
-  distancia_km?: number;
-}
-
+// Interfaces
 interface VehicleCardProps {
-  vehicle: Vehicle;
-  station?: Station;
+  vehicle: {
+    id: string;
+    codigo?: string;
+    tipo: string;
+    modelo: string;
+    marca?: string;
+    estado: string;
+    estacion_actual_id?: number;
+    tarifa_por_hora: number;
+    numero_cambios?: number;
+    tipo_frenos?: string;
+    nivel_bateria?: number;
+    velocidad_maxima?: number;
+  };
+  station?: {
+    id: number;
+    nombre: string;
+    direccion?: string;
+  };
   onRent: (vehicleId: string, stationId: string) => void;
   isRenting?: boolean;
-  className?: string;
 }
-
-// ============ VEHICLE CARD COMPONENT ============
 
 export const VehicleCard: React.FC<VehicleCardProps> = ({
   vehicle,
   station,
   onRent,
-  isRenting = false,
-  className = ''
+  isRenting = false
 }) => {
-  
-  // Obtener icono según tipo de vehículo
-  const getVehicleIcon = () => {
-    switch (vehicle.tipo) {
-      case 'bicycle':
-        return Bike;
-      case 'electric_scooter':
-        return Zap;
-      case 'scooter':
-        return Bike; // Usar el mismo icono por ahora
-      default:
-        return Bike;
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleRent = async () => {
+    if (!station) {
+      alert('No se puede alquilar: estación no disponible');
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      await onRent(vehicle.id, station.id.toString());
+    } finally {
+      setIsProcessing(false);
     }
   };
 
-  // Obtener color según tipo de vehículo
-  const getVehicleColor = () => {
-    switch (vehicle.tipo) {
-      case 'bicycle':
-        return 'bg-blue-500';
-      case 'electric_scooter':
-        return 'bg-green-500';
-      case 'scooter':
-        return 'bg-purple-500';
-      default:
-        return 'bg-gray-500';
+  // Función para obtener el icono según el tipo de vehículo
+  const getVehicleIcon = (tipo: string) => {
+    if (tipo?.toLowerCase().includes('bicicleta') || tipo === 'bicycle') {
+      return Bike;
     }
-  };
-
-  // Formatear tipo de vehículo para mostrar
-  const getVehicleTypeName = () => {
-    switch (vehicle.tipo) {
-      case 'bicycle':
-        return 'Bicicleta';
-      case 'electric_scooter':
-        return 'Scooter Eléctrico';
-      case 'scooter':
-        return 'Scooter';
-      default:
-        return 'Vehículo';
+    if (tipo?.toLowerCase().includes('scooter') || tipo === 'electric_scooter') {
+      return Zap;
     }
+    return Bike;
   };
 
-  // Obtener estado y color del estado
-  const getStatusInfo = () => {
-    switch (vehicle.estado) {
-      case 'available':
-        return {
-          text: 'Disponible',
-          color: 'text-green-600 dark:text-green-400',
-          bgColor: 'bg-green-100 dark:bg-green-900',
-          icon: CheckCircle
-        };
-      case 'in_use':
-        return {
-          text: 'En uso',
-          color: 'text-orange-600 dark:text-orange-400',
-          bgColor: 'bg-orange-100 dark:bg-orange-900',
-          icon: Clock
-        };
-      case 'maintenance':
-        return {
-          text: 'Mantenimiento',
-          color: 'text-yellow-600 dark:text-yellow-400',
-          bgColor: 'bg-yellow-100 dark:bg-yellow-900',
-          icon: AlertCircle
-        };
-      case 'damaged':
-        return {
-          text: 'Dañado',
-          color: 'text-red-600 dark:text-red-400',
-          bgColor: 'bg-red-100 dark:bg-red-900',
-          icon: AlertCircle
-        };
-      default:
-        return {
-          text: 'Desconocido',
-          color: 'text-gray-600 dark:text-gray-400',
-          bgColor: 'bg-gray-100 dark:bg-gray-900',
-          icon: AlertCircle
-        };
+  // Función para obtener el color según el tipo
+  const getVehicleColor = (tipo: string) => {
+    if (tipo?.toLowerCase().includes('bicicleta') || tipo === 'bicycle') {
+      return 'bg-blue-500';
     }
-  };
-
-  const VehicleIcon = getVehicleIcon();
-  const statusInfo = getStatusInfo();
-  const StatusIcon = statusInfo.icon;
-  const isAvailable = vehicle.estado === 'available';
-
-  const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0
-    }).format(amount);
-  };
-
-  const handleRent = () => {
-    if (isAvailable && station) {
-      onRent(vehicle.id, station.id.toString());
+    if (tipo?.toLowerCase().includes('scooter') || tipo === 'electric_scooter') {
+      return 'bg-green-500';
     }
+    return 'bg-gray-500';
   };
+
+  // Función para formatear el tipo de vehículo
+  const formatVehicleType = (tipo: string) => {
+    const types: Record<string, string> = {
+      'bicicleta': 'Bicicleta',
+      'bicycle': 'Bicicleta',
+      'scooter_electrico': 'Scooter Eléctrico',
+      'electric_scooter': 'Scooter Eléctrico',
+      'scooter': 'Scooter'
+    };
+    return types[tipo] || tipo;
+  };
+
+  const VehicleIcon = getVehicleIcon(vehicle.tipo);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -2 }}
-      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-shadow hover:shadow-md ${className}`}
-    >
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all duration-200 overflow-hidden">
       {/* Header con tipo de vehículo */}
-      <div className={`${getVehicleColor()} px-4 py-3`}>
-        <div className="flex items-center justify-between text-white">
+      <div className={`${getVehicleColor(vehicle.tipo)} p-4 text-white`}>
+        <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <VehicleIcon className="h-5 w-5" />
-            <span className="font-medium">{getVehicleTypeName()}</span>
+            <span className="font-medium">{formatVehicleType(vehicle.tipo)}</span>
           </div>
-          <span className="text-sm font-mono bg-white/20 px-2 py-1 rounded">
-            {vehicle.codigo}
+          <span className="text-sm opacity-90">
+            {vehicle.codigo || `#${vehicle.id}`}
           </span>
         </div>
       </div>
 
       {/* Contenido principal */}
       <div className="p-4">
-        {/* Modelo y marca */}
-        <div className="mb-3">
+        {/* Información del vehículo */}
+        <div className="mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             {vehicle.modelo}
           </h3>
@@ -193,112 +124,117 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
           )}
         </div>
 
-        {/* Estado */}
-        <div className="flex items-center justify-between mb-3">
-          <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${statusInfo.bgColor}`}>
-            <StatusIcon className={`h-3 w-3 ${statusInfo.color}`} />
-            <span className={`text-xs font-medium ${statusInfo.color}`}>
-              {statusInfo.text}
-            </span>
-          </div>
-          
-          {/* Tarifa */}
-          <div className="flex items-center space-x-1 text-emerald-600 dark:text-emerald-400">
-            <DollarSign className="h-4 w-4" />
-            <span className="font-semibold">
-              {formatCurrency(vehicle.tarifa_por_hora)}/h
-            </span>
-          </div>
-        </div>
-
-        {/* Características específicas */}
-        <div className="space-y-2 mb-4">
-          {vehicle.tipo === 'bicycle' && (
-            <div className="flex justify-between text-sm">
-              {vehicle.numero_cambios && (
-                <span className="text-gray-600 dark:text-gray-400">
-                  {vehicle.numero_cambios} cambios
-                </span>
-              )}
-              {vehicle.tipo_frenos && (
-                <span className="text-gray-600 dark:text-gray-400">
-                  Frenos: {vehicle.tipo_frenos}
-                </span>
-              )}
-            </div>
-          )}
-          
-          {vehicle.tipo === 'electric_scooter' && (
-            <div className="space-y-1">
-              {vehicle.nivel_bateria !== undefined && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600 dark:text-gray-400">Batería:</span>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-16 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full transition-all ${
-                          vehicle.nivel_bateria > 50 ? 'bg-green-500' :
-                          vehicle.nivel_bateria > 20 ? 'bg-yellow-500' : 'bg-red-500'
-                        }`}
-                        style={{ width: `${vehicle.nivel_bateria}%` }}
-                      />
-                    </div>
-                    <span className="text-xs font-medium">{vehicle.nivel_bateria}%</span>
-                  </div>
-                </div>
-              )}
-              {vehicle.velocidad_maxima && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600 dark:text-gray-400">Vel. máx:</span>
-                  <span className="font-medium">{vehicle.velocidad_maxima} km/h</span>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Ubicación */}
-        {station && (
-          <div className="flex items-start space-x-2 mb-4 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
-            <MapPin className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+        {/* Especificaciones */}
+        <div className="space-y-3 mb-4">
+          {/* Estación */}
+          {station && (
+            <div className="flex items-center space-x-2 text-sm">
+              <MapPin className="h-4 w-4 text-gray-400" />
+              <span className="text-gray-600 dark:text-gray-400">
                 {station.nombre}
-              </p>
-              <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                {station.direccion}
-              </p>
-              {station.distancia_km !== undefined && (
-                <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                  {station.distancia_km.toFixed(1)} km de distancia
-                </p>
-              )}
+              </span>
             </div>
+          )}
+
+          {/* Tarifa */}
+          <div className="flex items-center space-x-2 text-sm">
+            <DollarSign className="h-4 w-4 text-green-500" />
+            <span className="text-gray-600 dark:text-gray-400">
+              ${vehicle.tarifa_por_hora}/hora
+            </span>
           </div>
-        )}
+
+          {/* Características específicas */}
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            {vehicle.nivel_bateria !== undefined && (
+              <div className="flex items-center space-x-1">
+                <Battery className="h-3 w-3 text-green-500" />
+                <span className="text-gray-600 dark:text-gray-400">
+                  {vehicle.nivel_bateria}%
+                </span>
+              </div>
+            )}
+
+            {vehicle.velocidad_maxima && (
+              <div className="flex items-center space-x-1">
+                <Zap className="h-3 w-3 text-blue-500" />
+                <span className="text-gray-600 dark:text-gray-400">
+                  {vehicle.velocidad_maxima} km/h
+                </span>
+              </div>
+            )}
+
+            {vehicle.numero_cambios && (
+              <div className="flex items-center space-x-1">
+                <Clock className="h-3 w-3 text-purple-500" />
+                <span className="text-gray-600 dark:text-gray-400">
+                  {vehicle.numero_cambios} velocidades
+                </span>
+              </div>
+            )}
+
+            {vehicle.tipo_frenos && (
+              <div className="text-gray-600 dark:text-gray-400">
+                Frenos {vehicle.tipo_frenos}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Estado del vehículo */}
+        <div className="mb-4">
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+            vehicle.estado === 'disponible' || vehicle.estado === 'available'
+              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+              : vehicle.estado === 'ocupado' || vehicle.estado === 'occupied' 
+              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+              : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+          }`}>
+            {vehicle.estado === 'disponible' || vehicle.estado === 'available' ? 'Disponible' :
+             vehicle.estado === 'ocupado' || vehicle.estado === 'occupied' ? 'Ocupado' :
+             vehicle.estado === 'mantenimiento' || vehicle.estado === 'maintenance' ? 'Mantenimiento' :
+             vehicle.estado}
+          </span>
+        </div>
 
         {/* Botón de alquiler */}
         <Button
           onClick={handleRent}
-          disabled={!isAvailable || isRenting || !station}
-          className={`w-full ${
-            isAvailable 
-              ? 'bg-emerald-500 hover:bg-emerald-600 text-white' 
-              : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-          }`}
+          disabled={
+            isProcessing || 
+            isRenting || 
+            !station ||
+            (vehicle.estado !== 'disponible' && vehicle.estado !== 'available')
+          }
+          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
         >
-          {isRenting ? (
-            <div className="flex items-center space-x-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              <span>Alquilando...</span>
-            </div>
-          ) : isAvailable ? (
-            'Alquilar Ahora'
+          {isProcessing ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Procesando...
+            </>
+          ) : isRenting ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Alquilando...
+            </>
           ) : (
-            'No Disponible'
+            <>
+              <PlayCircle className="h-4 w-4 mr-2" />
+              Alquilar
+            </>
           )}
         </Button>
+
+        {/* Información adicional si no está disponible */}
+        {(!station || (vehicle.estado !== 'disponible' && vehicle.estado !== 'available')) && (
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
+            {!station ? 'Estación no disponible' : 
+             vehicle.estado === 'ocupado' || vehicle.estado === 'occupied' ? 'Actualmente en uso' :
+             'No disponible para alquiler'}
+          </p>
+        )}
       </div>
-    </motion.div>
+    </div>
   );
 };

@@ -261,6 +261,16 @@ export const AdminDashboard: React.FC = () => {
               </Button>
               
               <ThemeToggle />
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLogout}
+                className="flex items-center space-x-2 text-green-600 hover:text-green-700 border-red-200 hover:border-green-300"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Mi Perfil</span>
+              </Button>
               
               <Button
                 variant="outline"

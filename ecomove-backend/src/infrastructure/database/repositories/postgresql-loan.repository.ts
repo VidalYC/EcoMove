@@ -501,17 +501,70 @@ export class PostgreSQLLoanRepository implements LoanRepository {
 
   // Métodos básicos para cumplir con la interfaz
   async findUserLoanHistory(userId: number, page: number, limit: number): Promise<UserLoanHistory> {
-    const result = await this.findByUserId(userId, page, limit);
+    // Obtener préstamos básicos
+    const basicResult = await this.findByUserId(userId, page, limit);
+    
+    // Convertir a LoanWithDetails usando la query con JOINs
+    const offset = (page - 1) * limit;
+    
+    const detailedQuery = `
+      SELECT 
+        p.id, p.codigo_prestamo, p.usuario_id, p.transporte_id, p.estacion_origen_id, p.estacion_destino_id,
+        p.fecha_inicio, p.fecha_fin, p.duracion_minutos, p.costo_total, p.estado,
+        p.metodo_pago, p.created_at, p.updated_at,
+        u.name as user_name, u.email as user_email, u.document_number as user_document,
+        COALESCE(t.tipo, b.tipo, pe.tipo) as transport_type,
+        COALESCE(t.modelo, b.modelo, pe.modelo) as transport_model,
+        eo.nombre as origin_station_name,
+        ed.nombre as destination_station_name
+      FROM prestamos p
+      LEFT JOIN users u ON p.usuario_id = u.id
+      LEFT JOIN transportes t ON p.transporte_id = t.id
+      LEFT JOIN bicicleta b ON p.transporte_id = b.id
+      LEFT JOIN patineta_electrica pe ON p.transporte_id = pe.id
+      LEFT JOIN estaciones eo ON p.estacion_origen_id = eo.id
+      LEFT JOIN estaciones ed ON p.estacion_destino_id = ed.id
+      WHERE p.usuario_id = $1 AND p.deleted_at IS NULL
+      ORDER BY p.fecha_inicio DESC
+      LIMIT $2 OFFSET $3
+    `;
+
+    const detailedResult = await this.pool.query(detailedQuery, [userId, limit, offset]);
+
+    // Mapear a LoanWithDetails
+    const loansWithDetails: LoanWithDetails[] = detailedResult.rows.map(row => ({
+      id: row.id,
+      userId: row.usuario_id,
+      transportId: row.transporte_id,
+      originStationId: row.estacion_origen_id,
+      destinationStationId: row.estacion_destino_id,
+      startDate: new Date(row.fecha_inicio),
+      endDate: row.fecha_fin ? new Date(row.fecha_fin) : null,
+      estimatedDuration: row.duracion_minutos,
+      totalCost: row.costo_total,
+      status: row.estado as LoanStatus,
+      paymentMethod: row.metodo_pago,
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at),
+      userName: row.user_name,
+      userEmail: row.user_email,
+      userDocument: row.user_document,
+      transportType: row.transport_type,
+      transportModel: row.transport_model,
+      originStationName: row.origin_station_name,
+      destinationStationName: row.destination_station_name
+    }));
+
     return {
-      loans: [], // Simplificado por ahora
-      total: result.total,
-      totalPages: result.totalPages,
-      currentPage: result.currentPage,
+      loans: loansWithDetails, // ✅ DEVOLVER LOS PRÉSTAMOS REALES
+      total: basicResult.total,
+      totalPages: basicResult.totalPages,
+      currentPage: basicResult.currentPage,
       userStats: {
-        totalLoans: result.total,
-        totalTimeUsed: 0,
-        totalSpent: 0,
-        favoriteTransport: 'N/A'
+        totalLoans: basicResult.total,
+        totalTimeUsed: 0, // Calcular si tienes los datos
+        totalSpent: loansWithDetails.reduce((sum, loan) => sum + (loan.totalCost || 0), 0),
+        favoriteTransport: loansWithDetails[0]?.transportType || 'N/A'
       }
     };
   }

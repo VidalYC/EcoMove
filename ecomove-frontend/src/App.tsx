@@ -20,6 +20,8 @@ import ProfilePage from './pages/User/ProfilePage';
 import { UserDashboard } from './pages/User/UserDashboard';
 import { AdminDashboard } from './pages/Admin/AdminDashboard';
 import { RentVehicle } from './pages/User/RentVehicle'; // ✅ NUEVA IMPORTACIÓN
+import { VehicleList } from './components/Vehicle/VehicleList';
+import { Bike } from 'lucide-react';
 
 // Componente de carga
 const LoadingSpinner: React.FC = () => (
@@ -138,6 +140,15 @@ const AppRoutes: React.FC = () => {
           </ProtectedRoute>
         } 
       />
+
+      <Route 
+        path="/user/rent" 
+        element={
+          <ProtectedRoute>
+            <RentVehicle />
+          </ProtectedRoute>
+        } 
+      />
       <Route 
         path="/profile" 
         element={
@@ -147,7 +158,7 @@ const AppRoutes: React.FC = () => {
         } 
       />
       
-      {/* ✅ NUEVA RUTA - Alquilar vehículo */}
+      {/* ✅ NUEVA RUTA - Alquilar vehículo
       <Route 
         path="/rent-vehicle" 
         element={
@@ -156,7 +167,7 @@ const AppRoutes: React.FC = () => {
           </ProtectedRoute>
         } 
       />
-      
+      */}
       {/* Rutas de administración */}
       <Route 
         path="/admin/dashboard" 
@@ -187,32 +198,48 @@ const AppRoutes: React.FC = () => {
         path="/transportes" 
         element={
           <ProtectedRoute>
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-              <div className="text-center">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                  Lista de Transportes
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400">Próximamente disponible</p>
-              </div>
-            </div>
+            <RentVehicle />
           </ProtectedRoute>
         } 
       />
       <Route 
-        path="/admin/usuarios" 
-        element={
-          <ProtectedRoute requireAdmin={true}>
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-              <div className="text-center">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                  Gestión de Usuarios
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400">Próximamente disponible</p>
+      path="/transportes" 
+      element={
+        <ProtectedRoute>
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+            <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex items-center justify-between py-6">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-2 rounded-lg">
+                      <Bike className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                        Lista de Transportes
+                      </h1>
+                      <p className="text-gray-600 dark:text-gray-400">
+                        Encuentra el vehículo perfecto para tu viaje
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          </ProtectedRoute>
-        } 
-      />
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <VehicleList
+                onRent={async (vehicleId, stationId) => {
+                  console.log('Renting vehicle:', vehicleId, 'from station:', stationId);
+                  // Aquí se implementará la lógica de alquiler
+                  alert(`Funcionalidad de alquiler en desarrollo. Vehículo: ${vehicleId}, Estación: ${stationId}`);
+                }}
+                showOnlyAvailable={true}
+              />
+            </div>
+          </div>
+        </ProtectedRoute>
+      } 
+    />
       <Route 
         path="/admin/transportes" 
         element={

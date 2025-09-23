@@ -196,8 +196,22 @@ export class LoanController {
 
   async getCurrentUserLoans(req: Request, res: Response, userId: number): Promise<void> {
     try {
+      
+      console.log('🎯 [CONTROLLER] getCurrentUserLoans called with userId:', userId);
+      console.log('🎯 [CONTROLLER] Query limite:', req.query.limite);
+      
       const limit = parseInt(req.query.limite as string) || 5;
+      console.log('🎯 [CONTROLLER] Parsed limit:', limit);
+      
+      console.log('🎯 [CONTROLLER] Calling getUserLoanHistoryUseCase.execute...');
       const result = await this.getUserLoanHistoryUseCase.execute(userId, 1, limit);
+      
+      console.log('🎯 [CONTROLLER] Use case result:', {
+        total: result.total,
+        totalPages: result.totalPages,
+        currentPage: result.currentPage,
+        loansCount: result.loans.length
+      });
 
       const response: ApiResponse = {
         success: true,
