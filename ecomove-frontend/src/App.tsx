@@ -1,8 +1,9 @@
-// src/App.tsx - Actualizado con sistema de redirecciones
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { NotificationProvider } from './contexts/NotificationContext';
+import { NotificationContainer } from './components/UI/NotificationContainer';
 
 // Landing Page
 import { LandingPage } from './pages/LandingPage';
@@ -294,30 +295,30 @@ const AppRoutes: React.FC = () => {
       />
       
       {/* Ruta 404 */}
-              <Route path="*" element={
-                <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
-                  <div className="text-center">
-                    {/* GIF agregado aquí */}
-                    <div className="flex justify-center mb-8">
-                      <img 
-                        src="https://i.postimg.cc/2yrFyxKv/giphy.gif" 
-                        alt="404 animation"
-                        className="max-w-xs md:max-w-sm"
-                      />
-                    </div>
-                    
-                    <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">404</h1>
-                    <p className="text-gray-600 dark:text-gray-300 mb-8">Página no encontrada</p>
-                    <button
-                      onClick={() => window.location.href = '/'}
-                      className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition-colors"
-                    >
-                      Volver al Inicio
-                    </button>
-                  </div>
-                </div>
-              } />
-          </Routes>
+      <Route path="*" element={
+        <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
+          <div className="text-center">
+            {/* GIF agregado aquí */}
+            <div className="flex justify-center mb-8">
+              <img 
+                src="https://i.postimg.cc/2yrFyxKv/giphy.gif" 
+                alt="404 animation"
+                className="max-w-xs md:max-w-sm"
+              />
+            </div>
+            
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">404</h1>
+            <p className="text-gray-600 dark:text-gray-300 mb-8">Página no encontrada</p>
+            <button
+              onClick={() => window.location.href = '/'}
+              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition-colors"
+            >
+              Volver al Inicio
+            </button>
+          </div>
+        </div>
+      } />
+    </Routes>
   );
 };
 
@@ -325,13 +326,17 @@ const AppRoutes: React.FC = () => {
 function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <Router>
-          <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors">
-            <AppRoutes />
-          </div>
-        </Router>
-      </AuthProvider>
+      <NotificationProvider>
+        <AuthProvider>
+          <Router>
+            <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors">
+              <AppRoutes />
+              {/* Contenedor de notificaciones siempre visible */}
+              <NotificationContainer />
+            </div>
+          </Router>
+        </AuthProvider>
+      </NotificationProvider>
     </ThemeProvider>
   );
 }
