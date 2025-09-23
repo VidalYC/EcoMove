@@ -26,6 +26,9 @@ export interface User {
   telefono: string;
   role: 'user' | 'admin';
   estado: 'active' | 'inactive';
+  createdAt?: string;
+  registrationDate?: string;
+  fechaRegistro?: string;
 }
 
 export interface AuthResponse {
@@ -40,6 +43,8 @@ export interface Station {
   coordinates: { lat: number; lng: number };
   capacity: number;
   currentOccupancy: number;
+  availableVehicles: number;
+  distance?: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -83,19 +88,21 @@ export interface CompleteLoanRequest {
 
 import { config } from '../config/environment';
 
-class ApiService {
+export class ApiService {
   private baseUrl: string;
   private token: string | null = null;
 
   constructor(baseUrl = config.API_BASE_URL) {
-    this.baseUrl = baseUrl;
+    // Asegurar que la baseUrl no termine con /api/v1
+    this.baseUrl = baseUrl.replace(/\/api\/v1\/?$/, '');
     this.token = localStorage.getItem('ecomove_token');
   }
 
-  private async request<T>(
+  async request<T>(
     endpoint: string, 
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
+    // Construir la URL correctamente - el endpoint ya incluye /api/v1
     const url = `${this.baseUrl}${endpoint}`;
     
     const defaultHeaders: Record<string, string> = {
@@ -115,6 +122,8 @@ class ApiService {
     };
 
     try {
+      console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
+      
       const response = await fetch(url, config);
       
       if (!response.ok) {
@@ -130,13 +139,15 @@ class ApiService {
           errorData = { message: `HTTP error! status: ${response.status}` };
         }
         
+        console.error('❌ API Error:', errorData);
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
+      console.log('✅ API Response:', data);
       return data;
     } catch (error) {
-      console.error('API request error:', error);
+      console.error('💥 API request error:', error);
       throw error;
     }
   }
@@ -150,9 +161,13 @@ class ApiService {
     }
   }
 
+  getToken(): string | null {
+    return this.token;
+  }
+
   // ============ AUTH METHODS ============
   async login(credentials: LoginData): Promise<ApiResponse<AuthResponse>> {
-    const response = await this.request<AuthResponse>('/users/auth/login', {
+    const response = await this.request<AuthResponse>('/api/v1/users/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
@@ -167,7 +182,7 @@ class ApiService {
   async register(userData: RegisterData): Promise<ApiResponse<AuthResponse>> {
     console.log('📤 API Service - Enviando datos:', userData);
     
-    const response = await this.request<AuthResponse>('/users/auth/register', {
+    const response = await this.request<AuthResponse>('/api/v1/users/auth/register', {
         method: 'POST',
         body: JSON.stringify(userData),
     });
@@ -179,12 +194,12 @@ class ApiService {
     }
     
     return response;
-    }
+  }
 
   async logout(): Promise<void> {
     // Si hay endpoint de logout en el backend
     try {
-      await this.request('/users/auth/logout', { method: 'POST' });
+      await this.request('/api/v1/users/auth/logout', { method: 'POST' });
     } catch (error) {
       console.warn('Logout endpoint failed, clearing token locally');
     } finally {
@@ -194,124 +209,190 @@ class ApiService {
 
   // ============ USER METHODS ============
   async getProfile(): Promise<ApiResponse<User>> {
-    return this.request<User>('/users/profile');
+    return this.request<User>('/api/v1/users/profile');
   }
 
   async updateProfile(updates: Partial<User>): Promise<ApiResponse<User>> {
-    return this.request<User>('/users/profile', {
+    return this.request<User>('/api/v1/users/profile', {
       method: 'PUT',
       body: JSON.stringify(updates),
     });
   }
 
   async changePassword(data: { currentPassword: string; newPassword: string }): Promise<ApiResponse> {
-    return this.request('/users/change-password', {
+    return this.request('/api/v1/users/change-password', {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
-  
+
+  // ============ ADMIN USER METHODS ============
+  async getAdminUserStats(): Promise<ApiResponse<any>> {
+    return this.request('/api/v1/users/admin/stats');
+  }
+
+  async getAllUsers(page: number = 1, limit: number = 10): Promise<ApiResponse<any>> {
+    return this.request(`/api/v1/users/admin?page=${page}&limit=${limit}`);
+  }
+
+  async searchUsers(term: string, page: number = 1, limit: number = 10): Promise<ApiResponse<any>> {
+    return this.request(`/api/v1/users/admin/search?term=${encodeURIComponent(term)}&page=${page}&limit=${limit}`);
+  }
+
+  async getUserById(id: number): Promise<ApiResponse<any>> {
+    return this.request(`/api/v1/users/admin/${id}`);
+  }
+
+  async activateUser(id: number): Promise<ApiResponse<any>> {
+    return this.request(`/api/v1/users/admin/${id}/activate`, {
+      method: 'PUT'
+    });
+  }
+
+  async deactivateUser(id: number): Promise<ApiResponse<any>> {
+    return this.request(`/api/v1/users/admin/${id}/deactivate`, {
+      method: 'PUT'
+    });
+  }
+
+  async updateUserById(id: number, updates: any): Promise<ApiResponse<any>> {
+    return this.request(`/api/v1/users/admin/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates)
+    });
+  }
 
   // ============ STATION METHODS ============
   async getStations(): Promise<ApiResponse<Station[]>> {
-    return this.request<Station[]>('/stations');
+    return this.request<Station[]>('/api/v1/stations');
   }
 
   async getStation(id: string): Promise<ApiResponse<Station>> {
-    return this.request<Station>(`/stations/${id}`);
+    return this.request<Station>(`/api/v1/stations/${id}`);
   }
 
   async getStationAvailability(id: string): Promise<ApiResponse<{ available: Vehicle[] }>> {
-    return this.request<{ available: Vehicle[] }>(`/stations/${id}/availability`);
+    return this.request<{ available: Vehicle[] }>(`/api/v1/stations/${id}/availability`);
   }
 
   async getNearbyStations(lat: number, lng: number, radius = 1000): Promise<ApiResponse<Station[]>> {
-    return this.request<Station[]>(`/stations/nearby?lat=${lat}&lng=${lng}&radius=${radius}`);
+    return this.request<Station[]>(`/api/v1/stations/nearby?lat=${lat}&lng=${lng}&radius=${radius}`);
   }
 
   async getStationsWithTransports(): Promise<ApiResponse<Station[]>> {
-    return this.request<Station[]>('/stations/with-transports');
+    return this.request<Station[]>('/api/v1/stations/with-transports');
   }
 
-  // ============ VEHICLE METHODS ============
+  async getStationStats(): Promise<ApiResponse<any>> {
+    return this.request('/api/v1/stations/stats');
+  }
+
+  // ============ VEHICLE/TRANSPORT METHODS ============
   async getVehicles(): Promise<ApiResponse<Vehicle[]>> {
-    return this.request<Vehicle[]>('/transports');
+    return this.request<Vehicle[]>('/api/v1/transports');
   }
 
   async getAvailableVehicles(): Promise<ApiResponse<Vehicle[]>> {
-    return this.request<Vehicle[]>('/transports/available');
+    return this.request<Vehicle[]>('/api/v1/transports/available');
   }
 
   async getVehicle(id: string): Promise<ApiResponse<Vehicle>> {
-    return this.request<Vehicle>(`/transports/${id}`);
+    return this.request<Vehicle>(`/api/v1/transports/${id}`);
+  }
+
+  async getTransportStats(): Promise<ApiResponse<any>> {
+    return this.request('/api/v1/transports/stats');
   }
 
   // ============ LOAN METHODS ============
   async getLoans(): Promise<ApiResponse<Loan[]>> {
-    return this.request<Loan[]>('/loans');
+    return this.request<Loan[]>('/api/v1/loans');
   }
 
   async getLoan(id: string): Promise<ApiResponse<Loan>> {
-    return this.request<Loan>(`/loans/${id}`);
+    return this.request<Loan>(`/api/v1/loans/${id}`);
   }
 
   async getLoanDetails(id: string): Promise<ApiResponse<Loan & { vehicle: Vehicle; originStation: Station; destinationStation?: Station }>> {
-    return this.request(`/loans/${id}/detalles`);
+    return this.request<Loan & { vehicle: Vehicle; originStation: Station; destinationStation?: Station }>(`/api/v1/loans/${id}/detalles`);
   }
 
-  async createLoan(data: CreateLoanRequest): Promise<ApiResponse<Loan>> {
-    return this.request<Loan>('/loans', {
+  async createLoan(request: CreateLoanRequest): Promise<ApiResponse<Loan>> {
+    return this.request<Loan>('/api/v1/loans', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(request),
     });
   }
 
-  async completeLoan(id: string, data: CompleteLoanRequest): Promise<ApiResponse<Loan>> {
-    return this.request<Loan>(`/loans/${id}/completar`, {
+  async completeLoan(id: string, request: CompleteLoanRequest): Promise<ApiResponse<Loan>> {
+    return this.request<Loan>(`/api/v1/loans/${id}/completar`, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: JSON.stringify(request),
     });
   }
 
   async cancelLoan(id: string): Promise<ApiResponse<Loan>> {
-    return this.request<Loan>(`/loans/${id}/cancelar`, {
+    return this.request<Loan>(`/api/v1/loans/${id}/cancelar`, {
       method: 'PUT',
     });
   }
 
-  async extendLoan(id: string, data: { newDurationMinutes: number }): Promise<ApiResponse<Loan>> {
-    return this.request<Loan>(`/loans/${id}/extender`, {
+  async extendLoan(id: string, additionalMinutes: number): Promise<ApiResponse<Loan>> {
+    return this.request<Loan>(`/api/v1/loans/${id}/extender`, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: JSON.stringify({ additionalMinutes }),
     });
   }
 
-  async calculateFare(data: { vehicleType: string; durationMinutes: number }): Promise<ApiResponse<{ fare: number; breakdown: any }>> {
-    return this.request('/loans/calcular-tarifa', {
+  async calculateFare(vehicleId: string, durationMinutes: number): Promise<ApiResponse<{ fare: number; breakdown: any }>> {
+    return this.request<{ fare: number; breakdown: any }>('/api/v1/loans/calcular-tarifa', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        vehicleId,
+        durationMinutes
+      })
     });
   }
 
-  // ============ ADMIN METHODS ============
-  async getAdminStats(): Promise<ApiResponse<any>> {
-    return this.request('/loans/admin/estadisticas');
+  // ============ ADMIN LOAN METHODS ============
+  async getAdminLoanStats(): Promise<ApiResponse<any>> {
+    return this.request('/api/v1/loans/admin/estadisticas');
   }
 
-  async getAdminReport(startDate: string, endDate: string): Promise<ApiResponse<any>> {
-    return this.request(`/loans/admin/reporte?startDate=${startDate}&endDate=${endDate}`);
+  async getActiveLoansByAdmin(): Promise<ApiResponse<any>> {
+    return this.request('/api/v1/loans/admin/activos');
   }
 
-  async getActiveLoansAdmin(): Promise<ApiResponse<Loan[]>> {
-    return this.request<Loan[]>('/loans/admin/activos');
+  async getPeriodReport(startDate: string, endDate: string): Promise<ApiResponse<any>> {
+    return this.request(`/api/v1/loans/admin/reporte?startDate=${startDate}&endDate=${endDate}`);
   }
 
-  // ============ HEALTH CHECK ============
-  async healthCheck(): Promise<ApiResponse> {
-    return this.request('/health');
+  // ============ USER LOAN HISTORY ============
+  async getUserLoanHistory(userId: string): Promise<ApiResponse<Loan[]>> {
+    return this.request<Loan[]>(`/api/v1/loans/usuario/${userId}`);
+  }
+
+  // ============ HEALTH CHECK METHODS ============
+  async healthCheck(): Promise<ApiResponse<any>> {
+    return this.request('/api/v1/health');
+  }
+
+  async getUsersHealthCheck(): Promise<ApiResponse<any>> {
+    return this.request('/api/v1/users/health');
+  }
+
+  async getStationsHealthCheck(): Promise<ApiResponse<any>> {
+    return this.request('/api/v1/stations/health');
+  }
+
+  async getTransportsHealthCheck(): Promise<ApiResponse<any>> {
+    return this.request('/api/v1/transports/health');
+  }
+
+  async getLoansHealthCheck(): Promise<ApiResponse<any>> {
+    return this.request('/api/v1/loans/health');
   }
 }
 
-// Export singleton instance
+// Instancia singleton del servicio API
 export const apiService = new ApiService();
-export default apiService;
