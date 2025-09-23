@@ -49,6 +49,15 @@ export class LoanValidator {
     ];
   }
 
+  static validateUserLoans() {
+    return [
+      query('limite')
+        .optional()
+        .isInt({ min: 1, max: 50 })
+        .withMessage('El límite debe estar entre 1 y 50')
+    ];
+  }
+
   // Validaciones para extender préstamo
   static validateExtendLoan() {
     return [

@@ -46,6 +46,26 @@ export class LoanRoutes {
     });
 
     // ========== RUTAS PÚBLICAS ==========
+
+    // Obtener préstamo activo del usuario actual
+    router.get('/usuario/activo',
+      authMiddleware.authenticate,
+      (req: Request, res: Response) => {
+        const userId = (req as any).user.id;
+        loanController.getUserActiveLoan(req, res, userId);
+      }
+    );
+
+    // Obtener préstamos del usuario actual con límite
+    router.get('/usuario/actual',
+      authMiddleware.authenticate,
+      LoanValidator.validateUserLoans(),
+      LoanValidator.handleValidationErrors,
+      (req: Request, res: Response) => {
+        const userId = (req as any).user.id;
+        loanController.getCurrentUserLoans(req, res, userId);
+      }
+    );
     
     // Calcular tarifa de préstamo
     router.post('/calcular-tarifa',
