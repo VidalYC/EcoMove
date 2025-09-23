@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { useNotifications } from '../../contexts/NotificationContext';
+import { Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { ThemeToggle } from '../UI/ThemeToggle';
 import { motion } from 'framer-motion';
 
@@ -9,41 +10,142 @@ const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { login, loading, error, clearError, user } = useAuth();
+  const { showSuccess, showError } = useNotifications();
   const navigate = useNavigate();
+  const location = useLocation();
+  const hasShownError = useRef(false);
+  const hasShownSuccess = useRef(false);
+
+  // Manejar mensajes de redirección desde register
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.message && !hasShownSuccess.current) {
+      hasShownSuccess.current = true;
+      showSuccess('¡Registro Exitoso!', state.message);
+      
+      // Si viene un email del registro, pre-rellenarlo
+      if (state.email) {
+        setEmail(state.email);
+      }
+      
+      // Limpiar el state para evitar mostrar el mensaje repetidamente
+      navigate('/login', { replace: true });
+    }
+  }, [location.state, showSuccess, navigate]);
 
   // Redirigir si el usuario ya está autenticado
   useEffect(() => {
-    if (user) {
+    if (user && !isSubmitting) {
       if (user.role === 'admin') {
-        navigate('/admin/dashboard');
+        navigate('/admin/dashboard', { replace: true });
       } else {
-        navigate('/user/dashboard');
+        navigate('/user/dashboard', { replace: true });
       }
     }
-  }, [user, navigate]);
+  }, [user, navigate, isSubmitting]);
 
   useEffect(() => {
     clearError();
+    hasShownError.current = false;
   }, [clearError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    clearError();
     
-    if (!email || !password) {
+    // Evitar múltiples envíos
+    if (isSubmitting || loading) {
       return;
     }
 
-    const success = await login({
-      correo: email,
-      password: password,
-    });
+    clearError();
+    hasShownError.current = false;
+    hasShownSuccess.current = false;
+    
+    if (!email || !password) {
+      showError(
+        'Datos Incompletos',
+        'Por favor completa todos los campos requeridos.'
+      );
+      return;
+    }
 
-    if (success) {
-      console.log('Login exitoso');
+    // Validación básica de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      showError(
+        'Email Inválido',
+        'Por favor ingresa un email válido.'
+      );
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const success = await login({
+        correo: email,
+        password: password,
+      });
+
+      if (success && !hasShownSuccess.current) {
+        hasShownSuccess.current = true;
+        showSuccess(
+          '¡Bienvenido!',
+          `Hola ${user?.nombre || 'usuario'}! Accediendo...`
+        );
+      }
+    } catch (err: any) {
+      if (!hasShownError.current) {
+        hasShownError.current = true;
+        showError(
+          'Error de Conexión',
+          'No se pudo conectar con el servidor. Por favor intenta de nuevo.'
+        );
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
+  // Mostrar errores del contexto de auth como notificaciones (solo una vez)
+  useEffect(() => {
+    if (error && !hasShownError.current && !isSubmitting) {
+      hasShownError.current = true;
+      
+      let title = 'Error de Inicio de Sesión';
+      let message = error;
+
+      // Personalizar mensajes según el tipo de error
+      if (error.toLowerCase().includes('credenciales') || 
+          error.toLowerCase().includes('credentials') ||
+          error.toLowerCase().includes('invalid') ||
+          error.toLowerCase().includes('incorrect')) {
+        title = 'Credenciales Incorrectas';
+        message = 'El email o la contraseña son incorrectos.';
+      } else if (error.toLowerCase().includes('network') || 
+                 error.toLowerCase().includes('conexión')) {
+        title = 'Error de Conexión';
+        message = 'Verifica tu conexión a internet.';
+      } else if (error.toLowerCase().includes('usuario no encontrado') ||
+                 error.toLowerCase().includes('user not found')) {
+        title = 'Usuario No Encontrado';
+        message = 'No existe una cuenta con este email.';
+      } else if (error.toLowerCase().includes('blocked') ||
+                 error.toLowerCase().includes('bloqueado')) {
+        title = 'Cuenta Bloqueada';
+        message = 'Contacta al soporte.';
+      } else if (error.toLowerCase().includes('suspended') ||
+                 error.toLowerCase().includes('suspendido')) {
+        title = 'Cuenta Suspendida';
+        message = 'Contacta al soporte.';
+      }
+
+      showError(title, message);
+      clearError(); // Limpiar para evitar mostrar múltiples veces
+    }
+  }, [error, showError, clearError, isSubmitting]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 flex transition-colors duration-200 relative">
@@ -138,15 +240,15 @@ const Login: React.FC = () => {
               </h2>
             </div>
 
-            {/* Mensaje de error */}
-            {error && (
+            {/* Mensaje de bienvenida si viene del registro */}
+            {location.state?.message && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="mb-4 p-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center space-x-2"
+                className="mb-4 p-2.5 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center space-x-2"
               >
-                <AlertCircle className="h-4 w-4 text-red-500 dark:text-red-400 flex-shrink-0" />
-                <p className="text-red-700 dark:text-red-400 text-sm">{error}</p>
+                <CheckCircle className="h-4 w-4 text-green-500 dark:text-green-400 flex-shrink-0" />
+                <p className="text-green-700 dark:text-green-400 text-sm">¡Ahora puedes iniciar sesión!</p>
               </motion.div>
             )}
 
@@ -161,7 +263,7 @@ const Login: React.FC = () => {
                   className="neumorphic-input"
                   placeholder="Correo electrónico *"
                   required
-                  disabled={loading}
+                  disabled={loading || isSubmitting}
                 />
               </div>
 
@@ -174,13 +276,13 @@ const Login: React.FC = () => {
                   className="neumorphic-input pr-12"
                   placeholder="Contraseña *"
                   required
-                  disabled={loading}
+                  disabled={loading || isSubmitting}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                  disabled={loading}
+                  disabled={loading || isSubmitting}
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
@@ -190,7 +292,7 @@ const Login: React.FC = () => {
             {/* Botón de submit */}
             <motion.button
               type="submit"
-              disabled={loading || !email || !password}
+              disabled={loading || isSubmitting || !email || !password}
               className="neumorphic-button w-full mt-6"
               whileHover={{ 
                 x: -6, 
@@ -203,7 +305,7 @@ const Login: React.FC = () => {
                 transition: { duration: 0.2 }
               }}
             >
-              {loading ? (
+              {(loading || isSubmitting) ? (
                 <div className="flex items-center justify-center space-x-2">
                   <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-600 dark:border-gray-300 border-t-transparent"></div>
                   <span>Iniciando...</span>

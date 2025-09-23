@@ -1,9 +1,9 @@
-// src/components/Auth/Register.tsx - Formulario optimizado sin desperdiciar espacio
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNotifications } from '../../contexts/NotificationContext';
 import { ThemeToggle } from '../UI/ThemeToggle';
-import { AlertCircle, Check, X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function Register() {
@@ -15,24 +15,28 @@ export default function Register() {
     password: '',
     confirmPassword: ''
   });
-  const [passwordError, setPasswordError] = useState('');
   const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, loading, error, clearError, user } = useAuth();
+  const { showSuccess, showError } = useNotifications();
   const navigate = useNavigate();
+  const hasShownError = useRef(false);
+  const hasShownSuccess = useRef(false);
 
   // Redirigir si el usuario ya está autenticado
   useEffect(() => {
-    if (user) {
+    if (user && !isSubmitting) {
       if (user.role === 'admin') {
-        navigate('/admin/dashboard');
+        navigate('/admin/dashboard', { replace: true });
       } else {
-        navigate('/user/dashboard');
+        navigate('/user/dashboard', { replace: true });
       }
     }
-  }, [user, navigate]);
+  }, [user, navigate, isSubmitting]);
 
   useEffect(() => {
     clearError();
+    hasShownError.current = false;
   }, [clearError]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -41,10 +45,6 @@ export default function Register() {
       ...prev,
       [name]: value
     }));
-
-    if (name === 'password' || name === 'confirmPassword') {
-      setPasswordError('');
-    }
 
     if (name === 'password') {
       setShowPasswordRequirements(value.length > 0);
@@ -61,34 +61,59 @@ export default function Register() {
   };
 
   const validateForm = (): boolean => {
-    setPasswordError('');
+    // Validar campos requeridos
+    if (!formData.nombre.trim()) {
+      showError('Campo Requerido', 'El nombre es obligatorio.');
+      return false;
+    }
 
+    if (!formData.correo.trim()) {
+      showError('Campo Requerido', 'El correo electrónico es obligatorio.');
+      return false;
+    }
+
+    if (!formData.password.trim()) {
+      showError('Campo Requerido', 'La contraseña es obligatoria.');
+      return false;
+    }
+
+    // Validar email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.correo)) {
+      showError('Email Inválido', 'Por favor ingresa un email válido.');
+      return false;
+    }
+
+    // Validar contraseña
     if (formData.password !== formData.confirmPassword) {
-      setPasswordError('Las contraseñas no coinciden');
+      showError('Contraseñas No Coinciden', 'Por favor verifica que ambas contraseñas sean iguales.');
       return false;
     }
 
     if (formData.password.length < 6) {
-      setPasswordError('La contraseña debe tener al menos 6 caracteres');
+      showError('Contraseña Muy Corta', 'La contraseña debe tener al menos 6 caracteres.');
       return false;
     }
 
     if (!/[A-Z]/.test(formData.password)) {
-      setPasswordError('La contraseña debe contener al menos una letra mayúscula');
+      showError('Contraseña Débil', 'La contraseña debe contener al menos una letra mayúscula.');
       return false;
     }
 
     if (!/[a-z]/.test(formData.password)) {
-      setPasswordError('La contraseña debe contener al menos una letra minúscula');
+      showError('Contraseña Débil', 'La contraseña debe contener al menos una letra minúscula.');
       return false;
     }
 
     if (!/\d/.test(formData.password)) {
-      setPasswordError('La contraseña debe contener al menos un número');
+      showError('Contraseña Débil', 'La contraseña debe contener al menos un número.');
       return false;
     }
 
-    if (!formData.nombre || !formData.correo || !formData.password) {
+    // Validar nombre (solo letras y espacios)
+    const nameRegex = /^[a-zA-ZÀ-ÿ\s]+$/;
+    if (!nameRegex.test(formData.nombre)) {
+      showError('Nombre Inválido', 'El nombre solo puede contener letras y espacios.');
       return false;
     }
 
@@ -97,25 +122,95 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setPasswordError('');
+    
+    // Evitar múltiples envíos
+    if (isSubmitting || loading) {
+      return;
+    }
+
     clearError();
+    hasShownError.current = false;
+    hasShownSuccess.current = false;
 
     if (!validateForm()) {
       return;
     }
 
-    const success = await register({
-      nombre: formData.nombre,
-      correo: formData.correo,
-      documento: formData.documento,
-      telefono: formData.telefono,
-      password: formData.password,
-    });
+    setIsSubmitting(true);
 
-    if (success) {
-      console.log('Registro exitoso');
+    try {
+      const success = await register({
+        nombre: formData.nombre.trim(),
+        correo: formData.correo.trim().toLowerCase(),
+        documento: formData.documento.trim(),
+        telefono: formData.telefono.trim(),
+        password: formData.password,
+      });
+
+      if (success && !hasShownSuccess.current) {
+        hasShownSuccess.current = true;
+        showSuccess(
+          '¡Registro Exitoso!',
+          'Redirigiendo al login...'
+        );
+        
+        // Redirigir inmediatamente sin espera
+        setTimeout(() => {
+          navigate('/login', { 
+            state: { 
+              message: 'Cuenta creada exitosamente. Ahora puedes iniciar sesión.',
+              email: formData.correo 
+            },
+            replace: true
+          });
+        }, 800);
+      }
+    } catch (err: any) {
+      if (!hasShownError.current) {
+        hasShownError.current = true;
+        showError(
+          'Error de Conexión',
+          'No se pudo conectar con el servidor. Por favor intenta de nuevo.'
+        );
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
+  // Mostrar errores del contexto de auth como notificaciones (solo una vez)
+  useEffect(() => {
+    if (error && !hasShownError.current && !isSubmitting) {
+      hasShownError.current = true;
+      
+      let title = 'Error de Registro';
+      let message = error;
+
+      // Personalizar mensajes según el tipo de error
+      if (error.toLowerCase().includes('email') || 
+          error.toLowerCase().includes('correo') ||
+          error.toLowerCase().includes('already exists') ||
+          error.toLowerCase().includes('ya existe')) {
+        title = 'Email Ya Registrado';
+        message = 'Ya existe una cuenta con este email. ¿Deseas iniciar sesión?';
+      } else if (error.toLowerCase().includes('network') || 
+                 error.toLowerCase().includes('conexión')) {
+        title = 'Error de Conexión';
+        message = 'No se pudo conectar con el servidor. Por favor verifica tu conexión a internet.';
+      } else if (error.toLowerCase().includes('validation') ||
+                 error.toLowerCase().includes('validación')) {
+        title = 'Datos Inválidos';
+        message = 'Por favor revisa los datos ingresados y corrige los errores.';
+      } else if (error.toLowerCase().includes('server') ||
+                 error.toLowerCase().includes('servidor')) {
+        title = 'Error del Servidor';
+        message = 'Hay un problema temporal con el servidor. Por favor intenta más tarde.';
+      }
+
+      showError(title, message);
+      clearError(); // Limpiar para evitar mostrar múltiples veces
+    }
+  }, [error, showError, clearError, isSubmitting]);
 
   const RequirementIndicator = ({ met, text }: { met: boolean; text: string }) => (
     <div
@@ -205,29 +300,6 @@ export default function Register() {
               </h2>
             </div>
 
-            {/* Mensajes de error compactos */}
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="mb-4 p-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center space-x-2"
-              >
-                <AlertCircle className="h-4 w-4 text-red-500 dark:text-red-400 flex-shrink-0" />
-                <p className="text-red-700 dark:text-red-400 text-sm">{error}</p>
-              </motion.div>
-            )}
-
-            {passwordError && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="mb-4 p-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center space-x-2"
-              >
-                <AlertCircle className="h-4 w-4 text-red-500 dark:text-red-400 flex-shrink-0" />
-                <p className="text-red-700 dark:text-red-400 text-sm">{passwordError}</p>
-              </motion.div>
-            )}
-
             {/* Campos del formulario con espaciado optimizado */}
             <div className="space-y-3">
               {/* Nombre */}
@@ -240,7 +312,7 @@ export default function Register() {
                   onChange={handleChange}
                   className="neumorphic-input"
                   placeholder="Nombre completo *"
-                  disabled={loading}
+                  disabled={loading || isSubmitting}
                 />
               </div>
 
@@ -254,7 +326,7 @@ export default function Register() {
                   onChange={handleChange}
                   className="neumorphic-input"
                   placeholder="Correo electrónico *"
-                  disabled={loading}
+                  disabled={loading || isSubmitting}
                 />
               </div>
 
@@ -267,7 +339,7 @@ export default function Register() {
                   onChange={handleChange}
                   className="neumorphic-input"
                   placeholder="Documento"
-                  disabled={loading}
+                  disabled={loading || isSubmitting}
                 />
                 <input
                   type="tel"
@@ -276,7 +348,7 @@ export default function Register() {
                   onChange={handleChange}
                   className="neumorphic-input"
                   placeholder="Teléfono"
-                  disabled={loading}
+                  disabled={loading || isSubmitting}
                 />
               </div>
 
@@ -290,7 +362,7 @@ export default function Register() {
                   onChange={handleChange}
                   className="neumorphic-input"
                   placeholder="Contraseña *"
-                  disabled={loading}
+                  disabled={loading || isSubmitting}
                 />
               </div>
 
@@ -322,7 +394,7 @@ export default function Register() {
                   onChange={handleChange}
                   className="neumorphic-input"
                   placeholder="Confirmar contraseña *"
-                  disabled={loading}
+                  disabled={loading || isSubmitting}
                 />
               </div>
 
@@ -335,7 +407,7 @@ export default function Register() {
             {/* Botón de submit */}
             <motion.button
               type="submit"
-              disabled={loading || !formData.nombre || !formData.correo || !formData.password || !Object.values(passwordRequirements).every(req => req)}
+              disabled={loading || isSubmitting || !formData.nombre || !formData.correo || !formData.password || !Object.values(passwordRequirements).every(req => req)}
               className="neumorphic-button w-full mt-5"
               whileHover={{ 
                 x: -6, 
@@ -348,7 +420,7 @@ export default function Register() {
                 transition: { duration: 0.2 }
               }}
             >
-              {loading ? (
+              {(loading || isSubmitting) ? (
                 <div className="flex items-center justify-center space-x-2">
                   <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-600 dark:border-gray-300 border-t-transparent"></div>
                   <span>Creando cuenta...</span>
@@ -523,7 +595,6 @@ export default function Register() {
         }
 
         .neumorphic-button:hover:not(:disabled) {
-          box-shadow: 4px 4px 10px #bcc3cf, -4px -4px 10px #ffffff, inset 1px 1px 4px rgba(0,0,0,0.1);
           transform: translate(2px, 2px);
         }
 
