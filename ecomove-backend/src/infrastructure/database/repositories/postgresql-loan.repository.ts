@@ -14,6 +14,8 @@ import { LoanStatus } from '../../../shared/enums/loan.enums';
 export class PostgreSQLLoanRepository implements LoanRepository {
   constructor(private readonly pool: Pool) {}
 
+  
+
   // Método para verificar transporte con herencia
   async findTransportWithInheritance(transportId: number): Promise<any> {
     const query = `

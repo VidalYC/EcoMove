@@ -1,5 +1,7 @@
-// src/services/userApi.service.ts
-import { ApiService, Station, Loan } from './api.service';
+import { CreateLoanData, loanApiService, LoanWithDetails } from './loanApi.service';
+import { stationApiService, StationWithStats } from './stationApi.service';
+
+// ============ INTERFACES ============
 
 export interface UserStats {
   totalLoans: number;
@@ -7,7 +9,7 @@ export interface UserStats {
   completedLoans: number;
   totalSpent: number;
   averageDuration: number;
-  favoriteStations: Station[];
+  favoriteStations: StationWithStats[];
   thisMonth: {
     loans: number;
     spent: number;
@@ -15,165 +17,78 @@ export interface UserStats {
   };
 }
 
-export interface UserLoan {
-  id: string;
-  vehicleId: string;
-  vehicleType: 'bicycle' | 'electric-scooter';
-  vehicleModel: string;
-  startTime: string;
-  endTime?: string;
-  originStationId: string;
-  originStationName: string;
-  destinationStationId?: string;
-  destinationStationName?: string;
-  totalCost: number;
-  status: 'active' | 'completed' | 'cancelled';
-  duration?: number;
-  createdAt: string;
-  updatedAt: string;
+export interface QuickStats {
+  activeLoans: number;
+  availableVehicles: number;
+  nearbyStations: number;
+  totalSpent: number;
 }
 
-export interface QuickStats {
-  nearbyStations: number;
-  availableVehicles: number;
-  currentLoan?: UserLoan;
-  weatherInfo?: {
-    temperature: number;
-    condition: string;
-    recommendation: string;
+export interface UserLoan {
+  id: string;
+  transportId: string;
+  transportType: string;
+  transportModel: string;
+  startDate: string;
+  endDate?: string;
+  status: 'active' | 'completed' | 'cancelled';
+  cost: number;
+  duration?: number;
+  originStation: {
+    id: string;
+    name: string;
+  };
+  destinationStation?: {
+    id: string;
+    name: string;
   };
 }
 
-export interface Vehicle {
-  id: string;
-  type: 'bicycle' | 'electric-scooter';
-  model: string;
-  stationId: string | null;
-  status: 'available' | 'in-use' | 'maintenance';
-  batteryLevel?: number;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+// ============ USER API SERVICE ============
 
 class UserApiService {
-  private apiService: ApiService;
 
-  constructor() {
-    this.apiService = new ApiService();
-  }
+  // ============ USER STATS ============
 
-  // ============ UTILITY METHODS ============
-  
-  /**
-   * Convertir Loan del backend a UserLoan para el frontend
-   */
-  private mapLoanToUserLoan(loan: Loan): UserLoan {
-    return {
-      id: loan.id,
-      vehicleId: loan.vehicleId,
-      vehicleType: 'bicycle', // Default, se puede obtener del backend
-      vehicleModel: 'Unknown', // Default, se puede obtener del backend
-      startTime: loan.startTime,
-      endTime: loan.endTime,
-      originStationId: loan.originStationId,
-      originStationName: 'Station', // Default, se puede obtener del backend
-      destinationStationId: loan.destinationStationId,
-      destinationStationName: undefined,
-      totalCost: loan.totalCost,
-      status: loan.status,
-      duration: loan.duration,
-      createdAt: loan.createdAt,
-      updatedAt: loan.updatedAt
-    };
-  }
-
-  // ============ USER PROFILE ============
-  
-  /**
-   * Obtener perfil del usuario actual
-   */
-  async getProfile() {
-    const response = await this.apiService.getProfile();
-    if (response.success && response.data) {
-      return response.data;
-    }
-    throw new Error(response.message || 'Error al obtener perfil');
-  }
-
-  /**
-   * Actualizar perfil del usuario
-   */
-  async updateProfile(updates: any) {
-    const response = await this.apiService.updateProfile(updates);
-    if (response.success && response.data) {
-      return response.data;
-    }
-    throw new Error(response.message || 'Error al actualizar perfil');
-  }
-
-  /**
-   * Cambiar contraseña
-   */
-  async changePassword(currentPassword: string, newPassword: string) {
-    const response = await this.apiService.changePassword({
-      currentPassword,
-      newPassword
-    });
-    if (response.success) {
-      return response.data;
-    }
-    throw new Error(response.message || 'Error al cambiar contraseña');
-  }
-
-  // ============ USER STATISTICS ============
-  
   /**
    * Obtener estadísticas del usuario
    */
   async getUserStats(): Promise<UserStats> {
     try {
-      // Obtener préstamos del usuario
-      const loansResponse = await this.apiService.getLoans();
-      const rawLoans = loansResponse.success ? loansResponse.data || [] : [];
-      const loans = rawLoans.map((loan: Loan) => this.mapLoanToUserLoan(loan));
+      const [loansResponse, stationsResponse] = await Promise.all([
+        loanApiService.getLoanSummaryForUser(),
+        stationApiService.getActiveStations()
+      ]);
 
-      // Calcular estadísticas
-      const activeLoans = loans.filter((loan: UserLoan) => loan.status === 'active');
-      const completedLoans = loans.filter((loan: UserLoan) => loan.status === 'completed');
-      const totalSpent = completedLoans.reduce((sum: number, loan: UserLoan) => sum + loan.totalCost, 0);
+      // Calcular estadísticas básicas
+      const { activeLoan, recentLoans, totalLoans, totalSpent, averageDuration } = loansResponse;
       
-      // Calcular duración promedio
-      const totalDuration = completedLoans
-        .filter((loan: UserLoan) => loan.duration)
-        .reduce((sum: number, loan: UserLoan) => sum + (loan.duration || 0), 0);
-      const averageDuration = completedLoans.length > 0 ? totalDuration / completedLoans.length : 0;
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      
+      const thisMonthLoans = recentLoans.filter(loan => 
+        new Date(loan.fecha_inicio) >= startOfMonth
+      );
+      
+      const thisMonthSpent = thisMonthLoans.reduce((sum, loan) => 
+        sum + (loan.costo_total || 0), 0
+      );
+      
+      const thisMonthDuration = thisMonthLoans.reduce((sum, loan) => 
+        sum + (loan.duracion_real || 0), 0
+      );
 
-      // Estadísticas del mes actual
-      const currentMonth = new Date().getMonth();
-      const currentYear = new Date().getFullYear();
-      const thisMonthLoans = loans.filter((loan: UserLoan) => {
-        const loanDate = new Date(loan.createdAt);
-        return loanDate.getMonth() === currentMonth && loanDate.getFullYear() === currentYear;
-      });
-      
-      const thisMonthSpent = thisMonthLoans
-        .filter((loan: UserLoan) => loan.status === 'completed')
-        .reduce((sum: number, loan: UserLoan) => sum + loan.totalCost, 0);
-      
-      const thisMonthDuration = thisMonthLoans
-        .filter((loan: UserLoan) => loan.duration && loan.status === 'completed')
-        .reduce((sum: number, loan: UserLoan) => sum + (loan.duration || 0), 0);
+      const activeLoans = activeLoan ? 1 : 0;
+      const completedLoans = recentLoans.filter(loan => loan.estado === 'completed').length;
 
-      // Obtener estaciones favoritas (simulado por ahora)
-      const stationsResponse = await this.apiService.getStations();
-      const favoriteStations = stationsResponse.success ? 
-        (stationsResponse.data || []).slice(0, 3) : [];
+      // Estaciones favoritas (limitado a las primeras 3)
+      const favoriteStations: StationWithStats[] = stationsResponse.success && stationsResponse.data 
+        ? (stationsResponse.data || []).slice(0, 3) : [];
 
       return {
-        totalLoans: loans.length,
-        activeLoans: activeLoans.length,
-        completedLoans: completedLoans.length,
+        totalLoans,
+        activeLoans,
+        completedLoans,
         totalSpent,
         averageDuration,
         favoriteStations,
@@ -195,9 +110,12 @@ class UserApiService {
    * Obtener historial de préstamos del usuario
    */
   async getUserLoans(): Promise<UserLoan[]> {
-    const response = await this.apiService.getLoans();
+    const userId = this.getCurrentUserId();
+    if (!userId) throw new Error('Usuario no autenticado');
+    
+    const response = await loanApiService.getUserLoanHistory(userId, 1, 20);
     if (response.success && response.data) {
-      return response.data.map((loan: Loan) => this.mapLoanToUserLoan(loan));
+      return response.data.prestamos.map((loan: LoanWithDetails) => this.mapLoanToUserLoan(loan));
     }
     throw new Error(response.message || 'Error al obtener préstamos');
   }
@@ -207,9 +125,21 @@ class UserApiService {
    */
   async getCurrentLoan(): Promise<UserLoan | null> {
     try {
-      const loans = await this.getUserLoans();
-      const activeLoan = loans.find(loan => loan.status === 'active');
-      return activeLoan || null;
+      const response = await loanApiService.getCurrentUserActiveLoan();
+      console.log('🔍 Response structure:', response);
+    if (response.data) {
+      console.log('🔍 Data structure:', response.data);
+      console.log('🔍 Data keys:', Object.keys(response.data));
+      
+      // Verificar específicamente el campo que está causando problemas
+      if (response.data.usuario_documento) {
+        console.log('🔍 usuario_documento:', response.data.usuario_documento, typeof response.data.usuario_documento);
+      }
+    }
+      if (response.success && response.data) {
+        return this.mapLoanToUserLoan(response.data);
+      }
+      return null;
     } catch (error) {
       console.error('Error getting current loan:', error);
       return null;
@@ -219,23 +149,52 @@ class UserApiService {
   /**
    * Crear nuevo préstamo
    */
-  async createLoan(vehicleId: string, originStationId: string): Promise<UserLoan> {
-    const response = await this.apiService.createLoan({
-      vehicleId,
-      originStationId
-    });
+  // En userApi.service.ts
+async createLoan(vehicleId: string, stationId: string): Promise<UserLoan | null> {
+  try {
+    console.log('🔍 UserApi createLoan called with:', { vehicleId, stationId });
+    const userId = this.getCurrentUserId();
+    if (!userId) {
+      throw new Error('Usuario no autenticado');
+    }
+    const loanData: CreateLoanData = {
+      usuario_id: userId,
+      transporte_id: parseInt(vehicleId),
+      estacion_origen_id: parseInt(stationId), // Usar stationId aquí
+      metodo_pago: 'credit_card',
+      duracion_estimada: 60
+    };
+
+    console.log('🔍 Parsed IDs:', {
+    vehicleId: vehicleId,
+    stationId: stationId,
+    parsedVehicleId: parseInt(vehicleId),
+    parsedStationId: parseInt(stationId),
+    isVehicleIdNaN: isNaN(parseInt(vehicleId)),
+    isStationIdNaN: isNaN(parseInt(stationId))
+  })
+    
+    console.log('🔍 Mapped loan data:', loanData);
+    
+    const response = await loanApiService.createLoan(loanData);
+    
     if (response.success && response.data) {
       return this.mapLoanToUserLoan(response.data);
     }
-    throw new Error(response.message || 'Error al crear préstamo');
+    
+    return null;
+  } catch (error: any) {
+    console.error('Error creating loan:', error);
+    throw error;
   }
+}
 
   /**
    * Completar préstamo
    */
   async completeLoan(loanId: string, destinationStationId: string): Promise<UserLoan> {
-    const response = await this.apiService.completeLoan(loanId, {
-      destinationStationId
+    const response = await loanApiService.completeLoan(parseInt(loanId), {
+      estacion_destino_id: parseInt(destinationStationId)
     });
     if (response.success && response.data) {
       return this.mapLoanToUserLoan(response.data);
@@ -247,7 +206,7 @@ class UserApiService {
    * Cancelar préstamo
    */
   async cancelLoan(loanId: string): Promise<void> {
-    const response = await this.apiService.cancelLoan(loanId);
+    const response = await loanApiService.cancelLoan(parseInt(loanId));
     if (!response.success) {
       throw new Error(response.message || 'Error al cancelar préstamo');
     }
@@ -257,7 +216,9 @@ class UserApiService {
    * Extender préstamo
    */
   async extendLoan(loanId: string, additionalMinutes: number): Promise<UserLoan> {
-    const response = await this.apiService.extendLoan(loanId, additionalMinutes);
+    const response = await loanApiService.extendLoan(parseInt(loanId), {
+      minutos_adicionales: additionalMinutes
+    });
     if (response.success && response.data) {
       return this.mapLoanToUserLoan(response.data);
     }
@@ -269,308 +230,118 @@ class UserApiService {
   /**
    * Obtener estaciones cercanas
    */
-  async getNearbyStations(lat?: number, lng?: number, radius: number = 1000): Promise<Station[]> {
-    let response;
-    
-    if (lat && lng) {
-      response = await this.apiService.getNearbyStations(lat, lng, radius);
-    } else {
-      response = await this.apiService.getStations();
-    }
-
-    if (response.success && response.data) {
-      return response.data;
-    }
-    throw new Error(response.message || 'Error al obtener estaciones');
-  }
-
-  /**
-   * Obtener estaciones con vehículos disponibles
-   */
-  async getStationsWithVehicles(): Promise<Station[]> {
-    const response = await this.apiService.getStationsWithTransports();
-    if (response.success && response.data) {
-      return response.data;
-    }
-    throw new Error(response.message || 'Error al obtener estaciones con vehículos');
-  }
-
-  /**
-   * Obtener vehículos disponibles en una estación
-   */
-  async getStationAvailability(stationId: string): Promise<Vehicle[]> {
-    const response = await this.apiService.getStationAvailability(stationId);
-    if (response.success && response.data) {
-      return response.data.available;
-    }
-    throw new Error(response.message || 'Error al obtener disponibilidad de estación');
-  }
-
-  /**
-   * Obtener vehículos disponibles
-   */
-  async getAvailableVehicles(): Promise<Vehicle[]> {
-    const response = await this.apiService.getAvailableVehicles();
-    if (response.success && response.data) {
-      return response.data;
-    }
-    throw new Error(response.message || 'Error al obtener vehículos disponibles');
-  }
-
-  /**
-   * Calcular tarifa de préstamo
-   */
-  async calculateFare(vehicleId: string, durationMinutes: number): Promise<{ fare: number; breakdown: any }> {
-    const response = await this.apiService.calculateFare(vehicleId, durationMinutes);
-    if (response.success && response.data) {
-      return response.data;
-    }
-    throw new Error(response.message || 'Error al calcular tarifa');
-  }
-
-  // ============ QUICK DASHBOARD STATS ============
-  
-  /**
-   * Obtener estadísticas rápidas para el dashboard
-   */
-  async getQuickStats(userLat?: number, userLng?: number): Promise<QuickStats> {
+  async getNearbyStations(lat?: number, lng?: number): Promise<StationWithStats[]> {
     try {
-      const [stationsData, vehiclesData, currentLoan] = await Promise.allSettled([
-        userLat && userLng ? 
-          this.getNearbyStations(userLat, userLng, 2000) :
-          this.getNearbyStations(),
-        this.getAvailableVehicles(),
-        this.getCurrentLoan()
+      if (lat && lng) {
+        const response = await stationApiService.getNearbyStations(lat, lng, 5);
+        return response.success && response.data ? response.data.estaciones_cercanas : [];
+      } else {
+        const response = await stationApiService.getActiveStations();
+        return response.success && response.data ? response.data.slice(0, 10) : [];
+      }
+    } catch (error) {
+      console.error('Error getting nearby stations:', error);
+      return [];
+    }
+  }
+
+  // ============ MÉTODOS DE UTILIDAD ============
+
+  /**
+   * Obtener ID del usuario actual
+   */
+  private getCurrentUserId(): number | null {
+    try {
+      // Buscar con la clave correcta 'ecomove_user'
+      const userString = localStorage.getItem('ecomove_user');
+      console.log('🔍 Raw user string from localStorage:', userString);
+      
+      if (!userString) {
+        console.log('❌ No user data in localStorage');
+        return null;
+      }
+      
+      const user = JSON.parse(userString);
+      console.log('🔍 Parsed user object:', user);
+      console.log('🔍 User ID:', user.id, typeof user.id);
+      
+      return user.id || null;
+    } catch (error) {
+      console.error('Error obteniendo user ID:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Mapear LoanWithDetails a UserLoan
+   */
+  private mapLoanToUserLoan(loan: LoanWithDetails): UserLoan {
+    // Helper function para convertir de forma segura a string
+    const safeToString = (value: any, fallback: string = '0'): string => {
+      return (value !== undefined && value !== null) ? value.toString() : fallback;
+    };
+
+    // Mapear estado
+    let status: 'active' | 'completed' | 'cancelled';
+    if (loan.estado === 'overdue') {
+      status = 'active';
+    } else {
+      status = loan.estado as 'active' | 'completed' | 'cancelled';
+    }
+
+    return {
+      id: safeToString(loan.id),
+      transportId: safeToString(loan.transporte_id),
+      transportType: loan.transporte_tipo || 'unknown',
+      transportModel: loan.transporte_modelo || 'unknown',
+      startDate: loan.fecha_inicio || new Date().toISOString(),
+      endDate: loan.fecha_fin || undefined,
+      status,
+      cost: loan.costo_total || 0,
+      duration: loan.duracion_real || undefined,
+      originStation: {
+        id: safeToString(loan.estacion_origen_id),
+        name: loan.estacion_origen_nombre || 'Estación origen'
+      },
+      destinationStation: loan.estacion_destino_id ? {
+        id: safeToString(loan.estacion_destino_id),
+        name: loan.estacion_destino_nombre || 'Estación destino'
+      } : undefined
+    };
+  }
+
+  /**
+   * Obtener estadísticas rápidas para dashboard
+   */
+  async getQuickStats(): Promise<QuickStats> {
+    try {
+      const [loanSummary, stationsResponse] = await Promise.all([
+        loanApiService.getLoanSummaryForUser(),
+        stationApiService.getActiveStations()
       ]);
 
-      const nearbyStations = stationsData.status === 'fulfilled' ? stationsData.value.length : 0;
-      const availableVehicles = vehiclesData.status === 'fulfilled' ? vehiclesData.value.length : 0;
-      const activeLoan = currentLoan.status === 'fulfilled' ? currentLoan.value || undefined : undefined;
-
-      // Simulación de información del clima
-      const weatherInfo = {
-        temperature: 24,
-        condition: 'sunny',
-        recommendation: 'Perfecto para usar bicicleta'
-      };
+      const activeLoans = loanSummary.activeLoan ? 1 : 0;
+      const nearbyStations = stationsResponse.success && stationsResponse.data 
+        ? stationsResponse.data.length 
+        : 0;
 
       return {
+        activeLoans,
+        availableVehicles: 0, // Esto se puede calcular desde transportApi si es necesario
         nearbyStations,
-        availableVehicles,
-        currentLoan: activeLoan,
-        weatherInfo
+        totalSpent: loanSummary.totalSpent
       };
     } catch (error) {
       console.error('Error getting quick stats:', error);
       return {
-        nearbyStations: 0,
+        activeLoans: 0,
         availableVehicles: 0,
-        currentLoan: undefined,
-        weatherInfo: undefined
+        nearbyStations: 0,
+        totalSpent: 0
       };
-    }
-  }
-
-  // ============ ADDITIONAL USER METHODS ============
-
-  /**
-   * Obtener detalles de un préstamo específico
-   */
-  async getLoanDetails(loanId: string): Promise<UserLoan & { vehicle: Vehicle; originStation: Station; destinationStation?: Station }> {
-    const response = await this.apiService.getLoanDetails(loanId);
-    if (response.success && response.data) {
-      const mappedLoan = this.mapLoanToUserLoan(response.data);
-      return {
-        ...mappedLoan,
-        vehicle: response.data.vehicle,
-        originStation: response.data.originStation,
-        destinationStation: response.data.destinationStation
-      };
-    }
-    throw new Error(response.message || 'Error al obtener detalles del préstamo');
-  }
-
-  /**
-   * Obtener estación específica por ID
-   */
-  async getStation(stationId: string): Promise<Station> {
-    const response = await this.apiService.getStation(stationId);
-    if (response.success && response.data) {
-      return response.data;
-    }
-    throw new Error(response.message || 'Error al obtener estación');
-  }
-
-  /**
-   * Obtener vehículo específico por ID
-   */
-  async getVehicle(vehicleId: string): Promise<Vehicle> {
-    const response = await this.apiService.getVehicle(vehicleId);
-    if (response.success && response.data) {
-      return response.data;
-    }
-    throw new Error(response.message || 'Error al obtener vehículo');
-  }
-
-  /**
-   * Buscar estaciones por nombre o dirección
-   */
-  async searchStations(query: string): Promise<Station[]> {
-    try {
-      const allStations = await this.getNearbyStations();
-      return allStations.filter(station => 
-        station.name.toLowerCase().includes(query.toLowerCase()) ||
-        station.address.toLowerCase().includes(query.toLowerCase())
-      );
-    } catch (error) {
-      console.error('Error searching stations:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Obtener rutas sugeridas entre estaciones
-   */
-  async getRoute(originStationId: string, destinationStationId: string): Promise<any> {
-    try {
-      // En una implementación real, esto podría llamar a un servicio de mapas
-      // Por ahora, devolvemos datos simulados
-      const [originStation, destinationStation] = await Promise.all([
-        this.getStation(originStationId),
-        this.getStation(destinationStationId)
-      ]);
-
-      return {
-        origin: originStation,
-        destination: destinationStation,
-        distance: Math.random() * 5 + 1, // Distancia simulada en km
-        duration: Math.random() * 20 + 5, // Duración simulada en minutos
-        estimatedCost: Math.random() * 5000 + 2000 // Costo estimado simulado
-      };
-    } catch (error) {
-      console.error('Error getting route:', error);
-      throw new Error('Error al calcular ruta');
-    }
-  }
-
-  /**
-   * Obtener recomendaciones personalizadas
-   */
-  async getRecommendations(): Promise<{
-    recommendedStations: Station[];
-    recommendedVehicles: Vehicle[];
-    tips: string[];
-  }> {
-    try {
-      const [stats, nearbyStations, availableVehicles] = await Promise.allSettled([
-        this.getUserStats(),
-        this.getNearbyStations(),
-        this.getAvailableVehicles()
-      ]);
-
-      const userStats = stats.status === 'fulfilled' ? stats.value : null;
-      const stations = nearbyStations.status === 'fulfilled' ? nearbyStations.value : [];
-      const vehicles = availableVehicles.status === 'fulfilled' ? availableVehicles.value : [];
-
-      // Recomendaciones basadas en estadísticas del usuario
-      const tips = [];
-      if (userStats) {
-        if (userStats.totalLoans === 0) {
-          tips.push('¡Bienvenido! Te recomendamos empezar con una bicicleta para tu primer viaje.');
-        } else if (userStats.averageDuration > 60) {
-          tips.push('Considera usar patinetas eléctricas para viajes largos - son más eficientes.');
-        }
-        
-        if (userStats.thisMonth.loans > 10) {
-          tips.push('¡Eres un usuario frecuente! Considera suscribirte a nuestro plan mensual.');
-        }
-      }
-
-      return {
-        recommendedStations: stations.slice(0, 3),
-        recommendedVehicles: vehicles.slice(0, 5),
-        tips
-      };
-    } catch (error) {
-      console.error('Error getting recommendations:', error);
-      return {
-        recommendedStations: [],
-        recommendedVehicles: [],
-        tips: ['Explora las estaciones cercanas para encontrar el vehículo perfecto.']
-      };
-    }
-  }
-
-  /**
-   * Reportar problema con vehículo
-   */
-  async reportVehicleIssue(vehicleId: string, issue: string, description: string): Promise<void> {
-    try {
-      // En una implementación real, esto enviaría el reporte al backend
-      console.log('Reporting vehicle issue:', { vehicleId, issue, description });
-      
-      // Simulamos una llamada a la API
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Podrías implementar esto con un endpoint específico en tu backend
-      // const response = await this.apiService.request('/reports/vehicle-issue', {
-      //   method: 'POST',
-      //   body: JSON.stringify({ vehicleId, issue, description })
-      // });
-      
-    } catch (error) {
-      console.error('Error reporting vehicle issue:', error);
-      throw new Error('Error al reportar problema con vehículo');
-    }
-  }
-
-  /**
-   * Guardar estación como favorita
-   */
-  async addFavoriteStation(stationId: string): Promise<void> {
-    try {
-      // En una implementación real, esto guardaría la estación favorita en el backend
-      console.log('Adding favorite station:', stationId);
-      
-      // Simulamos guardado local por ahora
-      const favorites = JSON.parse(localStorage.getItem('favoriteStations') || '[]');
-      if (!favorites.includes(stationId)) {
-        favorites.push(stationId);
-        localStorage.setItem('favoriteStations', JSON.stringify(favorites));
-      }
-    } catch (error) {
-      console.error('Error adding favorite station:', error);
-      throw new Error('Error al agregar estación favorita');
-    }
-  }
-
-  /**
-   * Remover estación de favoritas
-   */
-  async removeFavoriteStation(stationId: string): Promise<void> {
-    try {
-      const favorites = JSON.parse(localStorage.getItem('favoriteStations') || '[]');
-      const updatedFavorites = favorites.filter((id: string) => id !== stationId);
-      localStorage.setItem('favoriteStations', JSON.stringify(updatedFavorites));
-    } catch (error) {
-      console.error('Error removing favorite station:', error);
-      throw new Error('Error al remover estación favorita');
-    }
-  }
-
-  /**
-   * Obtener estaciones favoritas
-   */
-  async getFavoriteStations(): Promise<Station[]> {
-    try {
-      const favoriteIds = JSON.parse(localStorage.getItem('favoriteStations') || '[]');
-      const allStations = await this.getNearbyStations();
-      return allStations.filter(station => favoriteIds.includes(station.id));
-    } catch (error) {
-      console.error('Error getting favorite stations:', error);
-      return [];
     }
   }
 }
 
+// Exportar instancia singleton
 export const userApiService = new UserApiService();

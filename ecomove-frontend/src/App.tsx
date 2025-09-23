@@ -1,3 +1,4 @@
+// src/App.tsx - ACTUALIZADO CON NUEVA RUTA
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -18,6 +19,7 @@ import ProfilePage from './pages/User/ProfilePage';
 // Nuevas páginas que vamos a crear
 import { UserDashboard } from './pages/User/UserDashboard';
 import { AdminDashboard } from './pages/Admin/AdminDashboard';
+import { RentVehicle } from './pages/User/RentVehicle'; // ✅ NUEVA IMPORTACIÓN
 
 // Componente de carga
 const LoadingSpinner: React.FC = () => (
@@ -145,6 +147,16 @@ const AppRoutes: React.FC = () => {
         } 
       />
       
+      {/* ✅ NUEVA RUTA - Alquilar vehículo */}
+      <Route 
+        path="/rent-vehicle" 
+        element={
+          <ProtectedRoute>
+            <RentVehicle />
+          </ProtectedRoute>
+        } 
+      />
+      
       {/* Rutas de administración */}
       <Route 
         path="/admin/dashboard" 
@@ -187,23 +199,6 @@ const AppRoutes: React.FC = () => {
         } 
       />
       <Route 
-        path="/prestamos" 
-        element={
-          <ProtectedRoute>
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-              <div className="text-center">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                  Gestión de Préstamos
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400">Próximamente disponible</p>
-              </div>
-            </div>
-          </ProtectedRoute>
-        } 
-      />
-      
-      {/* Rutas futuras de administración */}
-      <Route 
         path="/admin/usuarios" 
         element={
           <ProtectedRoute requireAdmin={true}>
@@ -219,13 +214,13 @@ const AppRoutes: React.FC = () => {
         } 
       />
       <Route 
-        path="/admin/vehiculos" 
+        path="/admin/transportes" 
         element={
           <ProtectedRoute requireAdmin={true}>
             <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
               <div className="text-center">
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                  Gestión de Vehículos
+                  Gestión de Transportes
                 </h1>
                 <p className="text-gray-600 dark:text-gray-400">Próximamente disponible</p>
               </div>
