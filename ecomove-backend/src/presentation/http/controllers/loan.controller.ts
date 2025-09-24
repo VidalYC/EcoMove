@@ -157,6 +157,82 @@ export class LoanController {
     }
   }
 
+  async getUserActiveLoan(req: Request, res: Response, userId: number): Promise<void> {
+    try {
+      // Usar el getLoanUseCase existente para buscar el préstamo activo
+      // Primero necesitas obtener el ID del préstamo activo
+      const userLoans = await this.getUserLoanHistoryUseCase.execute(userId, 1, 10);
+      
+      // Filtrar por préstamos activos
+      const activeLoan = userLoans.loans.find(loan => 
+        loan.status === 'active' || loan.status === 'extended'
+      );
+
+      if (!activeLoan) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'No hay préstamos activos',
+          data: null
+        };
+        res.status(404).json(response);
+        return;
+      }
+
+      const response: ApiResponse<LoanWithDetailsDto> = {
+        success: true,
+        message: 'Préstamo activo encontrado',
+        data: this.mapLoanWithDetailsToDto(activeLoan)
+      };
+
+      res.json(response);
+    } catch (error) {
+      const response: ApiResponse = {
+        success: false,
+        message: (error as Error).message || 'Error al obtener préstamo activo'
+      };
+      res.status(400).json(response);
+    }
+  }
+
+  async getCurrentUserLoans(req: Request, res: Response, userId: number): Promise<void> {
+    try {
+      
+      console.log('🎯 [CONTROLLER] getCurrentUserLoans called with userId:', userId);
+      console.log('🎯 [CONTROLLER] Query limite:', req.query.limite);
+      
+      const limit = parseInt(req.query.limite as string) || 5;
+      console.log('🎯 [CONTROLLER] Parsed limit:', limit);
+      
+      console.log('🎯 [CONTROLLER] Calling getUserLoanHistoryUseCase.execute...');
+      const result = await this.getUserLoanHistoryUseCase.execute(userId, 1, limit);
+      
+      console.log('🎯 [CONTROLLER] Use case result:', {
+        total: result.total,
+        totalPages: result.totalPages,
+        currentPage: result.currentPage,
+        loansCount: result.loans.length
+      });
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Préstamos del usuario obtenidos exitosamente',
+        data: {
+          prestamos: result.loans.map(loan => this.mapLoanWithDetailsToDto(loan)),
+          total: result.total,
+          limite: limit
+        }
+      };
+
+      res.json(response);
+    } catch (error) {
+      const response: ApiResponse = {
+        success: false,
+        message: (error as Error).message || 'Error al obtener préstamos del usuario'
+      };
+      res.status(400).json(response);
+    }
+  }
+
   // Obtener préstamo por ID
   async getLoanById(req: Request, res: Response): Promise<void> {
     try {

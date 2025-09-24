@@ -1,8 +1,9 @@
-// src/components/Auth/Register.tsx - CON VALIDACIONES COMPLETAS
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Leaf, Mail, Lock, User, FileText, Phone, AlertCircle, Check, X } from 'lucide-react';
+import { useNotifications } from '../../contexts/NotificationContext';
+import { ThemeToggle } from '../UI/ThemeToggle';
+import { Check, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function Register() {
@@ -14,13 +15,28 @@ export default function Register() {
     password: '',
     confirmPassword: ''
   });
-  const [passwordError, setPasswordError] = useState('');
   const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
-  const { register, loading, error, clearError } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { register, loading, error, clearError, user } = useAuth();
+  const { showSuccess, showError } = useNotifications();
   const navigate = useNavigate();
+  const hasShownError = useRef(false);
+  const hasShownSuccess = useRef(false);
+
+  // Redirigir si el usuario ya está autenticado
+  useEffect(() => {
+    if (user && !isSubmitting) {
+      if (user.role === 'admin') {
+        navigate('/admin/dashboard', { replace: true });
+      } else {
+        navigate('/user/dashboard', { replace: true });
+      }
+    }
+  }, [user, navigate, isSubmitting]);
 
   useEffect(() => {
     clearError();
+    hasShownError.current = false;
   }, [clearError]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -29,13 +45,7 @@ export default function Register() {
       ...prev,
       [name]: value
     }));
-    
-    // Limpiar error de contraseña cuando el usuario empiece a escribir
-    if (name === 'password' || name === 'confirmPassword') {
-      setPasswordError('');
-    }
 
-    // Mostrar requisitos cuando empiece a escribir la contraseña
     if (name === 'password') {
       setShowPasswordRequirements(value.length > 0);
     }
@@ -51,41 +61,59 @@ export default function Register() {
   };
 
   const validateForm = (): boolean => {
-    // Limpiar errores previos
-    setPasswordError('');
-
-    // Validar que las contraseñas coincidan
-    if (formData.password !== formData.confirmPassword) {
-      setPasswordError('Las contraseñas no coinciden');
-      return false;
-    }
-
-    // Validar longitud de contraseña
-    if (formData.password.length < 6) {
-      setPasswordError('La contraseña debe tener al menos 6 caracteres');
-      return false;
-    }
-
-    // Validar que tenga al menos una mayúscula
-    if (!/[A-Z]/.test(formData.password)) {
-      setPasswordError('La contraseña debe contener al menos una letra mayúscula');
-      return false;
-    }
-
-    // Validar que tenga al menos una minúscula
-    if (!/[a-z]/.test(formData.password)) {
-      setPasswordError('La contraseña debe contener al menos una letra minúscula');
-      return false;
-    }
-
-    // Validar que tenga al menos un número
-    if (!/\d/.test(formData.password)) {
-      setPasswordError('La contraseña debe contener al menos un número');
-      return false;
-    }
-
     // Validar campos requeridos
-    if (!formData.nombre || !formData.correo || !formData.password) {
+    if (!formData.nombre.trim()) {
+      showError('Campo Requerido', 'El nombre es obligatorio.');
+      return false;
+    }
+
+    if (!formData.correo.trim()) {
+      showError('Campo Requerido', 'El correo electrónico es obligatorio.');
+      return false;
+    }
+
+    if (!formData.password.trim()) {
+      showError('Campo Requerido', 'La contraseña es obligatoria.');
+      return false;
+    }
+
+    // Validar email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.correo)) {
+      showError('Email Inválido', 'Por favor ingresa un email válido.');
+      return false;
+    }
+
+    // Validar contraseña
+    if (formData.password !== formData.confirmPassword) {
+      showError('Contraseñas No Coinciden', 'Por favor verifica que ambas contraseñas sean iguales.');
+      return false;
+    }
+
+    if (formData.password.length < 6) {
+      showError('Contraseña Muy Corta', 'La contraseña debe tener al menos 6 caracteres.');
+      return false;
+    }
+
+    if (!/[A-Z]/.test(formData.password)) {
+      showError('Contraseña Débil', 'La contraseña debe contener al menos una letra mayúscula.');
+      return false;
+    }
+
+    if (!/[a-z]/.test(formData.password)) {
+      showError('Contraseña Débil', 'La contraseña debe contener al menos una letra minúscula.');
+      return false;
+    }
+
+    if (!/\d/.test(formData.password)) {
+      showError('Contraseña Débil', 'La contraseña debe contener al menos un número.');
+      return false;
+    }
+
+    // Validar nombre (solo letras y espacios)
+    const nameRegex = /^[a-zA-ZÀ-ÿ\s]+$/;
+    if (!nameRegex.test(formData.nombre)) {
+      showError('Nombre Inválido', 'El nombre solo puede contener letras y espacios.');
       return false;
     }
 
@@ -94,248 +122,521 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setPasswordError('');
+    
+    // Evitar múltiples envíos
+    if (isSubmitting || loading) {
+      return;
+    }
+
     clearError();
+    hasShownError.current = false;
+    hasShownSuccess.current = false;
 
     if (!validateForm()) {
       return;
     }
 
-    const success = await register({
-      nombre: formData.nombre,
-      correo: formData.correo,
-      documento: formData.documento,
-      telefono: formData.telefono,
-      password: formData.password,
-    });
+    setIsSubmitting(true);
 
-    if (success) {
-      navigate('/stations');
+    try {
+      const success = await register({
+        nombre: formData.nombre.trim(),
+        correo: formData.correo.trim().toLowerCase(),
+        documento: formData.documento.trim(),
+        telefono: formData.telefono.trim(),
+        password: formData.password,
+      });
+
+      if (success && !hasShownSuccess.current) {
+        hasShownSuccess.current = true;
+        showSuccess(
+          '¡Registro Exitoso!',
+          'Redirigiendo al login...'
+        );
+        
+        // Redirigir inmediatamente sin espera
+        setTimeout(() => {
+          navigate('/login', { 
+            state: { 
+              message: 'Cuenta creada exitosamente. Ahora puedes iniciar sesión.',
+              email: formData.correo 
+            },
+            replace: true
+          });
+        }, 800);
+      }
+    } catch (err: any) {
+      if (!hasShownError.current) {
+        hasShownError.current = true;
+        showError(
+          'Error de Conexión',
+          'No se pudo conectar con el servidor. Por favor intenta de nuevo.'
+        );
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
+  // Mostrar errores del contexto de auth como notificaciones (solo una vez)
+  useEffect(() => {
+    if (error && !hasShownError.current && !isSubmitting) {
+      hasShownError.current = true;
+      
+      let title = 'Error de Registro';
+      let message = error;
+
+      // Personalizar mensajes según el tipo de error
+      if (error.toLowerCase().includes('email') || 
+          error.toLowerCase().includes('correo') ||
+          error.toLowerCase().includes('already exists') ||
+          error.toLowerCase().includes('ya existe')) {
+        title = 'Email Ya Registrado';
+        message = 'Ya existe una cuenta con este email. ¿Deseas iniciar sesión?';
+      } else if (error.toLowerCase().includes('network') || 
+                 error.toLowerCase().includes('conexión')) {
+        title = 'Error de Conexión';
+        message = 'No se pudo conectar con el servidor. Por favor verifica tu conexión a internet.';
+      } else if (error.toLowerCase().includes('validation') ||
+                 error.toLowerCase().includes('validación')) {
+        title = 'Datos Inválidos';
+        message = 'Por favor revisa los datos ingresados y corrige los errores.';
+      } else if (error.toLowerCase().includes('server') ||
+                 error.toLowerCase().includes('servidor')) {
+        title = 'Error del Servidor';
+        message = 'Hay un problema temporal con el servidor. Por favor intenta más tarde.';
+      }
+
+      showError(title, message);
+      clearError(); // Limpiar para evitar mostrar múltiples veces
+    }
+  }, [error, showError, clearError, isSubmitting]);
+
   const RequirementIndicator = ({ met, text }: { met: boolean; text: string }) => (
-    <div className={`flex items-center space-x-2 text-sm ${met ? 'text-green-600' : 'text-gray-500'}`}>
+    <div
+      className={`flex items-center space-x-2 text-sm ${
+        met ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
+      }`}
+    >
       {met ? (
-        <Check className="h-4 w-4 text-green-600" />
+        <Check className="h-4 w-4 flex-shrink-0" />
       ) : (
-        <X className="h-4 w-4 text-gray-400" />
+        <X className="h-4 w-4 flex-shrink-0" />
       )}
       <span>{text}</span>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-blue-50 to-purple-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white dark:bg-gray-900 flex transition-colors duration-200 relative">
+      {/* Elementos decorativos blob - dos capas giradas */}
+      <div 
+        className="absolute top-1/2 right-[20%] transform -translate-y-1/2 pointer-events-none z-0"
+        style={{
+          width: '500px',
+          height: '500px',
+          background: 'linear-gradient(135deg, #06B6D4 0%, #10B981 50%, #3B82F6 100%)',
+          borderRadius: '30% 70% 70% 30% / 30% 30% 70% 70%',
+          opacity: 0.2,
+        }}
+      />
+      
+      {/* Segundo blob girado */}
+      <div 
+        className="absolute top-1/2 right-[18%] transform -translate-y-1/2 rotate-45 pointer-events-none z-0"
+        style={{
+          width: '400px',
+          height: '400px',
+          background: 'linear-gradient(200deg, #22D3EE 0%, #34D399 70%)',
+          borderRadius: '40% 60% 60% 40% / 40% 40% 60% 60%',
+          opacity: 0.15,
+        }}
+      />
+      
+      {/* Toggle de tema en la esquina superior derecha */}
+      <div className="absolute top-4 right-4 z-20">
+        <ThemeToggle size="md" />
+      </div>
+
+      {/* Formulario - Centrado y optimizado */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="max-w-md w-full"
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-6"
       >
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <div className="text-center mb-8">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-              className="mx-auto h-16 w-16 bg-gradient-to-r from-emerald-500 to-blue-600 rounded-full flex items-center justify-center mb-4"
-            >
-              <Leaf className="h-8 w-8 text-white" />
-            </motion.div>
-            <h2 className="text-3xl font-bold text-gray-900">Únete a EcoMove</h2>
-            <p className="mt-2 text-gray-600">Crea tu cuenta y comienza a moverte de forma sostenible</p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
+        <div className="w-full max-w-md">
+          <motion.form
+            onSubmit={handleSubmit}
+            className="neumorphic-form"
+            whileHover={{ 
+              x: -6, 
+              y: -6,
+              transition: { duration: 0.3, ease: "easeInOut" }
+            }}
+            whileTap={{ 
+              x: 0, 
+              y: 0,
+              transition: { duration: 0.2 }
+            }}
+          >
+            {/* Logo y título compactos */}
+            <div className="flex flex-col items-center mb-6">
               <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-3"
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ delay: 0.3, duration: 0.6, type: "spring", stiffness: 200 }}
+                className="w-12 h-12 rounded-full bg-gradient-to-r from-emerald-200 to-blue-200 flex items-center justify-center mb-3 shadow-lg overflow-hidden"
               >
-                <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
-                <p className="text-red-700 text-sm">{error}</p>
+                <img 
+                  src="/planet.png" 
+                  alt="Planet logo" 
+                  className="w-7 h-7 object-contain"
+                />
               </motion.div>
-            )}
 
-            {passwordError && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-3"
-              >
-                <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
-                <p className="text-red-700 text-sm">{passwordError}</p>
-              </motion.div>
-            )}
+              <h2 className="neumorphic-heading">
+                Crear Cuenta
+              </h2>
+            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nombre Completo *
-              </label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+            {/* Campos del formulario con espaciado optimizado */}
+            <div className="space-y-3">
+              {/* Nombre */}
+              <div>
                 <input
                   type="text"
                   name="nombre"
                   required
                   value={formData.nombre}
                   onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                  placeholder="Juan Pérez"
-                  disabled={loading}
+                  className="neumorphic-input"
+                  placeholder="Nombre completo *"
+                  disabled={loading || isSubmitting}
                 />
               </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Correo Electrónico *
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              {/* Email */}
+              <div>
                 <input
                   type="email"
                   name="correo"
                   required
                   value={formData.correo}
                   onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                  placeholder="tu@email.com"
-                  disabled={loading}
+                  className="neumorphic-input"
+                  placeholder="Correo electrónico *"
+                  disabled={loading || isSubmitting}
                 />
               </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Documento
-                </label>
-                <div className="relative">
-                  <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    type="text"
-                    name="documento"
-                    value={formData.documento}
-                    onChange={handleChange}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                    placeholder="12345678"
-                    disabled={loading}
-                  />
-                </div>
+              {/* Documento y Teléfono en grid compacto */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <input
+                  type="text"
+                  name="documento"
+                  value={formData.documento}
+                  onChange={handleChange}
+                  className="neumorphic-input"
+                  placeholder="Documento"
+                  disabled={loading || isSubmitting}
+                />
+                <input
+                  type="tel"
+                  name="telefono"
+                  value={formData.telefono}
+                  onChange={handleChange}
+                  className="neumorphic-input"
+                  placeholder="Teléfono"
+                  disabled={loading || isSubmitting}
+                />
               </div>
 
+              {/* Contraseña */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Teléfono
-                </label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    type="tel"
-                    name="telefono"
-                    value={formData.telefono}
-                    onChange={handleChange}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                    placeholder="3001234567"
-                    disabled={loading}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Contraseña *
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input
                   type="password"
                   name="password"
                   required
-                  minLength={6}
                   value={formData.password}
                   onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                  placeholder="••••••••"
-                  disabled={loading}
+                  className="neumorphic-input"
+                  placeholder="Contraseña *"
+                  disabled={loading || isSubmitting}
                 />
               </div>
 
-              {/* Indicadores de requisitos de contraseña */}
+              {/* Requisitos de contraseña compactos */}
               {showPasswordRequirements && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
-                  className="mt-3 p-3 bg-gray-50 rounded-lg space-y-2"
+                  exit={{ opacity: 0, height: 0 }}
+                  className="p-2.5 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 space-y-1"
                 >
-                  <p className="text-sm font-medium text-gray-700 mb-2">Requisitos de contraseña:</p>
+                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Requisitos de contraseña:
+                  </p>
                   <RequirementIndicator met={passwordRequirements.length} text="Al menos 6 caracteres" />
-                  <RequirementIndicator met={passwordRequirements.uppercase} text="Al menos una mayúscula (A-Z)" />
-                  <RequirementIndicator met={passwordRequirements.lowercase} text="Al menos una minúscula (a-z)" />
-                  <RequirementIndicator met={passwordRequirements.number} text="Al menos un número (0-9)" />
+                  <RequirementIndicator met={passwordRequirements.uppercase} text="Una letra mayúscula" />
+                  <RequirementIndicator met={passwordRequirements.lowercase} text="Una letra minúscula" />
+                  <RequirementIndicator met={passwordRequirements.number} text="Un número" />
                 </motion.div>
               )}
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Confirmar Contraseña *
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              {/* Confirmar Contraseña */}
+              <div>
                 <input
                   type="password"
                   name="confirmPassword"
                   required
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                  placeholder="••••••••"
-                  disabled={loading}
+                  className="neumorphic-input"
+                  placeholder="Confirmar contraseña *"
+                  disabled={loading || isSubmitting}
                 />
               </div>
 
-              {/* Indicador de coincidencia de contraseñas */}
+              {/* Indicador de coincidencia compacto */}
               {formData.confirmPassword.length > 0 && (
-                <div className="mt-2">
-                  <RequirementIndicator met={passwordRequirements.match} text="Las contraseñas coinciden" />
-                </div>
+                <RequirementIndicator met={passwordRequirements.match} text="Las contraseñas coinciden" />
               )}
             </div>
 
-            <button
+            {/* Botón de submit */}
+            <motion.button
               type="submit"
-              disabled={loading || !formData.nombre || !formData.correo || !formData.password || !Object.values(passwordRequirements).every(req => req)}
-              className="w-full bg-gradient-to-r from-emerald-500 to-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:from-emerald-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              disabled={loading || isSubmitting || !formData.nombre || !formData.correo || !formData.password || !Object.values(passwordRequirements).every(req => req)}
+              className="neumorphic-button w-full mt-5"
+              whileHover={{ 
+                x: -6, 
+                y: -6,
+                transition: { duration: 0.3, ease: "easeInOut" }
+              }}
+              whileTap={{ 
+                x: 0, 
+                y: 0,
+                transition: { duration: 0.2 }
+              }}
             >
-              {loading ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+              {(loading || isSubmitting) ? (
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-600 dark:border-gray-300 border-t-transparent"></div>
                   <span>Creando cuenta...</span>
-                </>
+                </div>
               ) : (
-                <span>Crear Cuenta</span>
+                'Crear Cuenta'
               )}
-            </button>
+            </motion.button>
 
-            <div className="text-center">
-              <p className="text-gray-600">
+            {/* Enlaces compactos */}
+            <div className="text-center mt-4">
+              <p className="text-gray-600 dark:text-gray-400 text-sm">
                 ¿Ya tienes una cuenta?{' '}
                 <Link
                   to="/login"
-                  className="font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
+                  className="font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors"
                 >
                   Inicia sesión aquí
                 </Link>
               </p>
             </div>
-          </form>
+          </motion.form>
+
+          {/* Back to home */}
+          <div className="text-center mt-3">
+            <Link
+              to="/"
+              className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+            >
+              ← Volver al inicio
+            </Link>
+          </div>
         </div>
       </motion.div>
+
+      {/* Imagen lateral - contenedor más grande */}
+      <div className="hidden lg:flex lg:w-[55%] items-center justify-start relative overflow-visible">
+        <motion.img
+          initial={{ opacity: 0, x: 30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          src="/der-login.png" 
+          alt="Register illustration" 
+          className="block"
+          style={{
+            filter: 'drop-shadow(20px 20px 40px rgba(0, 0, 0, 0.3)) drop-shadow(-10px -10px 30px rgba(255, 255, 255, 0.1))',
+            width: '800px',
+            height: '800px',
+            objectFit: 'contain',
+            transform: 'translateX(-15%)',
+            maxWidth: 'none'
+          }}
+        />
+      </div>
+
+      {/* Estilos CSS optimizados */}
+      <style>{`
+        .dark img[src="/der-login.png"] {
+          filter: drop-shadow(20px 20px 40px rgba(0, 0, 0, 0.6)) drop-shadow(-10px -10px 30px rgba(255, 255, 255, 0.05)) !important;
+        }
+
+        .neumorphic-form {
+          background-color: #f8fafc;
+          padding: 2.5rem;
+          border-radius: 25px;
+          transition: all 0.3s ease-in-out;
+          box-shadow: 12px 12px 35px #d0d7de, -12px -12px 35px #ffffff;
+          border: 1px solid transparent;
+          max-width: 100%;
+          min-width: 480px;
+        }
+
+        .dark .neumorphic-form {
+          background-color: #111827;
+          box-shadow: 12px 12px 35px #0a0d12, -12px -12px 35px #1a1f2e;
+        }
+
+        .neumorphic-form:hover {
+          border: 1px solid #e5e7eb;
+          box-shadow: 6px 6px 18px #bcc3cf, -6px -6px 18px #ffffff, inset 1px 1px 5px rgba(0,0,0,0.1);
+        }
+
+        .dark .neumorphic-form:hover {
+          border: 1px solid #374151;
+          box-shadow: 6px 6px 18px #070911, -6px -6px 18px #1a1f2e, inset 1px 1px 5px rgba(255,255,255,0.03);
+        }
+
+        .neumorphic-heading {
+          color: #1f2937;
+          text-align: center;
+          font-weight: bold;
+          font-size: 1.375rem;
+          margin: 0;
+        }
+
+        .dark .neumorphic-heading {
+          color: #f9fafb;
+        }
+
+        .neumorphic-input {
+          width: 100%;
+          border-radius: 12px;
+          border: 1px solid #e5e7eb;
+          background-color: #f8fafc;
+          outline: none;
+          padding: 1rem 1.25rem;
+          transition: all 0.3s ease-in-out;
+          color: #1f2937;
+          box-shadow: inset 4px 4px 8px #d0d7de, inset -4px -4px 8px #ffffff;
+          font-size: 1rem;
+          height: 3.5rem;
+        }
+
+        .dark .neumorphic-input {
+          border: 1px solid #374151;
+          background-color: #111827;
+          color: #f9fafb;
+          box-shadow: inset 4px 4px 8px #0a0d12, inset -4px -4px 8px #1a1f2e;
+        }
+
+        .neumorphic-input::placeholder {
+          color: #6b7280;
+        }
+
+        .dark .neumorphic-input::placeholder {
+          color: #9ca3af;
+        }
+
+        .neumorphic-input:hover {
+          box-shadow: inset 6px 6px 12px #bcc3cf, inset -6px -6px 12px #ffffff;
+          border-color: #d1d5db;
+        }
+
+        .dark .neumorphic-input:hover {
+          box-shadow: inset 6px 6px 12px #070911, inset -6px -6px 12px #1a1f2e;
+          border-color: #4b5563;
+        }
+
+        .neumorphic-input:focus {
+          background: #ffffff;
+          box-shadow: inset 8px 8px 16px #bcc3cf, inset -8px -8px 16px #ffffff;
+          border-color: #3b82f6;
+        }
+
+        .dark .neumorphic-input:focus {
+          background: #0d1117;
+          box-shadow: inset 8px 8px 16px #070911, inset -8px -8px 16px #131821;
+          border-color: #3b82f6;
+        }
+
+        .neumorphic-button {
+          padding: 1rem 1.5rem;
+          border-radius: 15px;
+          border: none;
+          color: #1f2937;
+          background-color: #f8fafc;
+          font-weight: 600;
+          transition: all 0.3s ease-in-out;
+          box-shadow: 8px 8px 20px #d0d7de, -8px -8px 20px #ffffff;
+          cursor: pointer;
+          font-size: 1rem;
+          height: 3.5rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .dark .neumorphic-button {
+          color: #f9fafb;
+          background-color: #111827;
+          box-shadow: 8px 8px 20px #0a0d12, -8px -8px 20px #1a1f2e;
+        }
+
+        .neumorphic-button:hover:not(:disabled) {
+          transform: translate(2px, 2px);
+        }
+
+        .dark .neumorphic-button:hover:not(:disabled) {
+          box-shadow: 4px 4px 10px #070911, -4px -4px 10px #1a1f2e, inset 1px 1px 4px rgba(255,255,255,0.03);
+          transform: translate(2px, 2px);
+        }
+
+        .neumorphic-button:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .neumorphic-button:active:not(:disabled) {
+          transition: 0.1s;
+          box-shadow: inset 4px 4px 8px #bcc3cf, inset -4px -4px 8px #ffffff;
+          transform: translate(0, 0);
+        }
+
+        .dark .neumorphic-button:active:not(:disabled) {
+          box-shadow: inset 4px 4px 8px #070911, inset -4px -4px 8px #1a1f2e;
+        }
+
+        @media (max-width: 1024px) {
+          .neumorphic-form {
+            padding: 1.5rem;
+            border-radius: 18px;
+            box-shadow: 10px 10px 30px #d0d7de, -10px -10px 30px #ffffff;
+          }
+          
+          .dark .neumorphic-form {
+            box-shadow: 10px 10px 30px #0a0d12, -10px -10px 30px #1a1f2e;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .neumorphic-form {
+            padding: 1.25rem;
+            border-radius: 16px;
+          }
+        }
+      `}</style>
     </div>
   );
 }

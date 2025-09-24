@@ -1,172 +1,510 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Eye, EyeOff, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
+import { useNotifications } from '../../contexts/NotificationContext';
+import { Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { ThemeToggle } from '../UI/ThemeToggle';
 import { motion } from 'framer-motion';
 
-export default function Login() {
+const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const { login, loading, error, clearError } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { login, loading, error, clearError, user } = useAuth();
+  const { showSuccess, showError } = useNotifications();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const hasShownError = useRef(false);
+  const hasShownSuccess = useRef(false);
+
+  // Manejar mensajes de redirección desde register
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.message && !hasShownSuccess.current) {
+      hasShownSuccess.current = true;
+      showSuccess('¡Registro Exitoso!', state.message);
+      
+      // Si viene un email del registro, pre-rellenarlo
+      if (state.email) {
+        setEmail(state.email);
+      }
+      
+      // Limpiar el state para evitar mostrar el mensaje repetidamente
+      navigate('/login', { replace: true });
+    }
+  }, [location.state, showSuccess, navigate]);
+
+  // Redirigir si el usuario ya está autenticado
+  useEffect(() => {
+    if (user && !isSubmitting) {
+      if (user.role === 'admin') {
+        navigate('/admin/dashboard', { replace: true });
+      } else {
+        navigate('/user/dashboard', { replace: true });
+      }
+    }
+  }, [user, navigate, isSubmitting]);
 
   useEffect(() => {
-    // Limpiar errores cuando el componente se monta
     clearError();
+    hasShownError.current = false;
   }, [clearError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    clearError();
     
-    if (!email || !password) {
+    // Evitar múltiples envíos
+    if (isSubmitting || loading) {
       return;
     }
 
-    const success = await login({
-      correo: email,
-      password: password,
-    });
+    clearError();
+    hasShownError.current = false;
+    hasShownSuccess.current = false;
+    
+    if (!email || !password) {
+      showError(
+        'Datos Incompletos',
+        'Por favor completa todos los campos requeridos.'
+      );
+      return;
+    }
 
-    if (success) {
-      // El redireccionamiento se manejará automáticamente por el cambio de estado del usuario
-      console.log('Login exitoso');
+    // Validación básica de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      showError(
+        'Email Inválido',
+        'Por favor ingresa un email válido.'
+      );
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const success = await login({
+        correo: email,
+        password: password,
+      });
+
+      if (success && !hasShownSuccess.current) {
+        hasShownSuccess.current = true;
+        showSuccess(
+          '¡Bienvenido!',
+          `Hola ${user?.nombre || 'usuario'}! Accediendo...`
+        );
+      }
+    } catch (err: any) {
+      if (!hasShownError.current) {
+        hasShownError.current = true;
+        showError(
+          'Error de Conexión',
+          'No se pudo conectar con el servidor. Por favor intenta de nuevo.'
+        );
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-blue-50 to-purple-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="max-w-md w-full"
-      >
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <div className="text-center mb-8">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-              className="mx-auto h-16 w-16 bg-gradient-to-r from-emerald-500 to-blue-600 rounded-full flex items-center justify-center mb-4"
-            >
-              <span className="text-white text-2xl font-bold">E</span>
-            </motion.div>
-            <h2 className="text-3xl font-bold text-gray-900">Bienvenido</h2>
-            <p className="mt-2 text-gray-600">Inicia sesión en EcoMove</p>
-          </div>
+  // Mostrar errores del contexto de auth como notificaciones (solo una vez)
+  useEffect(() => {
+    if (error && !hasShownError.current && !isSubmitting) {
+      hasShownError.current = true;
+      
+      let title = 'Error de Inicio de Sesión';
+      let message = error;
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
+      // Personalizar mensajes según el tipo de error
+      if (error.toLowerCase().includes('credenciales') || 
+          error.toLowerCase().includes('credentials') ||
+          error.toLowerCase().includes('invalid') ||
+          error.toLowerCase().includes('incorrect')) {
+        title = 'Credenciales Incorrectas';
+        message = 'El email o la contraseña son incorrectos.';
+      } else if (error.toLowerCase().includes('network') || 
+                 error.toLowerCase().includes('conexión')) {
+        title = 'Error de Conexión';
+        message = 'Verifica tu conexión a internet.';
+      } else if (error.toLowerCase().includes('usuario no encontrado') ||
+                 error.toLowerCase().includes('user not found')) {
+        title = 'Usuario No Encontrado';
+        message = 'No existe una cuenta con este email.';
+      } else if (error.toLowerCase().includes('blocked') ||
+                 error.toLowerCase().includes('bloqueado')) {
+        title = 'Cuenta Bloqueada';
+        message = 'Contacta al soporte.';
+      } else if (error.toLowerCase().includes('suspended') ||
+                 error.toLowerCase().includes('suspendido')) {
+        title = 'Cuenta Suspendida';
+        message = 'Contacta al soporte.';
+      }
+
+      showError(title, message);
+      clearError(); // Limpiar para evitar mostrar múltiples veces
+    }
+  }, [error, showError, clearError, isSubmitting]);
+
+  return (
+    <div className="min-h-screen bg-white dark:bg-gray-900 flex transition-colors duration-200 relative">
+      {/* Elementos decorativos blob - dos capas giradas */}
+      <div 
+        className="absolute top-1/2 left-[20%] transform -translate-y-1/2 pointer-events-none z-0"
+        style={{
+          width: '500px',
+          height: '500px',
+          background: 'linear-gradient(135deg, #06B6D4 0%, #10B981 50%, #3B82F6 100%)',
+          borderRadius: '30% 70% 70% 30% / 30% 30% 70% 70%',
+          opacity: 0.2,
+        }}
+      />
+      
+      {/* Segundo blob girado */}
+      <div 
+        className="absolute top-1/2 left-[22%] transform -translate-y-1/2 rotate-45 pointer-events-none z-0"
+        style={{
+          width: '400px',
+          height: '400px',
+          background: 'linear-gradient(200deg, #22D3EE 0%, #34D399 70%)',
+          borderRadius: '40% 60% 60% 40% / 40% 40% 60% 60%',
+          opacity: 0.15,
+        }}
+      />
+
+      {/* Toggle de tema en la esquina superior derecha */}
+      <div className="absolute top-4 right-4 z-20">
+        <ThemeToggle size="md" />
+      </div>
+
+      {/* Imagen lateral - lado izquierdo */}
+      <div className="hidden lg:flex lg:w-[55%] items-center justify-end pl-8 pr-4">
+        <motion.img
+          initial={{ opacity: 0, x: -30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          src="/izq-login.png" 
+          alt="Login illustration" 
+          className="block"
+          style={{
+            filter: 'drop-shadow(20px 20px 40px rgba(0, 0, 0, 0.3)) drop-shadow(-10px -10px 30px rgba(255, 255, 255, 0.1))',
+            width: '800px',
+            height: '800px',
+            objectFit: 'contain',
+            transform: 'translateX(15%)',
+            maxWidth: 'none'
+          }}
+        />
+      </div>
+
+      {/* Formulario - lado derecho */}
+      <motion.div
+        initial={{ opacity: 0, x: 30 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="w-full lg:w-[45%] flex items-center justify-start p-4 sm:p-6 lg:pl-2"
+      >
+        <div className="w-full max-w-lg">
+          <motion.form
+            onSubmit={handleSubmit}
+            className="neumorphic-form"
+            whileHover={{ 
+              x: -6, 
+              y: -6,
+              transition: { duration: 0.3, ease: "easeInOut" }
+            }}
+            whileTap={{ 
+              x: 0, 
+              y: 0,
+              transition: { duration: 0.2 }
+            }}
+          >
+            {/* Logo y título compactos */}
+            <div className="flex flex-col items-center mb-6">
               <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-3"
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ delay: 0.3, duration: 0.6, type: "spring", stiffness: 200 }}
+                className="w-12 h-12 rounded-full bg-gradient-to-r from-emerald-200 to-blue-200 flex items-center justify-center mb-3 shadow-lg overflow-hidden"
               >
-                <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
-                <p className="text-red-700 text-sm">{error}</p>
+                <img 
+                  src="/planet.png" 
+                  alt="Planet logo" 
+                  className="w-7 h-7 object-contain"
+                />
+              </motion.div>
+
+              <h2 className="neumorphic-heading">
+                Iniciar Sesión
+              </h2>
+            </div>
+
+            {/* Mensaje de bienvenida si viene del registro */}
+            {location.state?.message && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="mb-4 p-2.5 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center space-x-2"
+              >
+                <CheckCircle className="h-4 w-4 text-green-500 dark:text-green-400 flex-shrink-0" />
+                <p className="text-green-700 dark:text-green-400 text-sm">¡Ahora puedes iniciar sesión!</p>
               </motion.div>
             )}
 
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Correo Electrónico
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                </div>
+            {/* Campos del formulario */}
+            <div className="space-y-4">
+              {/* Email */}
+              <div>
                 <input
-                  id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors"
-                  placeholder="tu@email.com"
+                  className="neumorphic-input"
+                  placeholder="Correo electrónico *"
                   required
-                  disabled={loading}
+                  disabled={loading || isSubmitting}
                 />
               </div>
-            </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Contraseña
-              </label>
+              {/* Password */}
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
                 <input
-                  id="password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors"
-                  placeholder="••••••••"
+                  className="neumorphic-input pr-12"
+                  placeholder="Contraseña *"
                   required
-                  disabled={loading}
+                  disabled={loading || isSubmitting}
                 />
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   onClick={() => setShowPassword(!showPassword)}
-                  disabled={loading}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  disabled={loading || isSubmitting}
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  )}
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
             </div>
 
-            <button
+            {/* Botón de submit */}
+            <motion.button
               type="submit"
-              disabled={loading || !email || !password}
-              className="w-full bg-gradient-to-r from-emerald-500 to-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:from-emerald-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              disabled={loading || isSubmitting || !email || !password}
+              className="neumorphic-button w-full mt-6"
+              whileHover={{ 
+                x: -6, 
+                y: -6,
+                transition: { duration: 0.3, ease: "easeInOut" }
+              }}
+              whileTap={{ 
+                x: 0, 
+                y: 0,
+                transition: { duration: 0.2 }
+              }}
             >
-              {loading ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Iniciando sesión...</span>
-                </>
+              {(loading || isSubmitting) ? (
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-600 dark:border-gray-300 border-t-transparent"></div>
+                  <span>Iniciando...</span>
+                </div>
               ) : (
-                <span>Iniciar Sesión</span>
+                'Iniciar Sesión'
               )}
-            </button>
+            </motion.button>
 
-            <div className="text-center">
-              <p className="text-gray-600">
+            {/* Enlaces */}
+            <div className="text-center mt-4">
+              <p className="text-gray-600 dark:text-gray-400 text-sm">
                 ¿No tienes una cuenta?{' '}
                 <Link
                   to="/register"
-                  className="font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
+                  className="font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors"
                 >
                   Regístrate aquí
                 </Link>
               </p>
             </div>
-          </form>
-        </div>
+          </motion.form>
 
-        {/* Datos de prueba para desarrollo */}
-        {import.meta.env.NODE_ENV === 'development' && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="mt-6 bg-gray-50 rounded-lg p-4"
-          >
-            <p className="text-xs text-gray-500 mb-2">Datos de prueba (desarrollo):</p>
-            <div className="text-xs space-y-1">
-              <p><strong>Usuario:</strong> user@test.com / password123</p>
-              <p><strong>Admin:</strong> admin@test.com / admin123</p>
-            </div>
-          </motion.div>
-        )}
+          {/* Back to home */}
+          <div className="text-center mt-3">
+            <Link
+              to="/"
+              className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+            >
+              ← Volver al inicio
+            </Link>
+          </div>
+        </div>
       </motion.div>
+
+      {/* Estilos CSS optimizados */}
+      <style>{`
+        .dark img[src="/izq-login.png"] {
+          filter: drop-shadow(20px 20px 40px rgba(0, 0, 0, 0.6)) drop-shadow(-10px -10px 30px rgba(255, 255, 255, 0.05)) !important;
+        }
+
+        .neumorphic-form {
+          background-color: #f8fafc;
+          padding: 2.5rem;
+          border-radius: 25px;
+          transition: all 0.3s ease-in-out;
+          box-shadow: 12px 12px 35px #d0d7de, -12px -12px 35px #ffffff;
+          border: 1px solid transparent;
+          max-width: 100%;
+          min-width: 480px;
+        }
+
+        .dark .neumorphic-form {
+          background-color: #111827;
+          box-shadow: 12px 12px 35px #0a0d12, -12px -12px 35px #1a1f2e;
+        }
+
+        .neumorphic-form:hover {
+          border: 1px solid #e5e7eb;
+          box-shadow: 6px 6px 18px #bcc3cf, -6px -6px 18px #ffffff, inset 1px 1px 5px rgba(0,0,0,0.1);
+        }
+
+        .dark .neumorphic-form:hover {
+          border: 1px solid #374151;
+          box-shadow: 6px 6px 18px #070911, -6px -6px 18px #1a1f2e, inset 1px 1px 5px rgba(255,255,255,0.03);
+        }
+
+        .neumorphic-heading {
+          color: #1f2937;
+          text-align: center;
+          font-weight: bold;
+          font-size: 1.375rem;
+          margin: 0;
+        }
+
+        .dark .neumorphic-heading {
+          color: #f9fafb;
+        }
+
+        .neumorphic-input {
+          width: 100%;
+          border-radius: 12px;
+          border: 1px solid #e5e7eb;
+          background-color: #f8fafc;
+          outline: none;
+          padding: 1rem 1.25rem;
+          transition: all 0.3s ease-in-out;
+          color: #1f2937;
+          box-shadow: inset 4px 4px 8px #d0d7de, inset -4px -4px 8px #ffffff;
+          font-size: 1rem;
+          height: 3.5rem;
+        }
+
+        .dark .neumorphic-input {
+          border: 1px solid #374151;
+          background-color: #111827;
+          color: #f9fafb;
+          box-shadow: inset 4px 4px 8px #0a0d12, inset -4px -4px 8px #1a1f2e;
+        }
+
+        .neumorphic-input::placeholder {
+          color: #6b7280;
+        }
+
+        .dark .neumorphic-input::placeholder {
+          color: #9ca3af;
+        }
+
+        .neumorphic-input:hover {
+          box-shadow: inset 6px 6px 12px #bcc3cf, inset -6px -6px 12px #ffffff;
+          border-color: #d1d5db;
+        }
+
+        .dark .neumorphic-input:hover {
+          box-shadow: inset 6px 6px 12px #070911, inset -6px -6px 12px #1a1f2e;
+          border-color: #4b5563;
+        }
+
+        .neumorphic-input:focus {
+          background: #ffffff;
+          box-shadow: inset 8px 8px 16px #bcc3cf, inset -8px -8px 16px #ffffff;
+          border-color: #3b82f6;
+        }
+
+        .dark .neumorphic-input:focus {
+          background: #0d1117;
+          box-shadow: inset 8px 8px 16px #070911, inset -8px -8px 16px #131821;
+          border-color: #3b82f6;
+        }
+
+        .neumorphic-button {
+          padding: 1rem 1.5rem;
+          border-radius: 15px;
+          border: none;
+          color: #1f2937;
+          background-color: #f8fafc;
+          font-weight: 600;
+          transition: all 0.3s ease-in-out;
+          box-shadow: 8px 8px 20px #d0d7de, -8px -8px 20px #ffffff;
+          cursor: pointer;
+          font-size: 1rem;
+          height: 3.5rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .dark .neumorphic-button {
+          color: #f9fafb;
+          background-color: #111827;
+          box-shadow: 8px 8px 20px #0a0d12, -8px -8px 20px #1a1f2e;
+        }
+
+        .neumorphic-button:hover:not(:disabled) {
+          box-shadow: 4px 4px 10px #bcc3cf, -4px -4px 10px #ffffff, inset 1px 1px 4px rgba(0,0,0,0.1);
+          transform: translate(2px, 2px);
+        }
+
+        .dark .neumorphic-button:hover:not(:disabled) {
+          box-shadow: 4px 4px 10px #070911, -4px -4px 10px #1a1f2e, inset 1px 1px 4px rgba(255,255,255,0.03);
+          transform: translate(2px, 2px);
+        }
+
+        .neumorphic-button:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .neumorphic-button:active:not(:disabled) {
+          transition: 0.1s;
+          box-shadow: inset 4px 4px 8px #bcc3cf, inset -4px -4px 8px #ffffff;
+          transform: translate(0, 0);
+        }
+
+        .dark .neumorphic-button:active:not(:disabled) {
+          box-shadow: inset 4px 4px 8px #070911, inset -4px -4px 8px #1a1f2e;
+        }
+
+        @media (max-width: 1024px) {
+          .neumorphic-form {
+            padding: 1.5rem;
+            border-radius: 18px;
+            box-shadow: 10px 10px 30px #d0d7de, -10px -10px 30px #ffffff;
+          }
+          
+          .dark .neumorphic-form {
+            box-shadow: 10px 10px 30px #0a0d12, -10px -10px 30px #1a1f2e;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .neumorphic-form {
+            padding: 1.25rem;
+            border-radius: 16px;
+          }
+        }
+      `}</style>
     </div>
   );
-}
+};
+
+export default Login;

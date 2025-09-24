@@ -522,7 +522,7 @@ export class DIContainer {
       this.getUserLoanHistoryUseCase,
       this.getLoanStatsUseCase,
       this.getPeriodReportUseCase,
-      this.calculateFareUseCase
+      this.calculateFareUseCase,
     );
   }
 

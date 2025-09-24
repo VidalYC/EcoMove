@@ -22,15 +22,21 @@ export function useAuth(): UseAuthReturn {
 
   useEffect(() => {
     // Check for existing token and user on mount
+    console.log('🔍 useAuth useEffect ejecutándose...');
     const savedToken = localStorage.getItem('ecomove_token');
     const savedUser = localStorage.getItem('ecomove_user');
+
+    console.log('📱 Token encontrado:', savedToken ? 'SÍ' : 'NO');
+    console.log('👤 Usuario encontrado:', savedUser ? 'SÍ' : 'NO');
     
     if (savedToken && savedUser) {
       try {
         setToken(savedToken);
         setUser(JSON.parse(savedUser));
         apiService.setToken(savedToken);
+        console.log('✅ Estado actualizado correctamente');
       } catch (error) {
+        console.log('❌ Error parseando datos:', error);
         // Clear invalid data
         localStorage.removeItem('ecomove_token');
         localStorage.removeItem('ecomove_user');
@@ -48,9 +54,14 @@ export function useAuth(): UseAuthReturn {
       
       if (response.success && response.data) {
         const { user, token } = response.data;
+        console.log('🎯 Datos recibidos del backend:', { user, token });
         setUser(user);
         setToken(token);
         localStorage.setItem('ecomove_user', JSON.stringify(user));
+        localStorage.setItem('ecomove_token', token); // 👈 AGREGAR
+        apiService.setToken(token); // 👈 AGREGAR
+
+        console.log('✅ Estado React actualizado');
         return true;
       } else {
         setError(response.message || 'Login failed');
@@ -76,6 +87,8 @@ export function useAuth(): UseAuthReturn {
         setUser(user);
         setToken(token);
         localStorage.setItem('ecomove_user', JSON.stringify(user));
+        localStorage.setItem('ecomove_token', token); // 👈 AGREGAR
+        apiService.setToken(token); // 👈 AGREGAR
         return true;
       } else {
         setError(response.message || 'Registration failed');

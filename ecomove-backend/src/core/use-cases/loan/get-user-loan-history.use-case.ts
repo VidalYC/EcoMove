@@ -27,6 +27,18 @@ export class GetUserLoanHistoryUseCase {
       throw new ValidationException('Usuario no encontrado');
     }
 
-    return await this.loanRepository.findUserLoanHistory(userId, page, limit);
+    // CAMBIAR ESTA LÍNEA - separar la llamada del return
+    const result = await this.loanRepository.findUserLoanHistory(userId, page, limit);
+    
+    // LOG TEMPORAL PARA DEBUG
+    console.log('🔍 [USE CASE] Raw repository result:', {
+      total: result.total,
+      totalPages: result.totalPages,
+      currentPage: result.currentPage,
+      loansLength: result.loans?.length || 0,
+      firstLoan: result.loans?.[0] ? 'loan exists' : 'no loans in array'
+    });
+
+    return result;
   }
 }

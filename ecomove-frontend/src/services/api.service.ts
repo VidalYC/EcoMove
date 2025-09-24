@@ -1,8 +1,26 @@
+// src/services/api.service.ts - ACTUALIZADO CON MÉTODOS HTTP
+import { config } from '../config/environment';
+
+// ============ INTERFACES ============
+
 export interface ApiResponse<T = any> {
   success: boolean;
   message: string;
   data?: T;
-  error?: string;
+  errors?: string[];
+}
+
+// User interfaces (existentes)
+export interface User {
+  id: string;
+  nombre: string;
+  correo: string;
+  documento: string;
+  telefono: string;
+  role: 'user' | 'admin';
+  status: 'active' | 'inactive';
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface LoginData {
@@ -13,50 +31,39 @@ export interface LoginData {
 export interface RegisterData {
   nombre: string;
   correo: string;
-  documento: string;
-  telefono: string;
   password: string;
-}
-
-export interface User {
-  id: string;
-  nombre: string;
-  correo: string;
   documento: string;
   telefono: string;
-  role: 'user' | 'admin';
-  estado: 'active' | 'inactive';
 }
 
-export interface AuthResponse {
-  user: User;
-  token: string;
-}
-
+// Station interfaces (existentes)
 export interface Station {
   id: string;
   name: string;
   address: string;
-  coordinates: { lat: number; lng: number };
+  latitude: number;
+  longitude: number;
   capacity: number;
-  currentOccupancy: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
+// Vehicle interfaces (existentes)
 export interface Vehicle {
   id: string;
-  type: 'bicycle' | 'electric-scooter';
+  type: 'bicycle' | 'electric_scooter';
   model: string;
-  stationId: string | null;
-  status: 'available' | 'in-use' | 'maintenance';
+  isAvailable: boolean;
   batteryLevel?: number;
+  currentStationId: string;
+  hourlyRate: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
+// Loan interfaces (existentes)
 export interface Loan {
   id: string;
   userId: string;
@@ -81,21 +88,24 @@ export interface CompleteLoanRequest {
   destinationStationId: string;
 }
 
-import { config } from '../config/environment';
+// ============ API SERVICE CLASS ============
 
-class ApiService {
+export class ApiService {
   private baseUrl: string;
   private token: string | null = null;
 
   constructor(baseUrl = config.API_BASE_URL) {
-    this.baseUrl = baseUrl;
+    // Asegurar que la baseUrl no termine con /api/v1
+    this.baseUrl = baseUrl.replace(/\/api\/v1\/?$/, '');
     this.token = localStorage.getItem('ecomove_token');
   }
 
-  private async request<T>(
+  // ========== MÉTODO REQUEST BASE (existente) ==========
+  async request<T>(
     endpoint: string, 
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
+    // Construir la URL correctamente - el endpoint ya incluye /api/v1
     const url = `${this.baseUrl}${endpoint}`;
     
     const defaultHeaders: Record<string, string> = {
@@ -104,6 +114,7 @@ class ApiService {
 
     if (this.token) {
       defaultHeaders['Authorization'] = `Bearer ${this.token}`;
+      console.log('Token enviado:', this.token.substring(0, 20) + '...');
     }
 
     const config: RequestInit = {
@@ -115,6 +126,8 @@ class ApiService {
     };
 
     try {
+      console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
+      
       const response = await fetch(url, config);
       
       if (!response.ok) {
@@ -129,19 +142,108 @@ class ApiService {
         } catch {
           errorData = { message: `HTTP error! status: ${response.status}` };
         }
-        
+        console.error('❌ API Error Details:', errorData);
+  if (errorData.errors) {
+    console.error('❌ Validation Errors:', errorData.errors);
+  }
+  
+  throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        console.error('❌ API Error:', errorData);
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
+      console.log(`✅ API Response: ${options.method || 'GET'} ${url}`, data);
+      
       return data;
     } catch (error) {
-      console.error('API request error:', error);
+      console.error('❌ Network Error:', error);
       throw error;
     }
   }
 
-  setToken(token: string | null) {
+  // ========== NUEVOS MÉTODOS HTTP ESPECÍFICOS ==========
+
+  /**
+   * Método GET
+   */
+  async get<T>(endpoint: string, params?: Record<string, any>): Promise<ApiResponse<T>> {
+    let url = endpoint;
+    
+    // Agregar parámetros de query si existen
+    if (params) {
+      const searchParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, value.toString());
+        }
+      });
+      
+      if (searchParams.toString()) {
+        url += (url.includes('?') ? '&' : '?') + searchParams.toString();
+      }
+    }
+
+    return this.request<T>(url, { method: 'GET' });
+  }
+
+  /**
+   * Método POST
+   */
+  async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+    const options: RequestInit = {
+      method: 'POST',
+    };
+
+    if (data) {
+      console.log('🔍 POST Data being sent:', data); // Debug temporal
+      options.body = JSON.stringify(data);
+    }
+
+    const response = await this.request<T>(endpoint, options);
+    console.log('🔍 POST Response:', response); // Debug temporal
+    return response;
+  }
+
+  /**
+   * Método PUT
+   */
+  async put<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+    const options: RequestInit = {
+      method: 'PUT',
+    };
+
+    if (data) {
+      options.body = JSON.stringify(data);
+    }
+
+    return this.request<T>(endpoint, options);
+  }
+
+  /**
+   * Método PATCH
+   */
+  async patch<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+    const options: RequestInit = {
+      method: 'PATCH',
+    };
+
+    if (data) {
+      options.body = JSON.stringify(data);
+    }
+
+    return this.request<T>(endpoint, options);
+  }
+
+  /**
+   * Método DELETE
+   */
+  async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, { method: 'DELETE' });
+  }
+
+  // ========== GESTIÓN DE TOKEN (existente) ==========
+  setToken(token: string | null): void {
     this.token = token;
     if (token) {
       localStorage.setItem('ecomove_token', token);
@@ -150,12 +252,13 @@ class ApiService {
     }
   }
 
-  // ============ AUTH METHODS ============
-  async login(credentials: LoginData): Promise<ApiResponse<AuthResponse>> {
-    const response = await this.request<AuthResponse>('/users/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(credentials),
-    });
+  getToken(): string | null {
+    return this.token;
+  }
+
+  // ========== MÉTODOS DE AUTENTICACIÓN (existentes) ==========
+  async login(credentials: LoginData): Promise<ApiResponse<{ user: User; token: string }>> {
+    const response = await this.post<{ user: User; token: string }>('/api/v1/users/auth/login', credentials);
     
     if (response.success && response.data?.token) {
       this.setToken(response.data.token);
@@ -164,154 +267,195 @@ class ApiService {
     return response;
   }
 
-  async register(userData: RegisterData): Promise<ApiResponse<AuthResponse>> {
-    console.log('📤 API Service - Enviando datos:', userData);
-    
-    const response = await this.request<AuthResponse>('/users/auth/register', {
-        method: 'POST',
-        body: JSON.stringify(userData),
-    });
-    
-    console.log('📥 API Service - Respuesta:', response);
+  async register(userData: RegisterData): Promise<ApiResponse<{ user: User; token: string }>> {
+    const response = await this.post<{ user: User; token: string }>('/api/v1/users/auth/register', userData);
     
     if (response.success && response.data?.token) {
-        this.setToken(response.data.token);
+      this.setToken(response.data.token);
     }
     
     return response;
-    }
-
-  async logout(): Promise<void> {
-    // Si hay endpoint de logout en el backend
-    try {
-      await this.request('/users/auth/logout', { method: 'POST' });
-    } catch (error) {
-      console.warn('Logout endpoint failed, clearing token locally');
-    } finally {
-      this.setToken(null);
-    }
   }
 
-  // ============ USER METHODS ============
+  async logout(): Promise<void> {
+    this.setToken(null);
+  }
+
+  // ========== MÉTODOS DE PERFIL (existentes) ==========
   async getProfile(): Promise<ApiResponse<User>> {
-    return this.request<User>('/users/profile');
+    return this.get<User>('/api/v1/users/profile');
   }
 
   async updateProfile(updates: Partial<User>): Promise<ApiResponse<User>> {
-    return this.request<User>('/users/profile', {
-      method: 'PUT',
-      body: JSON.stringify(updates),
-    });
+    return this.put<User>('/api/v1/users/profile', updates);
   }
 
   async changePassword(data: { currentPassword: string; newPassword: string }): Promise<ApiResponse> {
-    return this.request('/users/change-password', {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+    return this.put('/api/v1/users/change-password', data);
   }
-  
 
-  // ============ STATION METHODS ============
+  // ========== MÉTODOS ADMIN DE USUARIOS (existentes) ==========
+  async getAdminUserStats(): Promise<ApiResponse<any>> {
+    return this.get('/api/v1/users/admin/stats');
+  }
+
+  async getAllUsers(page: number = 1, limit: number = 10): Promise<ApiResponse<any>> {
+    return this.get(`/api/v1/users/admin`, { page, limit });
+  }
+
+  async searchUsers(term: string, page: number = 1, limit: number = 10): Promise<ApiResponse<any>> {
+    return this.get('/api/v1/users/admin/search', { term, page, limit });
+  }
+
+  async getUserById(id: number): Promise<ApiResponse<any>> {
+    return this.get(`/api/v1/users/admin/${id}`);
+  }
+
+  async activateUser(id: number): Promise<ApiResponse<any>> {
+    return this.put(`/api/v1/users/admin/${id}/activate`);
+  }
+
+  async deactivateUser(id: number): Promise<ApiResponse<any>> {
+    return this.put(`/api/v1/users/admin/${id}/deactivate`);
+  }
+
+  async updateUserById(id: number, updates: any): Promise<ApiResponse<any>> {
+    return this.put(`/api/v1/users/admin/${id}`, updates);
+  }
+
+  // ========== MÉTODOS DE ESTACIONES (existentes - usando nuevos métodos) ==========
   async getStations(): Promise<ApiResponse<Station[]>> {
-    return this.request<Station[]>('/stations');
+    return this.get<Station[]>('/api/v1/stations');
   }
 
-  async getStation(id: string): Promise<ApiResponse<Station>> {
-    return this.request<Station>(`/stations/${id}`);
+  async createStation(station: Omit<Station, 'id' | 'createdAt' | 'updatedAt'>): Promise<ApiResponse<Station>> {
+    return this.post<Station>('/api/v1/stations', station);
   }
 
-  async getStationAvailability(id: string): Promise<ApiResponse<{ available: Vehicle[] }>> {
-    return this.request<{ available: Vehicle[] }>(`/stations/${id}/availability`);
+  async updateStation(id: string, updates: Partial<Station>): Promise<ApiResponse<Station>> {
+    return this.put<Station>(`/api/v1/stations/${id}`, updates);
   }
 
-  async getNearbyStations(lat: number, lng: number, radius = 1000): Promise<ApiResponse<Station[]>> {
-    return this.request<Station[]>(`/stations/nearby?lat=${lat}&lng=${lng}&radius=${radius}`);
+  async deleteStation(id: string): Promise<ApiResponse<void>> {
+    return this.delete<void>(`/api/v1/stations/${id}`);
   }
 
-  async getStationsWithTransports(): Promise<ApiResponse<Station[]>> {
-    return this.request<Station[]>('/stations/with-transports');
+  async getStationById(id: string): Promise<ApiResponse<Station>> {
+    return this.get<Station>(`/api/v1/stations/${id}`);
   }
 
-  // ============ VEHICLE METHODS ============
+  // ========== MÉTODOS DE VEHÍCULOS (existentes - usando nuevos métodos) ==========
   async getVehicles(): Promise<ApiResponse<Vehicle[]>> {
-    return this.request<Vehicle[]>('/transports');
+    return this.get<Vehicle[]>('/api/v1/vehicles');
   }
 
-  async getAvailableVehicles(): Promise<ApiResponse<Vehicle[]>> {
-    return this.request<Vehicle[]>('/transports/available');
+  async getVehicleById(id: string): Promise<ApiResponse<Vehicle>> {
+    return this.get<Vehicle>(`/api/v1/vehicles/${id}`);
   }
 
-  async getVehicle(id: string): Promise<ApiResponse<Vehicle>> {
-    return this.request<Vehicle>(`/transports/${id}`);
+  async createVehicle(vehicle: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt'>): Promise<ApiResponse<Vehicle>> {
+    return this.post<Vehicle>('/api/v1/vehicles', vehicle);
   }
 
-  // ============ LOAN METHODS ============
+  async updateVehicle(id: string, updates: Partial<Vehicle>): Promise<ApiResponse<Vehicle>> {
+    return this.put<Vehicle>(`/api/v1/vehicles/${id}`, updates);
+  }
+
+  async deleteVehicle(id: string): Promise<ApiResponse<void>> {
+    return this.delete<void>(`/api/v1/vehicles/${id}`);
+  }
+
+  // ========== MÉTODOS DE PRÉSTAMOS (existentes - usando nuevos métodos) ==========
   async getLoans(): Promise<ApiResponse<Loan[]>> {
-    return this.request<Loan[]>('/loans');
+    return this.get<Loan[]>('/api/v1/loans');
   }
 
-  async getLoan(id: string): Promise<ApiResponse<Loan>> {
-    return this.request<Loan>(`/loans/${id}`);
+  async getLoanById(id: string): Promise<ApiResponse<Loan>> {
+    return this.get<Loan>(`/api/v1/loans/${id}`);
   }
 
   async getLoanDetails(id: string): Promise<ApiResponse<Loan & { vehicle: Vehicle; originStation: Station; destinationStation?: Station }>> {
-    return this.request(`/loans/${id}/detalles`);
+    return this.get<Loan & { vehicle: Vehicle; originStation: Station; destinationStation?: Station }>(`/api/v1/loans/${id}/detalles`);
   }
 
-  async createLoan(data: CreateLoanRequest): Promise<ApiResponse<Loan>> {
-    return this.request<Loan>('/loans', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  async createLoan(request: CreateLoanRequest): Promise<ApiResponse<Loan>> {
+    return this.post<Loan>('/api/v1/loans', request);
   }
 
-  async completeLoan(id: string, data: CompleteLoanRequest): Promise<ApiResponse<Loan>> {
-    return this.request<Loan>(`/loans/${id}/completar`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+  async completeLoan(id: string, request: CompleteLoanRequest): Promise<ApiResponse<Loan>> {
+    return this.put<Loan>(`/api/v1/loans/${id}/completar`, request);
   }
 
   async cancelLoan(id: string): Promise<ApiResponse<Loan>> {
-    return this.request<Loan>(`/loans/${id}/cancelar`, {
-      method: 'PUT',
+    return this.put<Loan>(`/api/v1/loans/${id}/cancelar`);
+  }
+
+  async extendLoan(id: string, additionalMinutes: number): Promise<ApiResponse<Loan>> {
+    return this.put<Loan>(`/api/v1/loans/${id}/extender`, { additionalMinutes });
+  }
+
+  async calculateFare(vehicleId: string, durationMinutes: number): Promise<ApiResponse<{ fare: number; breakdown: any }>> {
+    return this.post<{ fare: number; breakdown: any }>('/api/v1/loans/calcular-tarifa', {
+      vehicleId,
+      durationMinutes
     });
   }
 
-  async extendLoan(id: string, data: { newDurationMinutes: number }): Promise<ApiResponse<Loan>> {
-    return this.request<Loan>(`/loans/${id}/extender`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+  // ========== MÉTODOS ADMIN DE PRÉSTAMOS (existentes) ==========
+  async getAdminLoanStats(): Promise<ApiResponse<any>> {
+    return this.get('/api/v1/loans/admin/estadisticas');
   }
 
-  async calculateFare(data: { vehicleType: string; durationMinutes: number }): Promise<ApiResponse<{ fare: number; breakdown: any }>> {
-    return this.request('/loans/calcular-tarifa', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  async getActiveLoansByAdmin(): Promise<ApiResponse<any>> {
+    return this.get('/api/v1/loans/admin/activos');
   }
 
-  // ============ ADMIN METHODS ============
-  async getAdminStats(): Promise<ApiResponse<any>> {
-    return this.request('/loans/admin/estadisticas');
+  async getPeriodReport(startDate: string, endDate: string): Promise<ApiResponse<any>> {
+    return this.get(`/api/v1/loans/admin/reporte`, { startDate, endDate });
   }
 
-  async getAdminReport(startDate: string, endDate: string): Promise<ApiResponse<any>> {
-    return this.request(`/loans/admin/reporte?startDate=${startDate}&endDate=${endDate}`);
+  // ========== HISTORIAL DE PRÉSTAMOS DE USUARIO (existentes) ==========
+  async getUserLoanHistory(userId: string): Promise<ApiResponse<Loan[]>> {
+    return this.get<Loan[]>(`/api/v1/loans/usuario/${userId}`);
   }
 
-  async getActiveLoansAdmin(): Promise<ApiResponse<Loan[]>> {
-    return this.request<Loan[]>('/loans/admin/activos');
+  // ========== MÉTODOS DE ESTADÍSTICAS ADICIONALES ==========
+  
+  /**
+   * Obtener estadísticas de estaciones
+   */
+  async getStationStats(): Promise<ApiResponse<any>> {
+    return this.get('/api/v1/estaciones/estadisticas');
   }
 
-  // ============ HEALTH CHECK ============
-  async healthCheck(): Promise<ApiResponse> {
-    return this.request('/health');
+  /**
+   * Obtener estadísticas de transportes
+   */
+  async getTransportStats(): Promise<ApiResponse<any>> {
+    return this.get('/api/v1/transportes/estadisticas');
+  }
+
+  // ========== MÉTODOS DE HEALTH CHECK (existentes) ==========
+  async healthCheck(): Promise<ApiResponse<any>> {
+    return this.get('/api/v1/health');
+  }
+
+  async getUsersHealthCheck(): Promise<ApiResponse<any>> {
+    return this.get('/api/v1/users/health');
+  }
+
+  async getStationsHealthCheck(): Promise<ApiResponse<any>> {
+    return this.get('/api/v1/stations/health');
+  }
+
+  async getTransportsHealthCheck(): Promise<ApiResponse<any>> {
+    return this.get('/api/v1/transports/health');
+  }
+
+  async getLoansHealthCheck(): Promise<ApiResponse<any>> {
+    return this.get('/api/v1/loans/health');
   }
 }
 
-// Export singleton instance
+// Instancia singleton del servicio API
 export const apiService = new ApiService();
-export default apiService;

@@ -5,6 +5,7 @@ import { HeroSection } from '../components/Landing/HeroSection';
 import { FeaturesSection } from '../components/Landing/FeaturesSection';
 import { StatsSection } from '../components/Landing/StatsSection';
 import { Footer } from '../components/Layout/Footer';
+import { Logo } from '../components/UI/Logo';
 
 // Interface para las props de la landing page
 interface LandingPageProps {
@@ -185,12 +186,17 @@ const PageTransition: React.FC<{ isVisible: boolean }> = ({ isVisible }) => (
       >
         <div className="flex items-center justify-center h-full">
           <motion.div
-            className="text-2xl font-bold text-emerald-600"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.3 }}
           >
-            EcoMove
+            <Logo 
+              size="lg"
+              imageUrl="/planet.png"
+              fallbackToIcon={true}
+              showText={false}
+              className="scale-150"
+            />
           </motion.div>
         </div>
       </motion.div>
@@ -229,6 +235,74 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   // Efecto de parallax sutil para el fondo
   const backgroundY = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
+
+  // Efecto para ocultar el scroll al montar el componente
+  useEffect(() => {
+    // Crear los estilos CSS dinámicamente
+    const style = document.createElement('style');
+    style.textContent = `
+      /* Ocultar scrollbar pero mantener funcionalidad */
+      body {
+        /* Firefox */
+        scrollbar-width: none;
+        /* IE y Edge */
+        -ms-overflow-style: none;
+        /* Mantener scroll funcional */
+        overflow-y: scroll;
+        overflow-x: hidden;
+      }
+      
+      body::-webkit-scrollbar {
+        /* Safari y Chrome */
+        display: none;
+      }
+      
+      html {
+        /* Firefox */
+        scrollbar-width: none;
+        /* IE y Edge */
+        -ms-overflow-style: none;
+        /* Mantener scroll funcional */
+        overflow-y: scroll;
+        overflow-x: hidden;
+      }
+      
+      html::-webkit-scrollbar {
+        /* Safari y Chrome */
+        display: none;
+      }
+      
+      /* Scroll personalizado para elementos internos si es necesario */
+      .custom-scroll {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
+      }
+      
+      .custom-scroll::-webkit-scrollbar {
+        width: 6px;
+      }
+      
+      .custom-scroll::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      
+      .custom-scroll::-webkit-scrollbar-thumb {
+        background-color: rgba(156, 163, 175, 0.3);
+        border-radius: 3px;
+      }
+      
+      .custom-scroll::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(156, 163, 175, 0.5);
+      }
+    `;
+    
+    document.head.appendChild(style);
+    
+    // Cleanup al desmontar
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
 
   // Handlers para navegación
   const handleLoginClick = () => {
