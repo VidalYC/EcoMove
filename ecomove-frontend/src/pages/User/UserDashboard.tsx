@@ -1,4 +1,4 @@
-// src/pages/User/UserDashboard.tsx
+// src/pages/User/UserDashboard.tsx - CON FUNCIONALIDAD DE DATOS DE PAGO
 import React, { useState, useEffect } from 'react';
 import { 
   User, 
@@ -10,20 +10,57 @@ import {
   TrendingUp,
   Navigation,
   Play,
-  Square,
   RefreshCw,
   ChevronRight,
   Calendar,
   Target,
-  LogOut
+  LogOut,
+  CheckCircle2,
+  XCircle
 } from 'lucide-react';
 import { Button } from '../../components/UI/Button';
 import { ThemeToggle } from '../../components/UI/ThemeToggle';
+import { CompleteLoanModal } from '../../components/Loan/CompleteLoanModal';
+import { CancelLoanModal } from '../../components/Loan/CancelLoanModal';
+import { LoanHistoryModal } from '../../components/Loan/LoanHistoryModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { userApiService, UserStats, QuickStats, UserLoan } from '../../services/userApi.service';
 import { apiService } from '../../services/api.service';
 import { motion } from 'framer-motion';
+
+// Interfaz para los datos de pago
+interface PaymentData {
+  // Datos comunes
+  transactionId?: string;
+  timestamp?: string;
+  
+  // Para tarjeta de crédito/débito
+  cardNumber?: string; // Solo últimos 4 dígitos
+  cardType?: string; // visa, mastercard, etc.
+  cardHolder?: string;
+  authorizationCode?: string;
+  
+  // Para transferencia bancaria
+  bankName?: string;
+  accountNumber?: string; // Solo últimos 4 dígitos
+  referenceNumber?: string;
+  
+  // Para billeteras digitales
+  walletType?: string; // nequi, daviplata, etc.
+  walletAccount?: string;
+  walletReference?: string;
+  
+  // Para efectivo
+  amountReceived?: number;
+  change?: number;
+  
+  // Datos adicionales
+  processingFee?: number;
+  exchangeRate?: number;
+  currency?: string;
+  status?: 'pending' | 'completed' | 'failed';
+}
 
 interface StatsCardProps {
   title: string;
@@ -71,17 +108,21 @@ export const UserDashboard: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [backendConnected, setBackendConnected] = useState<boolean | null>(null);
   
-  // Timer para actualizar costo en tiempo real
+  // Estados para los modales
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [isProcessingComplete, setIsProcessingComplete] = useState(false);
+  const [isProcessingCancel, setIsProcessingCancel] = useState(false);
+  
+  // Estados para cálculo de costos en tiempo real simplificado
   const [currentCost, setCurrentCost] = useState<number>(0);
-  const [loanTimer, setLoanTimer] = useState<NodeJS.Timeout | null>(null);
+  const [realTimeTimer, setRealTimeTimer] = useState<NodeJS.Timeout | null>(null);
 
   // Verificar conectividad con el backend
   const checkBackendConnectivity = async (): Promise<boolean> => {
     try {
       const response = await apiService.get('/api/v1/health');
-      console.log('🔍 Health check response:', response);
-      
-      // Tu backend responde con { success: true, status: "healthy", ... }
       const isConnected = response.success === true;
       setBackendConnected(isConnected);
       return isConnected;
@@ -92,51 +133,44 @@ export const UserDashboard: React.FC = () => {
     }
   };
 
-  // Calcular costo en tiempo real basado en tiempo transcurrido
+  // Calcular costo en tiempo real simplificado
   const calculateRealTimeCost = (loan: UserLoan): number => {
     if (!loan.startDate) return loan.cost || 0;
     
-    const startTime = new Date(loan.startDate).getTime();
-    const currentTime = Date.now();
-    const minutesElapsed = Math.floor((currentTime - startTime) / (1000 * 60));
+    const now = new Date();
+    const startTime = new Date(loan.startDate);
+    const minutesElapsed = Math.floor((now.getTime() - startTime.getTime()) / (1000 * 60));
     
-    // Tarifa base: $500 COP por hora = ~8.33 COP por minuto
-    const ratePerMinute = 8.33;
+    // Tarifa por minuto: $8.33 COP (equivale a $500 por hora)
+    const ratePerMinute = 500 / 60;
+    
+    // Costo base + costo por tiempo transcurrido
     const baseCost = loan.cost || 0;
     const timeCost = minutesElapsed * ratePerMinute;
     
-    return Math.max(baseCost, timeCost);
+    return Math.max(baseCost + timeCost, loan.cost || 0);
   };
 
-  // Cargar datos del dashboard - VERSIÓN COMPLETA CORREGIDA
+  // Cargar datos del dashboard
   const loadDashboardData = async (isRefresh = false) => {
     try {
       if (!isRefresh) setIsLoading(true);
       setIsRefreshing(isRefresh);
 
-      console.log('Loading dashboard data - checking backend connectivity first...');
-      
-      // Verificar conectividad del backend primero y esperar el resultado
       const isBackendAvailable = await checkBackendConnectivity();
       
       if (!isBackendAvailable) {
         throw new Error('Backend no disponible - usando datos de fallback');
       }
 
-      console.log('✅ Backend is available, loading real data...');
-
-      // PRIORIZAR DATOS DE ADMIN PARA GASTOS REALES
+      // Cargar estadísticas
       try {
-        console.log('🔍 Loading admin stats for real spending data...');
         const adminStatsResponse = await fetch(`http://localhost:4000/api/v1/loans/admin/estadisticas`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('ecomove_token')}` }
         });
         const adminData = await adminStatsResponse.json();
         
         if (adminData.success && adminData.data) {
-          console.log('✅ Admin stats loaded:', adminData.data);
-          
-          // Usar datos reales de admin para estadísticas principales
           setStats({
             totalLoans: adminData.data.total_prestamos || 0,
             activeLoans: adminData.data.prestamos_activos || 0,
@@ -151,43 +185,25 @@ export const UserDashboard: React.FC = () => {
             }
           });
 
-          // Configurar quick stats también
           setQuickStats({
             activeLoans: adminData.data.prestamos_activos || 0,
             availableVehicles: 10,
             nearbyStations: 2,
             totalSpent: adminData.data.ingresos_totales || 0
           });
-
-          console.log('✅ Stats set with admin data - totalSpent:', adminData.data.ingresos_totales);
-          console.log('💰 Admin data ingresos_totales value:', adminData.data.ingresos_totales, 'type:', typeof adminData.data.ingresos_totales);
         } else {
           throw new Error('Admin stats not available');
         }
       } catch (adminError) {
-        console.warn('⚠️ Admin stats failed, trying user service:', adminError);
-        
-        // Fallback a userApiService si admin falla
-        const [
-          userStatsResponse,
-          quickStatsResponse
-        ] = await Promise.allSettled([
-          userApiService.getUserStats().catch(error => {
-            console.warn('User stats not available:', error);
-            return null;
-          }),
-          userApiService.getQuickStats().catch(error => {
-            console.warn('Quick stats not available:', error);
-            return null;
-          })
+        // Fallback
+        const [userStatsResponse, quickStatsResponse] = await Promise.allSettled([
+          userApiService.getUserStats().catch(error => null),
+          userApiService.getQuickStats().catch(error => null)
         ]);
 
-        // Procesar estadísticas del usuario como fallback
         if (userStatsResponse.status === 'fulfilled' && userStatsResponse.value) {
-          console.log('✅ Setting user stats from userApiService:', userStatsResponse.value);
           setStats(userStatsResponse.value);
         } else {
-          console.log('⚠️ Using complete fallback stats');
           setStats({
             totalLoans: 0,
             activeLoans: 0,
@@ -199,12 +215,9 @@ export const UserDashboard: React.FC = () => {
           });
         }
 
-        // Procesar quick stats como fallback
         if (quickStatsResponse.status === 'fulfilled' && quickStatsResponse.value) {
-          console.log('✅ Setting quick stats from userApiService:', quickStatsResponse.value);
           setQuickStats(quickStatsResponse.value);
         } else {
-          console.log('⚠️ Using fallback quick stats');
           setQuickStats({
             activeLoans: 0,
             availableVehicles: 0,
@@ -218,10 +231,9 @@ export const UserDashboard: React.FC = () => {
       try {
         const currentLoanResponse = await userApiService.getCurrentLoan();
         if (currentLoanResponse) {
-          console.log('✅ Setting active loan:', currentLoanResponse);
+          console.log('Setting active loan:', currentLoanResponse);
           setActiveLoan(currentLoanResponse);
         } else {
-          console.log('ℹ️ No active loan found');
           setActiveLoan(null);
         }
       } catch (error) {
@@ -229,52 +241,45 @@ export const UserDashboard: React.FC = () => {
         setActiveLoan(null);
       }
 
-      // Procesar estaciones cercanas con datos reales del backend
+      // Cargar estaciones
       try {
-        console.log('🏢 Loading real stations data...');
         const stationsResponse = await fetch(`http://localhost:4000/api/v1/stations`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('ecomove_token')}` }
         });
         const stationsData = await stationsResponse.json();
         
         if (stationsData.success && stationsData.data) {
-          console.log('✅ Stations loaded from backend:', stationsData.data);
-          
-          // Adaptar estaciones al formato esperado por el dashboard
           const adaptedStations = stationsData.data.map((station: any) => ({
             id: station.id,
             nombre: station.name,
+            direccion: station.address,
             transportes_disponibles: station.id === 5 ? 3 : station.id === 4 ? 2 : Math.floor(Math.random() * 4) + 1,
-            distancia_km: station.id === 5 ? 0.8 : station.id === 4 ? 1.2 : Number((Math.random() * 2 + 0.5).toFixed(1)),
-            address: station.address
+            distancia_km: station.id === 5 ? 0.8 : station.id === 4 ? 1.2 : Number((Math.random() * 2 + 0.5).toFixed(1))
           }));
           
-          // Ordenar por distancia y mostrar solo las 3 más cercanas - FIX TYPESCRIPT
           const nearbyStations = adaptedStations
             .sort((a: any, b: any) => a.distancia_km - b.distancia_km)
             .slice(0, 3);
           
-          console.log('✅ Setting nearby stations with real data:', nearbyStations);
           setNearbyStations(nearbyStations);
         } else {
           throw new Error('No stations data received');
         }
       } catch (error) {
-        console.log('⚠️ Using fallback stations data:', error);
         setNearbyStations([
           {
             id: 5,
             nombre: 'Estación Zona Rosa',
+            direccion: 'Carrera 13 # 85-32, Bogotá',
             transportes_disponibles: 3,
-            distancia_km: 0.8,
-            address: 'Carrera 13 # 85-32, Bogotá'
+            distancia_km: 0.8
           },
           {
             id: 4,
             nombre: 'Estación Universidad Nacional',
+            direccion: 'Calle 45 # 26-85, Bogotá',
             transportes_disponibles: 2,
-            distancia_km: 1.2,
-            address: 'Calle 45 # 26-85, Bogotá'
+            distancia_km: 1.2
           }
         ]);
       }
@@ -284,9 +289,8 @@ export const UserDashboard: React.FC = () => {
       }
 
     } catch (error: any) {
-      console.error('❌ Error loading dashboard data:', error);
+      console.error('Error loading dashboard data:', error);
       
-      // En caso de error, usar datos de fallback pero no mostrar error si es solo falta de datos
       const fallbackStats = {
         totalLoans: 0,
         activeLoans: 0,
@@ -309,44 +313,55 @@ export const UserDashboard: React.FC = () => {
       setActiveLoan(null);
       setNearbyStations([]);
 
-      // Solo mostrar error si realmente hay un problema de conectividad
       if (error.message.includes('Backend no disponible')) {
         showError('Sin conexión', 'No se pudo conectar al servidor. Mostrando interfaz básica.');
       } else if (isRefresh) {
-        // Solo mostrar error en refresh explícito
         showError('Error de carga', 'Algunas funciones pueden no estar disponibles aún.');
       }
-      // En carga inicial, no mostrar error - simplemente cargar la interfaz
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
   };
 
+  // Handlers simplificados
   const handleRefresh = async () => {
     if (isRefreshing) return;
     await loadDashboardData(true);
   };
 
   const handleStartRental = () => {
-    // Redirigir a la página de transportes (que ya tienes funcionando)
     window.location.href = '/transportes';
   };
 
-  // Handler para terminar préstamo - CORREGIDO
-    const handleEndRental = async () => {
+  const handleCompleteLoan = () => {
+    setShowCompleteModal(true);
+  };
+
+  const handleCancelLoan = () => {
+    setShowCancelModal(true);
+  };
+
+  const handleShowHistory = () => {
+    setShowHistoryModal(true);
+  };
+
+  // ACTUALIZADO: Handler para completar préstamo con datos de pago
+  const handleCompleteConfirm = async (destinationStationId: string, additionalData: {
+    finalCost: number;
+    paymentMethod: string;
+    paymentData: PaymentData; // ← Nuevos datos de pago
+    comments?: string;
+  }) => {
     if (!activeLoan) return;
     
     try {
-      // Pedir estación de destino al usuario
-      const stationId = prompt(
-        `¿En qué estación devuelves el vehículo?\n\nEstaciones disponibles:\n- ID 4: Estación Universidad Nacional\n- ID 5: Estación Zona Rosa\n\nIngresa el ID de la estación:`
-      );
-      
-      if (!stationId || isNaN(parseInt(stationId))) {
-        showError('Error', 'Debes ingresar un ID de estación válido');
-        return;
-      }
+      setIsProcessingComplete(true);
+
+      // Log para debugging
+      console.log('Datos de pago recibidos:', additionalData.paymentData);
+      console.log('Método de pago:', additionalData.paymentMethod);
+      console.log('Costo final:', additionalData.finalCost);
 
       const token = localStorage.getItem('ecomove_token');
       const response = await fetch(`http://localhost:4000/api/v1/loans/${activeLoan.id}/completar`, {
@@ -356,9 +371,11 @@ export const UserDashboard: React.FC = () => {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          estacion_destino_id: parseInt(stationId),
-          costo_total: currentCost || activeLoan.cost || 0, // Usar costo actual
-          metodo_pago: 'credit-card'
+          estacion_destino_id: parseInt(destinationStationId),
+          costo_total: additionalData.finalCost,
+          metodo_pago: additionalData.paymentMethod,
+          datos_pago: additionalData.paymentData, // ← Enviar datos completos del pago
+          comentarios: additionalData.comments || ''
         })
       });
 
@@ -370,51 +387,53 @@ export const UserDashboard: React.FC = () => {
       const result = await response.json();
       
       if (result.success) {
-        showSuccess('Préstamo completado', '¡Préstamo terminado exitosamente!');
-        await loadDashboardData(); // Recargar dashboard
+        // Mostrar información del pago en el mensaje de éxito
+        let paymentInfo = '';
+        if (additionalData.paymentData.transactionId) {
+          paymentInfo = ` (ID: ${additionalData.paymentData.transactionId})`;
+        } else if (additionalData.paymentData.referenceNumber) {
+          paymentInfo = ` (Ref: ${additionalData.paymentData.referenceNumber})`;
+        } else if (additionalData.paymentData.authorizationCode) {
+          paymentInfo = ` (Auth: ${additionalData.paymentData.authorizationCode})`;
+        }
+
+        showSuccess(
+          'Préstamo completado', 
+          `Viaje finalizado! Total pagado: ${formatCurrency(additionalData.finalCost)} vía ${additionalData.paymentMethod}${paymentInfo}`
+        );
+        
+        // Recargar datos del dashboard
+        await loadDashboardData();
       } else {
         throw new Error(result.message || 'No se pudo completar el préstamo');
       }
       
     } catch (error: any) {
       console.error('Error completing loan:', error);
-      showError('Error', error.message || 'No se pudo terminar el préstamo');
+      showError('Error de pago', error.message || 'No se pudo procesar el pago del préstamo');
+    } finally {
+      setIsProcessingComplete(false);
+      setShowCompleteModal(false);
     }
   };
 
-  // Handler para extender préstamo - FUNCIONAL
-  const handleExtendLoan = async () => {
+  const handleCancelConfirm = async (reason: string, additionalData: any) => {
     if (!activeLoan) return;
     
     try {
-      const additionalMinutes = prompt(
-        `¿Cuántos minutos adicionales necesitas?\n\nEjemplos:\n- 30 minutos\n- 60 minutos\n- 90 minutos\n\nIngresa solo el número:`
-      );
-      
-      if (!additionalMinutes || isNaN(parseInt(additionalMinutes))) {
-        showError('Error', 'Debes ingresar un número válido de minutos');
-        return;
-      }
-
-      const minutes = parseInt(additionalMinutes);
-      if (minutes <= 0 || minutes > 300) {
-        showError('Error', 'Los minutos deben ser entre 1 y 300');
-        return;
-      }
-
-      // Calcular costo adicional (ejemplo: 0.5 por minuto adicional)
-      const costoAdicional = minutes * 0.5;
+      setIsProcessingCancel(true);
 
       const token = localStorage.getItem('ecomove_token');
-      const response = await fetch(`http://localhost:4000/api/v1/loans/${activeLoan.id}/extender`, {
+      const response = await fetch(`http://localhost:4000/api/v1/loans/${activeLoan.id}/cancelar`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          minutos_adicionales: minutes,
-          costo_adicional: costoAdicional
+          razon_cancelacion: reason,
+          tarifa_cancelacion: additionalData.cancellationFee,
+          comentarios: additionalData.reasonText
         })
       });
 
@@ -426,46 +445,11 @@ export const UserDashboard: React.FC = () => {
       const result = await response.json();
       
       if (result.success) {
-        showSuccess('Préstamo extendido', `Se agregaron ${minutes} minutos adicionales. Costo: $${costoAdicional.toFixed(2)}`);
-        await loadDashboardData(); // Recargar dashboard
-      } else {
-        throw new Error(result.message || 'No se pudo extender el préstamo');
-      }
-      
-    } catch (error: any) {
-      console.error('Error extending loan:', error);
-      showError('Error', error.message || 'No se pudo extender el préstamo');
-    }
-  };
-
-  // Handler para cancelar préstamo - FUNCIONAL
-  const handleCancelLoan = async () => {
-    if (!activeLoan) return;
-    
-    if (!confirm('¿Estás seguro de que quieres cancelar este préstamo?\n\nEsta acción no se puede deshacer.')) {
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem('ecomove_token');
-      const response = await fetch(`http://localhost:4000/api/v1/loans/${activeLoan.id}/cancelar`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Error ${response.status}`);
-      }
-
-      const result = await response.json();
-      
-      if (result.success) {
-        showSuccess('Préstamo cancelado', 'El préstamo ha sido cancelado exitosamente');
-        await loadDashboardData(); // Recargar dashboard
+        showSuccess(
+          'Préstamo cancelado', 
+          `Préstamo cancelado. Tarifa aplicada: ${formatCurrency(additionalData.cancellationFee)}`
+        );
+        await loadDashboardData();
       } else {
         throw new Error(result.message || 'No se pudo cancelar el préstamo');
       }
@@ -473,6 +457,9 @@ export const UserDashboard: React.FC = () => {
     } catch (error: any) {
       console.error('Error canceling loan:', error);
       showError('Error', error.message || 'No se pudo cancelar el préstamo');
+    } finally {
+      setIsProcessingCancel(false);
+      setShowCancelModal(false);
     }
   };
 
@@ -480,7 +467,6 @@ export const UserDashboard: React.FC = () => {
     try {
       await logout();
       showSuccess('Sesión cerrada', 'Has cerrado sesión exitosamente');
-      // Redirigir a la página principal
       window.location.href = '/';
     } catch (error: any) {
       console.error('Error al cerrar sesión:', error);
@@ -508,31 +494,37 @@ export const UserDashboard: React.FC = () => {
     loadDashboardData();
   }, []);
 
-  // Timer para actualizar costo del préstamo activo en tiempo real
+  // Timer para actualización en tiempo real simplificado
   useEffect(() => {
     if (activeLoan) {
-      // Actualizar costo inmediatamente
       setCurrentCost(calculateRealTimeCost(activeLoan));
       
-      // Configurar timer para actualizar cada 30 segundos
       const timer = setInterval(() => {
-        setCurrentCost(calculateRealTimeCost(activeLoan));
-      }, 30000); // 30 segundos
+        const newCost = calculateRealTimeCost(activeLoan);
+        setCurrentCost(newCost);
+      }, 30000);
       
-      setLoanTimer(timer);
+      setRealTimeTimer(timer);
       
       return () => {
         if (timer) clearInterval(timer);
       };
     } else {
-      // Limpiar timer si no hay préstamo activo
-      if (loanTimer) {
-        clearInterval(loanTimer);
-        setLoanTimer(null);
+      if (realTimeTimer) {
+        clearInterval(realTimeTimer);
+        setRealTimeTimer(null);
       }
       setCurrentCost(0);
     }
-  }, [activeLoan]); // QUITADO loanTimer de las dependencias
+  }, [activeLoan]);
+
+  const currentLoanForModal = activeLoan ? {
+    id: parseInt(activeLoan.id),
+    transportType: activeLoan.transportType,
+    transportModel: activeLoan.transportModel,
+    currentCost: currentCost || activeLoan.cost,
+    startDate: activeLoan.startDate
+  } : null;
 
   if (isLoading) {
     return (
@@ -557,7 +549,7 @@ export const UserDashboard: React.FC = () => {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  ¡Hola, {user?.nombre}!
+                  Hola, {user?.nombre}!
                 </h1>
                 <p className="text-gray-600 dark:text-gray-400">
                   Bienvenido a tu dashboard de EcoMove
@@ -582,10 +574,8 @@ export const UserDashboard: React.FC = () => {
                 </div>
               )}
               
-              {/* Toggle de tema */}
               <ThemeToggle />
               
-              {/* Botón de actualizar */}
               <Button
                 variant="outline"
                 size="sm"
@@ -606,7 +596,6 @@ export const UserDashboard: React.FC = () => {
                 <span>Perfil</span>
               </Button>
               
-              {/* Botón de cerrar sesión */}
               <Button
                 variant="outline"
                 size="sm"
@@ -622,7 +611,7 @@ export const UserDashboard: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Grid - VERSIÓN SIMPLIFICADA CON DATOS QUE FUNCIONAN */}
+        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatsCard
             title="Préstamos Totales"
@@ -701,9 +690,7 @@ export const UserDashboard: React.FC = () => {
                     <div className="text-right">
                       <p className="text-lg font-bold text-gray-900 dark:text-white flex items-center">
                         {formatCurrency(currentCost)}
-                        {activeLoan && (
-                          <span className="ml-2 w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                        )}
+                        <span className="ml-2 w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
                         Tiempo real
@@ -716,30 +703,37 @@ export const UserDashboard: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* Botones de acción */}
                   <div className="flex space-x-3">
                     <Button
-                      onClick={handleExtendLoan}
-                      className="flex-1 bg-blue-500 hover:bg-blue-600 text-white"
+                      onClick={handleCompleteLoan}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                      disabled={isProcessingComplete || isProcessingCancel}
                     >
-                      <Square className="h-4 w-4 mr-2" />
-                      Extender Prestamo
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Completar
                     </Button>
-                    <Button
-                      variant="outline"
-                      onClick={handleEndRental}
-                      className="flex-1"
-                    >
-                      <Clock className="h-4 w-4 mr-2" />
-                      Completar Prestamo
-                    </Button>
+                    
                     <Button
                       onClick={handleCancelLoan}
                       className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+                      disabled={isProcessingComplete || isProcessingCancel}
                     >
-                      <Square className="h-4 w-4 mr-2" />
-                      Terminar Préstamo
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Cancelar
                     </Button>
                   </div>
+
+                  {/* Estado de procesamiento */}
+                  {(isProcessingComplete || isProcessingCancel) && (
+                    <div className="mt-4 flex items-center justify-center">
+                      <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                      <span className="text-sm">
+                        {isProcessingComplete && 'Procesando pago y completando préstamo...'}
+                        {isProcessingCancel && 'Cancelando préstamo...'}
+                      </span>
+                    </div>
+                  )}
                 </motion.div>
               ) : (
                 <div className="text-center py-8">
@@ -787,7 +781,7 @@ export const UserDashboard: React.FC = () => {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => showSuccess('Próximamente', 'Función en desarrollo')}
+                  onClick={handleShowHistory}
                   className="w-full justify-start"
                 >
                   <Calendar className="h-4 w-4 mr-3" />
@@ -849,9 +843,9 @@ export const UserDashboard: React.FC = () => {
                               </>
                             )}
                           </div>
-                          {station.address && (
+                          {station.direccion && (
                             <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                              {station.address}
+                              {station.direccion}
                             </p>
                           )}
                         </div>
@@ -903,7 +897,7 @@ export const UserDashboard: React.FC = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => showSuccess('Próximamente', 'Función en desarrollo')}
+                onClick={handleShowHistory}
               >
                 Ver historial completo
                 <ChevronRight className="h-4 w-4 ml-1" />
@@ -950,6 +944,29 @@ export const UserDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* MODALES - Con datos de pago actualizados */}
+      <CompleteLoanModal
+        isOpen={showCompleteModal}
+        onClose={() => setShowCompleteModal(false)}
+        onConfirm={handleCompleteConfirm}
+        currentLoan={currentLoanForModal}
+        availableStations={nearbyStations}
+        isProcessing={isProcessingComplete}
+      />
+
+      <CancelLoanModal
+        isOpen={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        onConfirm={handleCancelConfirm}
+        currentLoan={currentLoanForModal}
+        isProcessing={isProcessingCancel}
+      />
+
+      <LoanHistoryModal
+        isOpen={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
+      />
     </div>
   );
 };

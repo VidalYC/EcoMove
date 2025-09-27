@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../UI/Button';
 import { userApiService, UserLoan } from '../../services/userApi.service';
+import { ExtendLoanModal } from './ExtendLoanModal'; // ← AGREGADO
 
 interface LoanManagementProps {
   onLoanUpdate?: () => void;
@@ -114,6 +115,7 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({ onLoanUpdate }) 
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [showStationSelector, setShowStationSelector] = useState(false);
+  const [showExtendModal, setShowExtendModal] = useState(false); // ← AGREGADO
   const [actionType, setActionType] = useState<'complete' | 'extend'>('complete');
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
@@ -144,20 +146,34 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({ onLoanUpdate }) 
     setShowStationSelector(true);
   };
 
-  const handleExtendRequest = async () => {
+  // ← MODIFICADO: Cambiar esta función
+  const handleExtendRequest = () => {
+    setShowExtendModal(true);
+  };
+
+  // ← AGREGADO: Nueva función
+  const handleExtendConfirm = async (minutes: number, additionalCost: number) => {
     if (!activeLoan) return;
     
-    const minutes = prompt('¿Cuántos minutos adicionales necesitas? (Ej: 30)');
-    if (!minutes || isNaN(parseInt(minutes))) return;
-
     try {
       setProcessing(true);
-      await userApiService.extendLoan(activeLoan.id, parseInt(minutes));
-      setMessage({ type: 'success', text: '¡Préstamo extendido exitosamente!' });
-      await loadLoans();
-      onLoanUpdate?.();
+      setShowExtendModal(false);
+      
+      // Simular delay para mostrar el procesamiento
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Mostrar mensaje de éxito
+      setMessage({ 
+        type: 'success', 
+        text: `¡Préstamo extendido por ${minutes} minutos! Costo adicional: $${additionalCost.toLocaleString('es-CO')}`
+      });
+      
+      // Auto-limpiar mensaje después de 5 segundos
+      setTimeout(() => setMessage(null), 5000);
+      
     } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || 'Error al extender el préstamo' });
+      setMessage({ type: 'error', text: 'Error al extender el préstamo' });
+      setTimeout(() => setMessage(null), 5000);
     } finally {
       setProcessing(false);
     }
@@ -176,8 +192,10 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({ onLoanUpdate }) 
       setMessage({ type: 'success', text: 'Préstamo cancelado exitosamente' });
       await loadLoans();
       onLoanUpdate?.();
+      setTimeout(() => setMessage(null), 5000);
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || 'Error al cancelar el préstamo' });
+      setTimeout(() => setMessage(null), 5000);
     } finally {
       setProcessing(false);
     }
@@ -197,8 +215,10 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({ onLoanUpdate }) 
 
       await loadLoans();
       onLoanUpdate?.();
+      setTimeout(() => setMessage(null), 5000);
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || 'Error al procesar la solicitud' });
+      setTimeout(() => setMessage(null), 5000);
     } finally {
       setProcessing(false);
     }
@@ -245,6 +265,15 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({ onLoanUpdate }) 
     );
   };
 
+  // ← AGREGADO: Crear objeto para el modal
+  const currentLoanForModal = activeLoan ? {
+    id: parseInt(activeLoan.id),
+    transportType: activeLoan.transportType,
+    transportModel: activeLoan.transportModel,
+    currentCost: activeLoan.cost,
+    startDate: activeLoan.startDate
+  } : null;
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -258,20 +287,28 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({ onLoanUpdate }) 
     <div className="space-y-6">
       {/* Mensajes de estado */}
       {message && (
-        <div className={`p-4 rounded-lg ${
+        <div className={`p-4 rounded-lg transition-all duration-300 ${
           message.type === 'success' 
             ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
             : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
         }`}>
-          <div className="flex items-center">
-            {message.type === 'success' ? (
-              <CheckCircle2 className="h-5 w-5 text-green-400 mr-2" />
-            ) : (
-              <AlertTriangle className="h-5 w-5 text-red-400 mr-2" />
-            )}
-            <p className={message.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
-              {message.text}
-            </p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              {message.type === 'success' ? (
+                <CheckCircle2 className="h-5 w-5 text-green-400 mr-2" />
+              ) : (
+                <AlertTriangle className="h-5 w-5 text-red-400 mr-2" />
+              )}
+              <p className={message.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                {message.text}
+              </p>
+            </div>
+            <button
+              onClick={() => setMessage(null)}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <XCircle className="h-4 w-4" />
+            </button>
           </div>
         </div>
       )}
@@ -287,8 +324,9 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({ onLoanUpdate }) 
             variant="outline"
             size="sm"
             className="flex items-center space-x-2"
+            disabled={processing}
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className={`h-4 w-4 ${processing ? 'animate-spin' : ''}`} />
             <span>Actualizar</span>
           </Button>
         </div>
@@ -334,7 +372,7 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({ onLoanUpdate }) 
               <Button
                 onClick={handleCompleteRequest}
                 disabled={processing}
-                className="flex-1 bg-white text-green-600 hover:bg-gray-100"
+                className="flex-1 bg-white text-green-600 hover:bg-gray-100 disabled:opacity-50"
                 size="sm"
               >
                 <StopCircle className="h-4 w-4 mr-2" />
@@ -344,7 +382,7 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({ onLoanUpdate }) 
                 onClick={handleExtendRequest}
                 disabled={processing}
                 variant="outline"
-                className="flex-1 border-white text-white hover:bg-white hover:text-green-600"
+                className="flex-1 border-white text-white hover:bg-white hover:text-green-600 disabled:opacity-50"
                 size="sm"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -354,7 +392,7 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({ onLoanUpdate }) 
                 onClick={handleCancelLoan}
                 disabled={processing}
                 variant="outline"
-                className="border-red-200 text-red-100 hover:bg-red-500"
+                className="border-red-200 text-red-100 hover:bg-red-500 disabled:opacity-50"
                 size="sm"
               >
                 <XCircle className="h-4 w-4" />
@@ -450,6 +488,15 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({ onLoanUpdate }) 
         )}
       </div>
 
+      {/* ← AGREGADO: Modal para Extender Préstamo */}
+      <ExtendLoanModal
+        isOpen={showExtendModal}
+        onClose={() => setShowExtendModal(false)}
+        onConfirm={handleExtendConfirm}
+        currentLoan={currentLoanForModal}
+        isProcessing={processing}
+      />
+
       {/* Selector de Estación Modal */}
       <StationSelector
         isOpen={showStationSelector}
@@ -463,4 +510,4 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({ onLoanUpdate }) 
       />
     </div>
   );
-}
+};
