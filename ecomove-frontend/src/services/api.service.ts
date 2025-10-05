@@ -1,4 +1,4 @@
-// src/services/api.service.ts - ACTUALIZADO CON MÉTODOS HTTP
+// src/services/api.service.ts - CORREGIDO
 import { config } from '../config/environment';
 
 // ============ INTERFACES ============
@@ -100,7 +100,7 @@ export class ApiService {
     this.token = localStorage.getItem('ecomove_token');
   }
 
-  // ========== MÉTODO REQUEST BASE (existente) ==========
+  // ========== MÉTODO REQUEST BASE - CORREGIDO ==========
   async request<T>(
     endpoint: string, 
     options: RequestInit = {}
@@ -142,13 +142,12 @@ export class ApiService {
         } catch {
           errorData = { message: `HTTP error! status: ${response.status}` };
         }
+        
         console.error('❌ API Error Details:', errorData);
-  if (errorData.errors) {
-    console.error('❌ Validation Errors:', errorData.errors);
-  }
-  
-  throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-        console.error('❌ API Error:', errorData);
+        if (errorData.errors) {
+          console.error('❌ Validation Errors:', errorData.errors);
+        }
+        
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
@@ -196,13 +195,10 @@ export class ApiService {
     };
 
     if (data) {
-      console.log('🔍 POST Data being sent:', data); // Debug temporal
       options.body = JSON.stringify(data);
     }
 
-    const response = await this.request<T>(endpoint, options);
-    console.log('🔍 POST Response:', response); // Debug temporal
-    return response;
+    return this.request<T>(endpoint, options);
   }
 
   /**

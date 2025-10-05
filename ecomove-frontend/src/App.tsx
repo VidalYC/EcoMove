@@ -1,4 +1,4 @@
-// src/App.tsx - ACTUALIZADO CON NUEVA RUTA
+// src/App.tsx - ACTUALIZADO CON RUTA DE GESTIÓN DE USUARIOS
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -16,10 +16,12 @@ import Register from './components/Auth/Register';
 // Páginas de usuario existentes
 import ProfilePage from './pages/User/ProfilePage';
 
-// Nuevas páginas que vamos a crear
+// Páginas principales
 import { UserDashboard } from './pages/User/UserDashboard';
 import { AdminDashboard } from './pages/Admin/AdminDashboard';
-import { RentVehicle } from './pages/User/RentVehicle'; // ✅ NUEVA IMPORTACIÓN
+import UserManagement from './pages/Admin/UserManagement'; // ← NUEVA IMPORTACIÓN
+import  VehicleManagement  from './pages/Admin/VehicleManagement';
+import { RentVehicle } from './pages/User/RentVehicle';
 import { VehicleList } from './components/Vehicle/VehicleList';
 import { Bike } from 'lucide-react';
 
@@ -46,12 +48,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireAdmin 
     return <LoadingSpinner />;
   }
 
-  // Si no hay usuario autenticado, redirigir al login
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  // Si se requiere admin pero el usuario no es admin
   if (requireAdmin && user.role !== 'admin') {
     return <Navigate to="/user/dashboard" replace />;
   }
@@ -59,7 +59,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireAdmin 
   return <>{children}</>;
 };
 
-// Componente para rutas de invitados (usuarios no autenticados)
+// Componente para rutas de invitados
 interface GuestRouteProps {
   children: React.ReactNode;
 }
@@ -71,7 +71,6 @@ const GuestRoute: React.FC<GuestRouteProps> = ({ children }) => {
     return <LoadingSpinner />;
   }
 
-  // Si el usuario ya está autenticado, redirigir a su dashboard
   if (user) {
     if (user.role === 'admin') {
       return <Navigate to="/admin/dashboard" replace />;
@@ -95,7 +94,6 @@ const DashboardRedirect: React.FC = () => {
     return <Navigate to="/login" replace />;
   }
 
-  // Redirigir según el rol del usuario
   if (user.role === 'admin') {
     return <Navigate to="/admin/dashboard" replace />;
   } else {
@@ -110,7 +108,7 @@ const AppRoutes: React.FC = () => {
       {/* Ruta principal - Landing Page */}
       <Route path="/" element={<LandingPage />} />
       
-      {/* Rutas de autenticación (solo para usuarios no autenticados) */}
+      {/* Rutas de autenticación */}
       <Route 
         path="/login" 
         element={
@@ -149,6 +147,7 @@ const AppRoutes: React.FC = () => {
           </ProtectedRoute>
         } 
       />
+      
       <Route 
         path="/profile" 
         element={
@@ -158,16 +157,6 @@ const AppRoutes: React.FC = () => {
         } 
       />
       
-      {/* ✅ NUEVA RUTA - Alquilar vehículo
-      <Route 
-        path="/rent-vehicle" 
-        element={
-          <ProtectedRoute>
-            <RentVehicle />
-          </ProtectedRoute>
-        } 
-      />
-      */}
       {/* Rutas de administración */}
       <Route 
         path="/admin/dashboard" 
@@ -178,7 +167,17 @@ const AppRoutes: React.FC = () => {
         } 
       />
       
-      {/* Rutas futuras de usuario */}
+      {/* ✅ NUEVA RUTA - Gestión de Usuarios */}
+      <Route 
+        path="/admin/usuarios" 
+        element={
+          <ProtectedRoute requireAdmin={true}>
+            <UserManagement />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Otras rutas de usuario */}
       <Route 
         path="/estaciones" 
         element={
@@ -194,67 +193,55 @@ const AppRoutes: React.FC = () => {
           </ProtectedRoute>
         } 
       />
+      
       <Route 
         path="/transportes" 
         element={
           <ProtectedRoute>
-            <RentVehicle />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-      path="/transportes" 
-      element={
-        <ProtectedRoute>
-          <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-            <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex items-center justify-between py-6">
-                  <div className="flex items-center space-x-3">
-                    <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-2 rounded-lg">
-                      <Bike className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                        Lista de Transportes
-                      </h1>
-                      <p className="text-gray-600 dark:text-gray-400">
-                        Encuentra el vehículo perfecto para tu viaje
-                      </p>
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+              <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                  <div className="flex items-center justify-between py-6">
+                    <div className="flex items-center space-x-3">
+                      <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-2 rounded-lg">
+                        <Bike className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                          Lista de Transportes
+                        </h1>
+                        <p className="text-gray-600 dark:text-gray-400">
+                          Encuentra el vehículo perfecto para tu viaje
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-              <VehicleList
-                onRent={async (vehicleId, stationId) => {
-                  console.log('Renting vehicle:', vehicleId, 'from station:', stationId);
-                  // Aquí se implementará la lógica de alquiler
-                  alert(`Funcionalidad de alquiler en desarrollo. Vehículo: ${vehicleId}, Estación: ${stationId}`);
-                }}
-                showOnlyAvailable={true}
-              />
-            </div>
-          </div>
-        </ProtectedRoute>
-      } 
-    />
-      <Route 
-        path="/admin/transportes" 
-        element={
-          <ProtectedRoute requireAdmin={true}>
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-              <div className="text-center">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                  Gestión de Transportes
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400">Próximamente disponible</p>
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <VehicleList
+                  onRent={async (vehicleId, stationId) => {
+                    console.log('Renting vehicle:', vehicleId, 'from station:', stationId);
+                    alert(`Funcionalidad de alquiler en desarrollo. Vehículo: ${vehicleId}, Estación: ${stationId}`);
+                  }}
+                  showOnlyAvailable={true}
+                />
               </div>
             </div>
           </ProtectedRoute>
         } 
       />
+      
+      {/* Rutas de administración adicionales */}
+      <Route 
+        path="/admin/vehiculos" 
+        element={
+          <ProtectedRoute requireAdmin={true}>
+            <VehicleManagement />
+          </ProtectedRoute>
+        } 
+      />
+      
       <Route 
         path="/admin/estaciones" 
         element={
@@ -270,6 +257,7 @@ const AppRoutes: React.FC = () => {
           </ProtectedRoute>
         } 
       />
+      
       <Route 
         path="/admin/reportes" 
         element={
@@ -285,6 +273,7 @@ const AppRoutes: React.FC = () => {
           </ProtectedRoute>
         } 
       />
+      
       <Route 
         path="/admin/finanzas" 
         element={
@@ -300,6 +289,7 @@ const AppRoutes: React.FC = () => {
           </ProtectedRoute>
         } 
       />
+      
       <Route 
         path="/admin/configuracion" 
         element={
@@ -320,7 +310,6 @@ const AppRoutes: React.FC = () => {
       <Route path="*" element={
         <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
           <div className="text-center">
-            {/* GIF agregado aquí */}
             <div className="flex justify-center mb-8">
               <img 
                 src="https://i.postimg.cc/2yrFyxKv/giphy.gif" 
@@ -353,7 +342,6 @@ function App() {
           <Router>
             <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors">
               <AppRoutes />
-              {/* Contenedor de notificaciones siempre visible */}
               <NotificationContainer />
             </div>
           </Router>

@@ -19,6 +19,7 @@ export interface Transport {
   tipo_frenos?: string; // Para bicicletas
   nivel_bateria?: number; // Para scooters eléctricos
   velocidad_maxima?: number; // Para scooters eléctricos
+  autonomia?: number; // Para scooters eléctricos
 }
 
 export interface CreateTransportData {
@@ -33,6 +34,7 @@ export interface CreateTransportData {
   // Campos específicos para scooters eléctricos
   nivel_bateria?: number;
   velocidad_maxima?: number;
+  autonomia?: number; // Autonomía en kilómetros (requerido para scooters eléctricos)
 }
 
 export interface UpdateTransportData {
@@ -42,6 +44,7 @@ export interface UpdateTransportData {
   estacion_actual_id?: number;
   tarifa_por_hora?: number;
   nivel_bateria?: number;
+  autonomia?: number;
 }
 
 export interface TransportFilters {
@@ -78,7 +81,7 @@ export interface PaginatedTransports {
 // ============ TRANSPORT API SERVICE ============
 
 class TransportApiService {
-  private readonly baseUrl = '/api/v1/transports'; // CORREGIDO: era '/api/v1/transportes'
+  private readonly baseUrl = '/api/v1/transports';
 
   // ========== OBTENER TRANSPORTES ==========
 
@@ -147,16 +150,68 @@ class TransportApiService {
 
   /**
    * Crear nuevo transporte
+   * CORREGIDO: Usa rutas específicas según el tipo de vehículo
    */
   async createTransport(data: CreateTransportData): Promise<ApiResponse<Transport>> {
-    return apiService.post<Transport>(this.baseUrl, data);
+    // Seleccionar endpoint según tipo de vehículo
+    let endpoint: string;
+    
+    switch (data.tipo) {
+      case 'bicycle':
+        endpoint = `${this.baseUrl}/bicycles`;
+        break;
+      case 'electric_scooter':
+        endpoint = `${this.baseUrl}/electric-scooters`;
+        break;
+      case 'scooter':
+        throw new Error('Los scooters normales aún no están implementados en el backend');
+      default:
+        throw new Error(`Tipo de vehículo no soportado: ${data.tipo}`);
+    }
+    
+    // Transformar datos al formato esperado por el backend
+    const payload: any = {
+      model: data.modelo,
+      brand: data.marca,
+      hourlyRate: data.tarifa_por_hora,
+      currentStationId: data.estacion_actual_id
+    };
+
+    // Agregar campos específicos según el tipo
+    if (data.tipo === 'bicycle') {
+      payload.gearCount = data.numero_cambios;
+      payload.brakeType = data.tipo_frenos;
+    } else if (data.tipo === 'electric_scooter') {
+      payload.batteryLevel = data.nivel_bateria || 100;
+      payload.maxSpeed = data.velocidad_maxima;
+      payload.autonomy = data.autonomia || 50; // ← CAMPO CRÍTICO AGREGADO
+    }
+    
+    console.log(`📍 Creando ${data.tipo} en:`, endpoint);
+    console.log('📦 Datos enviados:', payload);
+    
+    return apiService.post<Transport>(endpoint, payload);
   }
 
   /**
    * Actualizar transporte
    */
   async updateTransport(id: number, data: UpdateTransportData): Promise<ApiResponse<Transport>> {
-    return apiService.put<Transport>(`${this.baseUrl}/${id}`, data);
+    // Transformar datos al formato esperado por el backend
+    const payload: any = {};
+    
+    if (data.modelo !== undefined) payload.model = data.modelo;
+    if (data.marca !== undefined) payload.brand = data.marca;
+    if (data.estado !== undefined) payload.status = data.estado;
+    if (data.estacion_actual_id !== undefined) payload.currentStationId = data.estacion_actual_id;
+    if (data.tarifa_por_hora !== undefined) payload.hourlyRate = data.tarifa_por_hora;
+    if (data.nivel_bateria !== undefined) payload.batteryLevel = data.nivel_bateria;
+    if (data.autonomia !== undefined) payload.autonomy = data.autonomia;
+    
+    console.log('📝 Actualizando transporte:', id);
+    console.log('📦 Datos enviados:', payload);
+    
+    return apiService.put<Transport>(`${this.baseUrl}/${id}`, payload);
   }
 
   /**
@@ -166,7 +221,7 @@ class TransportApiService {
     id: number, 
     estado: 'available' | 'in_use' | 'maintenance' | 'damaged'
   ): Promise<ApiResponse<Transport>> {
-    return apiService.patch<Transport>(`${this.baseUrl}/${id}/estado`, { estado });
+    return apiService.patch<Transport>(`${this.baseUrl}/${id}/status`, { estado });
   }
 
   /**
@@ -177,7 +232,7 @@ class TransportApiService {
     estacionId: number
   ): Promise<ApiResponse<Transport>> {
     return apiService.patch<Transport>(
-      `${this.baseUrl}/${transportId}/mover`,
+      `${this.baseUrl}/${transportId}/move`,
       { estacion_destino_id: estacionId }
     );
   }
@@ -188,7 +243,7 @@ class TransportApiService {
    * Actualizar nivel de batería (para scooters eléctricos)
    */
   async updateBatteryLevel(id: number, nivel_bateria: number): Promise<ApiResponse<Transport>> {
-    return apiService.patch<Transport>(`${this.baseUrl}/${id}/bateria`, { nivel_bateria });
+    return apiService.patch<Transport>(`${this.baseUrl}/${id}/battery`, { nivel_bateria });
   }
 
   /**
@@ -217,7 +272,7 @@ class TransportApiService {
    * Obtener estadísticas de transportes
    */
   async getTransportStats(): Promise<ApiResponse<TransportStats>> {
-    return apiService.get<TransportStats>(`${this.baseUrl}/estadisticas`);
+    return apiService.get<TransportStats>(`${this.baseUrl}/stats`);
   }
 
   /**
