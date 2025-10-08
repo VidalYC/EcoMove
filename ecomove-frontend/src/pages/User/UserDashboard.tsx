@@ -1,4 +1,4 @@
-// src/pages/User/UserDashboard.tsx - CON FUNCIONALIDAD DE DATOS DE PAGO
+// src/pages/User/UserDashboard.tsx - COMPLETO CON FUNCIONALIDAD DE DATOS DE PAGO
 import React, { useState, useEffect } from 'react';
 import { 
   User, 
@@ -29,37 +29,27 @@ import { userApiService, UserStats, QuickStats, UserLoan } from '../../services/
 import { apiService } from '../../services/api.service';
 import { motion } from 'framer-motion';
 
-// Interfaz para los datos de pago
 interface PaymentData {
-  // Datos comunes
   transactionId?: string;
   timestamp?: string;
-  
-  // Para tarjeta de crédito/débito
-  cardNumber?: string; // Solo últimos 4 dígitos
-  cardType?: string; // visa, mastercard, etc.
+  cardNumber?: string;
+  cardType?: string;
   cardHolder?: string;
   authorizationCode?: string;
-  
-  // Para transferencia bancaria
   bankName?: string;
-  accountNumber?: string; // Solo últimos 4 dígitos
+  accountNumber?: string;
   referenceNumber?: string;
-  
-  // Para billeteras digitales
-  walletType?: string; // nequi, daviplata, etc.
+  walletType?: string;
   walletAccount?: string;
   walletReference?: string;
-  
-  // Para efectivo
   amountReceived?: number;
   change?: number;
-  
-  // Datos adicionales
   processingFee?: number;
   exchangeRate?: number;
   currency?: string;
   status?: 'pending' | 'completed' | 'failed';
+  stripePaymentMethodId?: string;
+  processor?: string; // 'stripe', 'manual', etc.
 }
 
 interface StatsCardProps {
@@ -108,18 +98,15 @@ export const UserDashboard: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [backendConnected, setBackendConnected] = useState<boolean | null>(null);
   
-  // Estados para los modales
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [isProcessingComplete, setIsProcessingComplete] = useState(false);
   const [isProcessingCancel, setIsProcessingCancel] = useState(false);
   
-  // Estados para cálculo de costos en tiempo real simplificado
   const [currentCost, setCurrentCost] = useState<number>(0);
   const [realTimeTimer, setRealTimeTimer] = useState<NodeJS.Timeout | null>(null);
 
-  // Verificar conectividad con el backend
   const checkBackendConnectivity = async (): Promise<boolean> => {
     try {
       const response = await apiService.get('/api/v1/health');
@@ -133,25 +120,22 @@ export const UserDashboard: React.FC = () => {
     }
   };
 
-  // Calcular costo en tiempo real simplificado
   const calculateRealTimeCost = (loan: UserLoan): number => {
-    if (!loan.startDate) return loan.cost || 0;
+    if (!loan.startDate) return loan.cost || 3000;
     
     const now = new Date();
     const startTime = new Date(loan.startDate);
     const minutesElapsed = Math.floor((now.getTime() - startTime.getTime()) / (1000 * 60));
     
-    // Tarifa por minuto: $8.33 COP (equivale a $500 por hora)
-    const ratePerMinute = 500 / 60;
+    const baseRate = 3000;
+    const ratePerMinute = 50;
     
-    // Costo base + costo por tiempo transcurrido
-    const baseCost = loan.cost || 0;
-    const timeCost = minutesElapsed * ratePerMinute;
+    const baseCost = loan.cost || baseRate;
+    const timeCost = minutesElapsed < 1 ? 0 : minutesElapsed * ratePerMinute;
     
-    return Math.max(baseCost + timeCost, loan.cost || 0);
+    return Math.max(baseRate, baseCost + timeCost);
   };
 
-  // Cargar datos del dashboard
   const loadDashboardData = async (isRefresh = false) => {
     try {
       if (!isRefresh) setIsLoading(true);
@@ -163,7 +147,6 @@ export const UserDashboard: React.FC = () => {
         throw new Error('Backend no disponible - usando datos de fallback');
       }
 
-      // Cargar estadísticas
       try {
         const adminStatsResponse = await fetch(`http://localhost:4000/api/v1/loans/admin/estadisticas`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('ecomove_token')}` }
@@ -195,7 +178,6 @@ export const UserDashboard: React.FC = () => {
           throw new Error('Admin stats not available');
         }
       } catch (adminError) {
-        // Fallback
         const [userStatsResponse, quickStatsResponse] = await Promise.allSettled([
           userApiService.getUserStats().catch(error => null),
           userApiService.getQuickStats().catch(error => null)
@@ -227,7 +209,6 @@ export const UserDashboard: React.FC = () => {
         }
       }
 
-      // Cargar préstamo activo
       try {
         const currentLoanResponse = await userApiService.getCurrentLoan();
         if (currentLoanResponse) {
@@ -241,7 +222,6 @@ export const UserDashboard: React.FC = () => {
         setActiveLoan(null);
       }
 
-      // Cargar estaciones
       try {
         const stationsResponse = await fetch(`http://localhost:4000/api/v1/stations`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('ecomove_token')}` }
@@ -324,7 +304,6 @@ export const UserDashboard: React.FC = () => {
     }
   };
 
-  // Handlers simplificados
   const handleRefresh = async () => {
     if (isRefreshing) return;
     await loadDashboardData(true);
@@ -346,11 +325,10 @@ export const UserDashboard: React.FC = () => {
     setShowHistoryModal(true);
   };
 
-  // ACTUALIZADO: Handler para completar préstamo con datos de pago
   const handleCompleteConfirm = async (destinationStationId: string, additionalData: {
     finalCost: number;
     paymentMethod: string;
-    paymentData: PaymentData; // ← Nuevos datos de pago
+    paymentData: PaymentData;
     comments?: string;
   }) => {
     if (!activeLoan) return;
@@ -358,38 +336,86 @@ export const UserDashboard: React.FC = () => {
     try {
       setIsProcessingComplete(true);
 
-      // Log para debugging
-      console.log('Datos de pago recibidos:', additionalData.paymentData);
-      console.log('Método de pago:', additionalData.paymentMethod);
-      console.log('Costo final:', additionalData.finalCost);
+      console.log('🔍 Datos recibidos del modal:');
+      console.log('   Método de pago:', additionalData.paymentMethod);
+      console.log('   Costo final:', additionalData.finalCost);
+      console.log('   Payment Data:', additionalData.paymentData);
+
+      // Validar que tenemos el paymentIntentId si el método es Stripe
+      if (additionalData.paymentMethod === 'stripe') {
+        if (!additionalData.paymentData.transactionId) {
+          throw new Error('Falta el Payment Intent ID de Stripe');
+        }
+        console.log('   ✅ Payment Intent ID:', additionalData.paymentData.transactionId);
+      }
 
       const token = localStorage.getItem('ecomove_token');
+      
+      // Preparar el body según el método de pago
+      const requestBody: any = {
+        estacion_destino_id: parseInt(destinationStationId),
+        costo_total: additionalData.finalCost,
+        // Si es Stripe, enviar como "credit-card" que es lo que el backend acepta
+        metodo_pago: additionalData.paymentMethod === 'stripe' ? 'credit-card' : additionalData.paymentMethod,
+        comentarios: additionalData.comments || ''
+      };
+
+      // Si es Stripe, agregar el paymentIntentId
+      if (additionalData.paymentMethod === 'stripe' && additionalData.paymentData.transactionId) {
+        requestBody.stripe_payment_intent_id = additionalData.paymentData.transactionId;
+        requestBody.stripe_payment_method_id = additionalData.paymentData.stripePaymentMethodId;
+        
+        // Marcar que fue procesado por Stripe en los datos de pago
+        additionalData.paymentData.processor = 'stripe';
+      }
+
+      // Siempre enviar datos_pago
+      requestBody.datos_pago = additionalData.paymentData;
+
+      console.log('📤 Enviando al backend:', requestBody);
+
       const response = await fetch(`http://localhost:4000/api/v1/loans/${activeLoan.id}/completar`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          estacion_destino_id: parseInt(destinationStationId),
-          costo_total: additionalData.finalCost,
-          metodo_pago: additionalData.paymentMethod,
-          datos_pago: additionalData.paymentData, // ← Enviar datos completos del pago
-          comentarios: additionalData.comments || ''
-        })
+        body: JSON.stringify(requestBody)
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Error ${response.status}`);
+      const result = await response.json();
+      console.log('📥 Respuesta del backend:', result);
+
+      // Si hay errores de validación, mostrarlos detalladamente
+      if (result.errors && Array.isArray(result.errors)) {
+        console.error('❌ Errores de validación del backend:');
+        result.errors.forEach((error: any, index: number) => {
+          console.error(`   ${index + 1}. ${JSON.stringify(error)}`);
+        });
       }
 
-      const result = await response.json();
+      if (!response.ok) {
+        // Construir mensaje de error más detallado
+        let errorMessage = result.message || `Error ${response.status}`;
+        
+        if (result.errors && Array.isArray(result.errors)) {
+          const errorDetails = result.errors.map((err: any) => {
+            if (typeof err === 'string') return err;
+            if (err.message) return err.message;
+            if (err.msg) return err.msg;
+            return JSON.stringify(err);
+          }).join(', ');
+          errorMessage = `${errorMessage}: ${errorDetails}`;
+        }
+        
+        throw new Error(errorMessage);
+      }
       
       if (result.success) {
-        // Mostrar información del pago en el mensaje de éxito
         let paymentInfo = '';
-        if (additionalData.paymentData.transactionId) {
+        if (additionalData.paymentMethod === 'stripe') {
+          paymentInfo = ` (Stripe: ${additionalData.paymentData.transactionId?.substring(0, 20)}...)`;
+        } else if (additionalData.paymentData.transactionId) {
           paymentInfo = ` (ID: ${additionalData.paymentData.transactionId})`;
         } else if (additionalData.paymentData.referenceNumber) {
           paymentInfo = ` (Ref: ${additionalData.paymentData.referenceNumber})`;
@@ -402,14 +428,13 @@ export const UserDashboard: React.FC = () => {
           `Viaje finalizado! Total pagado: ${formatCurrency(additionalData.finalCost)} vía ${additionalData.paymentMethod}${paymentInfo}`
         );
         
-        // Recargar datos del dashboard
         await loadDashboardData();
       } else {
         throw new Error(result.message || 'No se pudo completar el préstamo');
       }
       
     } catch (error: any) {
-      console.error('Error completing loan:', error);
+      console.error('❌ Error completing loan:', error);
       showError('Error de pago', error.message || 'No se pudo procesar el pago del préstamo');
     } finally {
       setIsProcessingComplete(false);
@@ -494,7 +519,6 @@ export const UserDashboard: React.FC = () => {
     loadDashboardData();
   }, []);
 
-  // Timer para actualización en tiempo real simplificado
   useEffect(() => {
     if (activeLoan) {
       setCurrentCost(calculateRealTimeCost(activeLoan));
@@ -539,7 +563,6 @@ export const UserDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
       <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
@@ -558,7 +581,6 @@ export const UserDashboard: React.FC = () => {
             </div>
             
             <div className="flex items-center space-x-4">
-              {/* Indicador de conectividad */}
               {backendConnected !== null && (
                 <div className="flex items-center space-x-2 text-sm">
                   <div className={`w-2 h-2 rounded-full ${
@@ -611,7 +633,6 @@ export const UserDashboard: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatsCard
             title="Préstamos Totales"
@@ -647,7 +668,6 @@ export const UserDashboard: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Préstamo Activo */}
           <div className="lg:col-span-2">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
               <div className="flex items-center justify-between mb-6">
@@ -703,7 +723,6 @@ export const UserDashboard: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Botones de acción */}
                   <div className="flex space-x-3">
                     <Button
                       onClick={handleCompleteLoan}
@@ -724,7 +743,6 @@ export const UserDashboard: React.FC = () => {
                     </Button>
                   </div>
 
-                  {/* Estado de procesamiento */}
                   {(isProcessingComplete || isProcessingCancel) && (
                     <div className="mt-4 flex items-center justify-center">
                       <RefreshCw className="h-4 w-4 animate-spin mr-2" />
@@ -756,9 +774,7 @@ export const UserDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Estaciones Cercanas */}
           <div className="space-y-6">
-            {/* Acciones Rápidas */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
                 Acciones Rápidas
@@ -790,7 +806,6 @@ export const UserDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Estaciones Cercanas */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -887,7 +902,6 @@ export const UserDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Resumen de Actividad Reciente */}
         <div className="mt-8">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <div className="flex items-center justify-between mb-6">
@@ -945,7 +959,6 @@ export const UserDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* MODALES - Con datos de pago actualizados */}
       <CompleteLoanModal
         isOpen={showCompleteModal}
         onClose={() => setShowCompleteModal(false)}

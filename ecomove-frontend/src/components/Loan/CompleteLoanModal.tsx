@@ -1,6 +1,6 @@
-// src/components/Loan/CompleteLoanModal.tsx - INTEGRADO CON MODAL DE PAGO + PAYPAL
+// src/components/Loan/CompleteLoanModal.tsx - SOLO EFECTIVO Y STRIPE
 import React, { useState, useEffect } from 'react';
-import { X, MapPin, DollarSign, CheckCircle2, AlertCircle, CreditCard, Smartphone, Banknote, MessageSquare } from 'lucide-react';
+import { X, MapPin, DollarSign, CheckCircle2, AlertCircle, CreditCard, Banknote, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PaymentMethodModal, PaymentData } from './PaymentMethodModal';
 
@@ -33,7 +33,7 @@ export const CompleteLoanModal: React.FC<CompleteLoanModalProps> = ({
   isProcessing = false
 }) => {
   const [destinationStationId, setDestinationStationId] = useState<string>('');
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'credit_card' | 'debit_card' | 'cash' | 'wallet'>('credit_card');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cash' | 'stripe'>('stripe');
   const [comments, setComments] = useState<string>('');
   const [finalCost, setFinalCost] = useState<number>(0);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -43,7 +43,7 @@ export const CompleteLoanModal: React.FC<CompleteLoanModalProps> = ({
   useEffect(() => {
     if (isOpen && currentLoan) {
       setDestinationStationId('');
-      setSelectedPaymentMethod('credit_card');
+      setSelectedPaymentMethod('stripe');
       setComments('');
       setFinalCost(currentLoan.currentCost);
       setPaymentData(null);
@@ -58,16 +58,23 @@ export const CompleteLoanModal: React.FC<CompleteLoanModalProps> = ({
       const startTime = new Date(currentLoan.startDate);
       const minutesElapsed = Math.floor((now.getTime() - startTime.getTime()) / (1000 * 60));
       
-      // Tarifa por minuto
-      const ratePerMinute = 500 / 60; // 8.33 COP por minuto
-      const timeCost = minutesElapsed * ratePerMinute;
-      const total = Math.max(currentLoan.currentCost, timeCost);
+      // Nuevas tarifas ajustadas:
+      // - Tarifa base: $3,000 COP (mínimo de Stripe)
+      // - Tarifa por minuto adicional: $50 COP/min ($3,000/hora)
+      const baseRate = 3000; // Mínimo para cumplir con Stripe
+      const ratePerMinute = 50; // $3,000 por hora = $50 por minuto
+      
+      // Si el tiempo es menor a 1 minuto, cobra la tarifa base
+      const timeCost = minutesElapsed < 1 ? baseRate : baseRate + (minutesElapsed * ratePerMinute);
+      
+      // Asegurar que siempre sea al menos el mínimo de Stripe
+      const total = Math.max(baseRate, currentLoan.currentCost, timeCost);
       
       setFinalCost(Math.round(total));
     }
   }, [currentLoan]);
 
-  const handlePaymentMethodSelect = (method: 'credit_card' | 'debit_card' | 'cash' | 'wallet') => {
+  const handlePaymentMethodSelect = (method: 'cash' | 'stripe') => {
     setSelectedPaymentMethod(method);
     setShowPaymentModal(true);
   };
@@ -120,20 +127,13 @@ export const CompleteLoanModal: React.FC<CompleteLoanModalProps> = ({
 
   const paymentMethods = [
     {
-      id: 'credit_card',
-      name: 'Tarjeta de Crédito',
-      icon: CreditCard,
-      color: 'text-green-600 dark:text-green-400',
-      bgColor: 'bg-green-100 dark:bg-green-900',
-      borderColor: 'border-green-500'
-    },
-    {
-      id: 'debit_card',
-      name: 'Tarjeta de Débito',
+      id: 'stripe',
+      name: 'Tarjeta (Stripe)',
       icon: CreditCard,
       color: 'text-blue-600 dark:text-blue-400',
       bgColor: 'bg-blue-100 dark:bg-blue-900',
-      borderColor: 'border-blue-500'
+      borderColor: 'border-blue-500',
+      description: 'Pago seguro con tarjeta'
     },
     {
       id: 'cash',
@@ -141,15 +141,8 @@ export const CompleteLoanModal: React.FC<CompleteLoanModalProps> = ({
       icon: Banknote,
       color: 'text-green-600 dark:text-green-400',
       bgColor: 'bg-green-100 dark:bg-green-900',
-      borderColor: 'border-green-500'
-    },
-    {
-      id: 'wallet',
-      name: 'Billetera Digital',
-      icon: Smartphone,
-      color: 'text-purple-600 dark:text-purple-400',
-      bgColor: 'bg-purple-100 dark:bg-purple-900',
-      borderColor: 'border-purple-500'
+      borderColor: 'border-green-500',
+      description: 'Pagar en estación'
     }
   ];
 
@@ -267,21 +260,22 @@ export const CompleteLoanModal: React.FC<CompleteLoanModalProps> = ({
                     return (
                       <button
                         key={method.id}
-                        onClick={() => handlePaymentMethodSelect(method.id as any)}
+                        onClick={() => handlePaymentMethodSelect(method.id as 'cash' | 'stripe')}
                         disabled={isProcessing}
-                        className={`relative p-3 text-sm font-medium rounded-lg border transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                        className={`relative p-4 text-sm font-medium rounded-lg border transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                           isSelected
                             ? `${method.borderColor} ${method.bgColor} ${method.color}`
                             : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                         }`}
                       >
-                        <div className="flex items-center space-x-2">
-                          <IconComponent className="h-4 w-4" />
-                          <span>{method.name}</span>
+                        <div className="flex flex-col items-center space-y-2">
+                          <IconComponent className="h-6 w-6" />
+                          <span className="text-center">{method.name}</span>
+                          <span className="text-xs opacity-75">{method.description}</span>
                         </div>
                         {hasPaymentData && (
-                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full flex items-center justify-center">
-                            <CheckCircle2 className="h-2 w-2 text-white" />
+                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                            <CheckCircle2 className="h-3 w-3 text-white" />
                           </div>
                         )}
                       </button>
@@ -294,17 +288,15 @@ export const CompleteLoanModal: React.FC<CompleteLoanModalProps> = ({
                     <div className="flex items-center space-x-2">
                       <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
                       <span className="text-sm text-green-700 dark:text-green-300 font-medium">
-                        Datos de pago configurados
+                        Método de pago configurado
                       </span>
                     </div>
                     <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                       {paymentMethods.find(m => m.id === paymentData.method)?.name} - 
                       {paymentData.method === 'cash' && 
                         ` Pago en estación: ${formatCurrency(finalCost)}`}
-                      {(paymentData.method === 'credit_card' || paymentData.method === 'debit_card') && paymentData.cardNumber &&
-                        ` **** **** **** ${paymentData.cardNumber.slice(-4)}`}
-                      {paymentData.method === 'wallet' && paymentData.walletNumber &&
-                        ` ${paymentData.walletNumber}`}
+                      {paymentData.method === 'stripe' && paymentData.cardLast4 &&
+                        ` **** ${paymentData.cardLast4} (${paymentData.cardBrand})`}
                     </p>
                   </div>
                 )}
@@ -350,7 +342,7 @@ export const CompleteLoanModal: React.FC<CompleteLoanModalProps> = ({
                     <p className="font-medium">Campos requeridos:</p>
                     <ul className="mt-1 text-xs">
                       {!destinationStationId && <li>• Selecciona una estación de destino</li>}
-                      {!paymentData && <li>• Configura los datos del método de pago</li>}
+                      {!paymentData && <li>• Configura el método de pago</li>}
                     </ul>
                   </div>
                 </div>

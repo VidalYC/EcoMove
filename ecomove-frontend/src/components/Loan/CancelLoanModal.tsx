@@ -29,7 +29,6 @@ export const CancelLoanModal: React.FC<CancelLoanModalProps> = ({
   const [understandsConsequences, setUnderstandsConsequences] = useState<boolean>(false);
   const [cancellationFee, setCancellationFee] = useState<number>(0);
 
-  // Razones predefinidas para cancelación
   const cancellationReasons = [
     {
       value: 'technical-issue',
@@ -69,7 +68,6 @@ export const CancelLoanModal: React.FC<CancelLoanModalProps> = ({
     }
   ];
 
-  // Calcular duración y penalización
   const getLoanDuration = (): string => {
     if (!currentLoan?.startDate) return '0 min';
     
@@ -86,12 +84,12 @@ export const CancelLoanModal: React.FC<CancelLoanModalProps> = ({
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
   };
 
-  // Calcular tarifa de cancelación
   useEffect(() => {
     if (currentLoan && selectedReason) {
       const reason = cancellationReasons.find(r => r.value === selectedReason);
       if (reason) {
-        const fee = currentLoan.currentCost * reason.feeMultiplier;
+        const baseCost = Math.max(currentLoan.currentCost, 3000);
+        const fee = baseCost * reason.feeMultiplier;
         setCancellationFee(Math.round(fee));
       }
     } else {
@@ -99,7 +97,6 @@ export const CancelLoanModal: React.FC<CancelLoanModalProps> = ({
     }
   }, [currentLoan, selectedReason]);
 
-  // Resetear estado cuando se abre el modal
   useEffect(() => {
     if (isOpen) {
       setSelectedReason('');
@@ -156,7 +153,6 @@ export const CancelLoanModal: React.FC<CancelLoanModalProps> = ({
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-lg mx-auto shadow-2xl border border-gray-200 dark:border-gray-700 my-8"
           >
-            {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center space-x-3">
                 <div className="bg-red-100 dark:bg-red-900 p-2 rounded-lg">
@@ -180,9 +176,7 @@ export const CancelLoanModal: React.FC<CancelLoanModalProps> = ({
               </button>
             </div>
 
-            {/* Content */}
             <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
-              {/* Advertencia importante */}
               <div className="flex items-start space-x-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                 <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
                 <div className="text-sm text-red-700 dark:text-red-300">
@@ -194,7 +188,6 @@ export const CancelLoanModal: React.FC<CancelLoanModalProps> = ({
                 </div>
               </div>
 
-              {/* Información del préstamo actual */}
               {currentLoan && (
                 <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                   <h4 className="font-medium text-gray-900 dark:text-white mb-2">
@@ -223,7 +216,6 @@ export const CancelLoanModal: React.FC<CancelLoanModalProps> = ({
                 </div>
               )}
 
-              {/* Razón de cancelación */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                   <AlertCircle className="inline h-4 w-4 mr-2" />
@@ -260,7 +252,6 @@ export const CancelLoanModal: React.FC<CancelLoanModalProps> = ({
                   ))}
                 </div>
 
-                {/* Campo personalizado para "otra razón" */}
                 {selectedReason === 'other' && (
                   <div className="mt-3">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -282,7 +273,6 @@ export const CancelLoanModal: React.FC<CancelLoanModalProps> = ({
                 )}
               </div>
 
-              {/* Resumen de costos */}
               {selectedReasonData && currentLoan && (
                 <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
@@ -296,7 +286,7 @@ export const CancelLoanModal: React.FC<CancelLoanModalProps> = ({
                   </div>
                   
                   <div className="text-xs text-orange-600 dark:text-orange-400 space-y-1">
-                    <p>• Costo base del préstamo: {formatCurrency(currentLoan.currentCost)}</p>
+                    <p>• Costo base del préstamo: {formatCurrency(Math.max(currentLoan.currentCost, 3000))}</p>
                     <p>• Penalización ({(selectedReasonData.feeMultiplier * 100).toFixed(0)}%): {formatCurrency(cancellationFee)}</p>
                     <div className="border-t border-orange-200 dark:border-orange-700 pt-1 mt-1">
                       <p className="font-medium">Total a pagar: {formatCurrency(cancellationFee)}</p>
@@ -305,7 +295,6 @@ export const CancelLoanModal: React.FC<CancelLoanModalProps> = ({
                 </div>
               )}
 
-              {/* Confirmación de consecuencias */}
               <div className="space-y-3">
                 <div className="flex items-start space-x-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                   <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
@@ -341,7 +330,6 @@ export const CancelLoanModal: React.FC<CancelLoanModalProps> = ({
               </div>
             </div>
 
-            {/* Actions */}
             <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-b-xl">
               <button
                 onClick={handleClose}
