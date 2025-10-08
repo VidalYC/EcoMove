@@ -37,7 +37,8 @@ npm install stripe
 
 ### Frontend (.env)
 ```env
-REACT_APP_STRIPE_PUBLIC_KEY=pk_test_TU_CLAVE_PUBLICA_AQUI
+VITE_STRIPE_PUBLIC_KEY= Tu llave publica aqui
+VITE_API_BASE_URL=http://localhost:4000
 ```
 
 ### Backend (.env)
