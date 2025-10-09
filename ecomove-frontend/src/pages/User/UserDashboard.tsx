@@ -1,4 +1,4 @@
-// src/pages/User/UserDashboard.tsx - COMPLETO CON FUNCIONALIDAD DE DATOS DE PAGO
+// src/pages/User/UserDashboard.tsx - COMPLETO CON MODAL DE ESTACIONES
 import React, { useState, useEffect } from 'react';
 import { 
   User, 
@@ -23,6 +23,7 @@ import { ThemeToggle } from '../../components/UI/ThemeToggle';
 import { CompleteLoanModal } from '../../components/Loan/CompleteLoanModal';
 import { CancelLoanModal } from '../../components/Loan/CancelLoanModal';
 import { LoanHistoryModal } from '../../components/Loan/LoanHistoryModal';
+import { AllStationsModal } from '../../components/Station/AllStationsModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { userApiService, UserStats, QuickStats, UserLoan } from '../../services/userApi.service';
@@ -101,6 +102,7 @@ export const UserDashboard: React.FC = () => {
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showAllStationsModal, setShowAllStationsModal] = useState(false);
   const [isProcessingComplete, setIsProcessingComplete] = useState(false);
   const [isProcessingCancel, setIsProcessingCancel] = useState(false);
   
@@ -323,6 +325,10 @@ export const UserDashboard: React.FC = () => {
 
   const handleShowHistory = () => {
     setShowHistoryModal(true);
+  };
+
+  const handleShowAllStations = () => {
+    setShowAllStationsModal(true);
   };
 
   const handleCompleteConfirm = async (destinationStationId: string, additionalData: {
@@ -891,7 +897,7 @@ export const UserDashboard: React.FC = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => showSuccess('Próximamente', 'Función en desarrollo')}
+                  onClick={handleShowAllStations}
                   className="w-full mt-3 text-emerald-600 hover:text-emerald-700"
                 >
                   Ver todas las estaciones
@@ -979,6 +985,11 @@ export const UserDashboard: React.FC = () => {
       <LoanHistoryModal
         isOpen={showHistoryModal}
         onClose={() => setShowHistoryModal(false)}
+      />
+
+      <AllStationsModal
+        isOpen={showAllStationsModal}
+        onClose={() => setShowAllStationsModal(false)}
       />
     </div>
   );
