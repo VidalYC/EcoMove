@@ -1,4 +1,5 @@
-// src/pages/User/UserDashboard.tsx - COMPLETO CON MODAL DE PERFIL
+
+// src/pages/User/UserDashboard.tsx - COMPLETO CON DEBUG Y MODAL DE PERFIL
 import React, { useState, useEffect } from 'react';
 import { 
   User, 
@@ -337,113 +338,124 @@ export const UserDashboard: React.FC = () => {
     setShowProfileModal(true);
   };
 
-  const handleCompleteConfirm = async (destinationStationId: string, additionalData: {
-    finalCost: number;
-    paymentMethod: string;
-    paymentData: PaymentData;
-    comments?: string;
-  }) => {
-    if (!activeLoan) return;
-    
-    try {
-      setIsProcessingComplete(true);
+const handleCompleteConfirm = async (destinationStationId: string, additionalData: {
+  finalCost: number;
+  paymentMethod: string;
+  paymentData: PaymentData;
+  comments?: string;
+}) => {
+  if (!activeLoan) return;
+  
+  try {
+    setIsProcessingComplete(true);
 
-      console.log('🔍 Datos recibidos del modal:');
-      console.log('   Método de pago:', additionalData.paymentMethod);
-      console.log('   Costo final:', additionalData.finalCost);
-      console.log('   Payment Data:', additionalData.paymentData);
+    console.log('=== USERDASHBOARD: DATOS RECIBIDOS ===');
+    console.log('Método de pago:', additionalData.paymentMethod);
+    console.log('Costo final:', additionalData.finalCost);
+    console.log('Payment Data completo:', JSON.stringify(additionalData.paymentData, null, 2));
+    console.log('transactionId:', additionalData.paymentData?.transactionId);
+    console.log('stripePaymentIntentId:', additionalData.paymentData?.stripePaymentMethodId);
 
-      if (additionalData.paymentMethod === 'stripe') {
-        if (!additionalData.paymentData.transactionId) {
-          throw new Error('Falta el Payment Intent ID de Stripe');
-        }
-        console.log('   ✅ Payment Intent ID:', additionalData.paymentData.transactionId);
-      }
-
-      const token = localStorage.getItem('ecomove_token');
+    // VALIDACIÓN: Verificar que tenemos el Payment Intent ID para Stripe
+    if (additionalData.paymentMethod === 'stripe') {
+      const intentId = additionalData.paymentData?.transactionId || 
+                       additionalData.paymentData?.stripePaymentMethodId;
       
-      const requestBody: any = {
-        estacion_destino_id: parseInt(destinationStationId),
-        costo_total: additionalData.finalCost,
-        metodo_pago: additionalData.paymentMethod === 'stripe' ? 'credit-card' : additionalData.paymentMethod,
-        comentarios: additionalData.comments || ''
-      };
-
-      if (additionalData.paymentMethod === 'stripe' && additionalData.paymentData.transactionId) {
-        requestBody.stripe_payment_intent_id = additionalData.paymentData.transactionId;
-        requestBody.stripe_payment_method_id = additionalData.paymentData.stripePaymentMethodId;
-        additionalData.paymentData.processor = 'stripe';
-      }
-
-      requestBody.datos_pago = additionalData.paymentData;
-
-      console.log('📤 Enviando al backend:', requestBody);
-
-      const response = await fetch(`http://localhost:4000/api/v1/loans/${activeLoan.id}/completar`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      const result = await response.json();
-      console.log('📥 Respuesta del backend:', result);
-
-      if (result.errors && Array.isArray(result.errors)) {
-        console.error('❌ Errores de validación del backend:');
-        result.errors.forEach((error: any, index: number) => {
-          console.error(`   ${index + 1}. ${JSON.stringify(error)}`);
-        });
-      }
-
-      if (!response.ok) {
-        let errorMessage = result.message || `Error ${response.status}`;
-        
-        if (result.errors && Array.isArray(result.errors)) {
-          const errorDetails = result.errors.map((err: any) => {
-            if (typeof err === 'string') return err;
-            if (err.message) return err.message;
-            if (err.msg) return err.msg;
-            return JSON.stringify(err);
-          }).join(', ');
-          errorMessage = `${errorMessage}: ${errorDetails}`;
-        }
-        
-        throw new Error(errorMessage);
+      if (!intentId) {
+        console.error('❌ CRÍTICO: No hay Payment Intent ID en additionalData.paymentData');
+        console.error('   transactionId:', additionalData.paymentData?.transactionId);
+        console.error('   stripePaymentIntentId:', additionalData.paymentData?.stripePaymentMethodId);
+        throw new Error('Falta el Payment Intent ID de Stripe. Por favor intenta de nuevo.');
       }
       
-      if (result.success) {
-        let paymentInfo = '';
-        if (additionalData.paymentMethod === 'stripe') {
-          paymentInfo = ` (Stripe: ${additionalData.paymentData.transactionId?.substring(0, 20)}...)`;
-        } else if (additionalData.paymentData.transactionId) {
-          paymentInfo = ` (ID: ${additionalData.paymentData.transactionId})`;
-        } else if (additionalData.paymentData.referenceNumber) {
-          paymentInfo = ` (Ref: ${additionalData.paymentData.referenceNumber})`;
-        } else if (additionalData.paymentData.authorizationCode) {
-          paymentInfo = ` (Auth: ${additionalData.paymentData.authorizationCode})`;
-        }
-
-        showSuccess(
-          'Préstamo completado', 
-          `Viaje finalizado! Total pagado: ${formatCurrency(additionalData.finalCost)} vía ${additionalData.paymentMethod}${paymentInfo}`
-        );
-        
-        await loadDashboardData();
-      } else {
-        throw new Error(result.message || 'No se pudo completar el préstamo');
-      }
-      
-    } catch (error: any) {
-      console.error('❌ Error completing loan:', error);
-      showError('Error de pago', error.message || 'No se pudo procesar el pago del préstamo');
-    } finally {
-      setIsProcessingComplete(false);
-      setShowCompleteModal(false);
+      console.log('✅ Payment Intent ID encontrado:', intentId);
     }
-  };
+
+    const token = localStorage.getItem('ecomove_token');
+    
+    const requestBody: any = {
+      estacion_destino_id: parseInt(destinationStationId),
+      costo_total: additionalData.finalCost,
+      metodo_pago: additionalData.paymentMethod === 'stripe' ? 'credit-card' : additionalData.paymentMethod,
+      comentarios: additionalData.comments || ''
+    };
+
+    // IMPORTANTE: Asegúrate de incluir el Payment Intent ID
+    if (additionalData.paymentMethod === 'stripe') {
+      const intentId = additionalData.paymentData?.transactionId || 
+                       additionalData.paymentData?.stripePaymentMethodId;
+      
+      requestBody.stripe_payment_intent_id = intentId;
+      requestBody.stripe_payment_method_id = additionalData.paymentData?.stripePaymentMethodId;
+    }
+
+    requestBody.datos_pago = additionalData.paymentData;
+
+    const url = `http://localhost:4000/api/v1/loans/${activeLoan.id}/completar`;
+    
+    console.log('📤 ENVIANDO AL BACKEND:');
+    console.log('URL:', url);
+    console.log('stripe_payment_intent_id:', requestBody.stripe_payment_intent_id);
+    console.log('Body completo:', JSON.stringify(requestBody, null, 2));
+
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    console.log('📥 RESPUESTA DEL BACKEND:');
+    console.log('Status:', response.status);
+    console.log('StatusText:', response.statusText);
+
+    const result = await response.json();
+    console.log('Body:', result);
+
+    if (!response.ok) {
+      let errorMessage = result.message || `Error ${response.status}`;
+      
+      if (result.errors && Array.isArray(result.errors)) {
+        const errorDetails = result.errors.map((err: any) => {
+          if (typeof err === 'string') return err;
+          if (err.message) return err.message;
+          if (err.msg) return err.msg;
+          return JSON.stringify(err);
+        }).join(', ');
+        errorMessage = `${errorMessage}: ${errorDetails}`;
+      }
+      
+      throw new Error(errorMessage);
+    }
+    
+    if (result.success) {
+      let paymentInfo = '';
+      if (additionalData.paymentMethod === 'stripe') {
+        const intentId = additionalData.paymentData?.transactionId || 
+                        additionalData.paymentData?.stripePaymentMethodId;
+        paymentInfo = ` (Stripe: ${intentId?.substring(0, 20)}...)`;
+      }
+
+      showSuccess(
+        'Préstamo completado', 
+        `Viaje finalizado! Total pagado: ${formatCurrency(additionalData.finalCost)} vía ${additionalData.paymentMethod}${paymentInfo}`
+      );
+      
+      await loadDashboardData();
+    } else {
+      throw new Error(result.message || 'No se pudo completar el préstamo');
+    }
+    
+  } catch (error: any) {
+    console.error('❌ ERROR EN handleCompleteConfirm:', error);
+    showError('Error de pago', error.message || 'No se pudo procesar el pago del préstamo');
+  } finally {
+    setIsProcessingComplete(false);
+    setShowCompleteModal(false);
+  }
+};
 
   const handleCancelConfirm = async (reason: string, additionalData: any) => {
     if (!activeLoan) return;

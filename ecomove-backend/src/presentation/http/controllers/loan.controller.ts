@@ -78,33 +78,78 @@ export class LoanController {
   }
 
   // Completar préstamo
-  async completeLoan(req: Request, res: Response): Promise<void> {
-    try {
-      const loanId = parseInt(req.params.id);
-      const dto: CompleteLoanDto = req.body;
+// Completar préstamo
+async completeLoan(req: Request, res: Response): Promise<void> {
+  try {
+    const loanId = parseInt(req.params.id);
+    const dto: CompleteLoanDto = req.body;
 
-      const loan = await this.completeLoanUseCase.execute({
-        loanId,
-        destinationStationId: dto.estacion_destino_id,
-        totalCost: dto.costo_total,
-        paymentMethod: dto.metodo_pago
-      });
+    // DEBUG: Log completo del body recibido
+    console.log('📥 [CONTROLLER] Body recibido:', JSON.stringify(req.body, null, 2));
+    console.log('📥 [CONTROLLER] estacion_destino_id:', dto.estacion_destino_id);
+    console.log('📥 [CONTROLLER] costo_total:', dto.costo_total);
+    console.log('📥 [CONTROLLER] metodo_pago:', dto.metodo_pago);
+    console.log('📥 [CONTROLLER] stripe_payment_intent_id:', (req.body as any).stripe_payment_intent_id);
+    console.log('📥 [CONTROLLER] stripe_payment_method_id:', (req.body as any).stripe_payment_method_id);
 
-      const response: ApiResponse<LoanResponseDto> = {
-        success: true,
-        message: 'Préstamo completado exitosamente',
-        data: this.mapLoanToDto(loan)
-      };
+    // ✅ EXTRAER los campos de Stripe del body (en snake_case)
+    const stripePaymentIntentId = (req.body as any).stripe_payment_intent_id;
+    const stripePaymentMethodId = (req.body as any).stripe_payment_method_id;
 
-      res.json(response);
-    } catch (error) {
-      const response: ApiResponse = {
-        success: false,
-        message: (error as Error).message || 'Error al completar préstamo'
-      };
-      res.status(400).json(response);
+    console.log('✅ [CONTROLLER] Valores extraídos:');
+    console.log('   stripePaymentIntentId:', stripePaymentIntentId);
+    console.log('   stripePaymentMethodId:', stripePaymentMethodId);
+
+    // Validación - Comparar con el enum correcto
+    if (dto.metodo_pago === PaymentMethod.CREDIT_CARD) {
+      if (!stripePaymentIntentId) {
+        console.error('❌ [CONTROLLER] Falta el Payment Intent ID para Stripe');
+        const response: ApiResponse = {
+          success: false,
+          message: 'Se requiere Payment Intent ID para pagos con tarjeta'
+        };
+        res.status(400).json(response);
+        return;
+      }
     }
+
+    console.log('📤 [CONTROLLER] Enviando al use case con:');
+    console.log({
+      loanId,
+      destinationStationId: dto.estacion_destino_id,
+      totalCost: dto.costo_total,
+      paymentMethod: dto.metodo_pago,
+      stripePaymentIntentId,
+      stripePaymentMethodId
+    });
+
+    // ✅ PASAR los datos de Stripe al use case
+    const loan = await this.completeLoanUseCase.execute({
+      loanId,
+      destinationStationId: dto.estacion_destino_id,
+      totalCost: dto.costo_total,
+      paymentMethod: dto.metodo_pago,
+      stripePaymentIntentId,
+      stripePaymentMethodId
+    });
+
+    const response: ApiResponse<LoanResponseDto> = {
+      success: true,
+      message: 'Préstamo completado exitosamente',
+      data: this.mapLoanToDto(loan)
+    };
+
+    console.log('✅ [CONTROLLER] Respuesta exitosa');
+    res.json(response);
+  } catch (error) {
+    console.error('❌ [CONTROLLER] Error en completeLoan:', error);
+    const response: ApiResponse = {
+      success: false,
+      message: (error as Error).message || 'Error al completar préstamo'
+    };
+    res.status(400).json(response);
   }
+}
 
   // Cancelar préstamo
   async cancelLoan(req: Request, res: Response): Promise<void> {

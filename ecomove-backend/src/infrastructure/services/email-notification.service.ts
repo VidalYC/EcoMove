@@ -595,6 +595,196 @@ Este es un correo automático, por favor no responder.
     await this.sendEmail(userEmail, subject, textContent, htmlContent);
   }
 
+  async sendLoanCancellationEmail(
+    to: string,
+    info: {
+      userName?: string;
+      loanId: string;
+      transportType: string;
+      transportCode: string;
+      startTime: Date;
+      reason?: string;
+    }
+  ): Promise<void> {
+    const userName = info.userName || 'Usuario';
+    const subject = '❌ Préstamo Cancelado - EcoMove';
+    const formattedStartTime = info.startTime.toLocaleString('es-ES');
+    const formattedCancellationTime = new Date().toLocaleString('es-ES');
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .details { background: white; padding: 20px; border-left: 4px solid #ef4444; margin: 20px 0; border-radius: 5px; }
+          .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+          .button { display: inline-block; padding: 12px 30px; background: #ef4444; color: white; text-decoration: none; border-radius: 5px; margin-top: 20px; }
+          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+          .info-box { background: #fef2f2; border-left: 4px solid #ef4444; padding: 15px; margin-top: 20px; border-radius: 5px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>❌ Préstamo Cancelado</h1>
+          </div>
+          <div class="content">
+            <p>Hola <strong>${userName}</strong>,</p>
+            <p>Tu préstamo ha sido cancelado exitosamente.</p>
+            
+            <div class="details">
+              <h3>📋 Detalles del Préstamo Cancelado</h3>
+              <div class="detail-row">
+                <span><strong>ID Préstamo:</strong></span>
+                <span>${info.loanId}</span>
+              </div>
+              <div class="detail-row">
+                <span><strong>Transporte:</strong></span>
+                <span>${info.transportType} - ${info.transportCode}</span>
+              </div>
+              <div class="detail-row">
+                <span><strong>Hora de Inicio:</strong></span>
+                <span>${formattedStartTime}</span>
+              </div>
+              <div class="detail-row">
+                <span><strong>Hora de Cancelación:</strong></span>
+                <span>${formattedCancellationTime}</span>
+              </div>
+              ${info.reason ? `
+              <div class="detail-row">
+                <span><strong>Motivo:</strong></span>
+                <span>${info.reason}</span>
+              </div>
+              ` : ''}
+            </div>
+
+            <div class="info-box">
+              <strong>ℹ️ Información:</strong> El transporte ha sido devuelto a la estación 
+              y está disponible para otros usuarios.
+            </div>
+
+            <a href="${process.env.APP_URL || 'http://localhost:5173'}/loans/${info.loanId}" class="button">
+              Ver Detalles
+            </a>
+          </div>
+          <div class="footer">
+            <p>Este es un correo automático, por favor no responder.</p>
+            <p>&copy; ${new Date().getFullYear()} EcoMove - Movilidad Sostenible</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const textContent = `
+Hola ${userName},
+
+Tu préstamo ha sido cancelado exitosamente.
+
+Detalles del Préstamo Cancelado:
+• ID Préstamo: ${info.loanId}
+• Transporte: ${info.transportType} - ${info.transportCode}
+• Hora de Inicio: ${formattedStartTime}
+• Hora de Cancelación: ${formattedCancellationTime}
+${info.reason ? `• Motivo: ${info.reason}` : ''}
+
+ℹ️ Información: El transporte ha sido devuelto a la estación y está disponible para otros usuarios.
+
+Ver detalles: ${process.env.APP_URL || 'http://localhost:5173'}/loans/${info.loanId}
+
+---
+Este es un correo automático, por favor no responder.
+© ${new Date().getFullYear()} EcoMove - Movilidad Sostenible
+    `.trim();
+
+    await this.sendEmail(to, subject, textContent, htmlContent);
+  }
+
+  async sendProfileUpdateConfirmation(
+    to: string,
+    info: {
+      userName: string;
+      updatedFields: string[];
+    }
+  ): Promise<void> {
+    const subject = '✅ Perfil Actualizado - EcoMove';
+    const fieldsText = info.updatedFields
+      .map(field => `• ${this.translateFieldName(field)}`)
+      .join('\n');
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .updates { background: white; padding: 20px; border-left: 4px solid #667eea; margin: 20px 0; border-radius: 5px; }
+          .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin-top: 20px; }
+          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+          .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-top: 20px; border-radius: 5px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>✅ Perfil Actualizado</h1>
+          </div>
+          <div class="content">
+            <p>Hola <strong>${info.userName}</strong>,</p>
+            <p>Tu perfil en <strong>EcoMove</strong> ha sido actualizado exitosamente.</p>
+            
+            <div class="updates">
+              <h3>📝 Campos actualizados:</h3>
+              <pre style="font-family: Arial, sans-serif; white-space: pre-line;">${fieldsText}</pre>
+            </div>
+
+            <div class="warning">
+              <strong>🔒 Aviso de Seguridad:</strong> Si no realizaste estos cambios, 
+              por favor contacta inmediatamente a nuestro equipo de soporte.
+            </div>
+
+            <a href="${process.env.APP_URL || 'http://localhost:5173'}/profile" class="button">
+              Ver Mi Perfil
+            </a>
+          </div>
+          <div class="footer">
+            <p>Este es un correo automático, por favor no responder.</p>
+            <p>&copy; ${new Date().getFullYear()} EcoMove - Movilidad Sostenible</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const textContent = `
+Hola ${info.userName},
+
+Tu perfil en EcoMove ha sido actualizado exitosamente.
+
+Campos actualizados:
+${fieldsText}
+
+🔒 Aviso de Seguridad: Si no realizaste estos cambios, por favor contacta inmediatamente a nuestro equipo de soporte.
+
+Ver mi perfil: ${process.env.APP_URL || 'http://localhost:5173'}/profile
+
+---
+Este es un correo automático, por favor no responder.
+© ${new Date().getFullYear()} EcoMove - Movilidad Sostenible
+    `.trim();
+
+    await this.sendEmail(to, subject, textContent, htmlContent);
+  }
+
   private async sendEmail(
     to: string,
     subject: string,

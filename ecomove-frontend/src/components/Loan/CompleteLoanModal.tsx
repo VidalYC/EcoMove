@@ -1,4 +1,4 @@
-// src/components/Loan/CompleteLoanModal.tsx - SOLO EFECTIVO Y STRIPE
+// src/components/Loan/CompleteLoanModal.tsx - CORREGIDO CON DEBUG
 import React, { useState, useEffect } from 'react';
 import { X, MapPin, DollarSign, CheckCircle2, AlertCircle, CreditCard, Banknote, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -58,16 +58,9 @@ export const CompleteLoanModal: React.FC<CompleteLoanModalProps> = ({
       const startTime = new Date(currentLoan.startDate);
       const minutesElapsed = Math.floor((now.getTime() - startTime.getTime()) / (1000 * 60));
       
-      // Nuevas tarifas ajustadas:
-      // - Tarifa base: $3,000 COP (mínimo de Stripe)
-      // - Tarifa por minuto adicional: $50 COP/min ($3,000/hora)
-      const baseRate = 3000; // Mínimo para cumplir con Stripe
-      const ratePerMinute = 50; // $3,000 por hora = $50 por minuto
-      
-      // Si el tiempo es menor a 1 minuto, cobra la tarifa base
+      const baseRate = 3000;
+      const ratePerMinute = 50;
       const timeCost = minutesElapsed < 1 ? baseRate : baseRate + (minutesElapsed * ratePerMinute);
-      
-      // Asegurar que siempre sea al menos el mínimo de Stripe
       const total = Math.max(baseRate, currentLoan.currentCost, timeCost);
       
       setFinalCost(Math.round(total));
@@ -80,20 +73,71 @@ export const CompleteLoanModal: React.FC<CompleteLoanModalProps> = ({
   };
 
   const handlePaymentConfirm = (data: PaymentData) => {
+    console.log('💳 Payment data received in CompleteLoanModal:', data);
+    console.log('   stripePaymentIntentId:', data.stripePaymentIntentId);
+    console.log('   transactionId:', data.transactionId);
+    console.log('   method:', data.method);
+    
+    // Validar que tenemos el Payment Intent ID para Stripe
+    if (data.method === 'stripe' && !data.stripePaymentIntentId) {
+      console.error('❌ Missing stripePaymentIntentId in payment data!');
+      alert('Error: No se recibió el Payment Intent ID de Stripe. Intenta de nuevo.');
+      return;
+    }
+    
     setPaymentData(data);
     setShowPaymentModal(false);
   };
 
-  const handleCompleteConfirm = () => {
-    if (destinationStationId && paymentData && !isProcessing) {
-      onConfirm(destinationStationId, {
-        finalCost,
-        paymentMethod: selectedPaymentMethod,
-        paymentData,
-        comments: comments.trim() || undefined
-      });
+const handleCompleteConfirm = () => {
+  if (!destinationStationId) {
+    alert('Por favor selecciona una estación de destino');
+    return;
+  }
+  
+  if (!paymentData) {
+    alert('Por favor configura el método de pago');
+    return;
+  }
+  
+  if (isProcessing) {
+    return;
+  }
+
+  // DEBUG CRÍTICO: Verifica que paymentData tenga los datos correctos
+  console.log('=== COMPLETELOANMODAL: ENVIANDO A USERDASHBOARD ===');
+  console.log('paymentData completo:', JSON.stringify(paymentData, null, 2));
+  console.log('paymentData.transactionId:', paymentData.transactionId);
+  console.log('paymentData.stripePaymentIntentId:', paymentData.stripePaymentIntentId);
+  console.log('selectedPaymentMethod:', selectedPaymentMethod);
+  
+  // Si es Stripe, verifica que tengamos el ID
+  if (selectedPaymentMethod === 'stripe') {
+    if (!paymentData.transactionId && !paymentData.stripePaymentIntentId) {
+      console.error('❌ CRÍTICO: paymentData no tiene ni transactionId ni stripePaymentIntentId');
+      alert('Error crítico: No se recibió el Payment Intent ID. Por favor intenta de nuevo.');
+      return;
     }
-  };
+    console.log('✅ Tiene Payment Intent ID:', paymentData.transactionId || paymentData.stripePaymentIntentId);
+  }
+
+  // Llamar a onConfirm con todos los datos
+  console.log('📤 Llamando a onConfirm con datos:');
+  console.log({
+    destinationStationId,
+    finalCost,
+    paymentMethod: selectedPaymentMethod,
+    paymentData,
+    comments: comments.trim() || undefined
+  });
+
+  onConfirm(destinationStationId, {
+    finalCost,
+    paymentMethod: selectedPaymentMethod,
+    paymentData,
+    comments: comments.trim() || undefined
+  });
+};
 
   const handleClose = () => {
     if (!isProcessing) {
@@ -298,6 +342,11 @@ export const CompleteLoanModal: React.FC<CompleteLoanModalProps> = ({
                       {paymentData.method === 'stripe' && paymentData.cardLast4 &&
                         ` **** ${paymentData.cardLast4} (${paymentData.cardBrand})`}
                     </p>
+                    {paymentData.stripePaymentIntentId && (
+                      <p className="text-xs text-green-600 dark:text-green-400 mt-1 font-mono">
+                        ID: {paymentData.stripePaymentIntentId.substring(0, 20)}...
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

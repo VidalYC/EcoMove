@@ -1,4 +1,4 @@
-// src/components/Loan/PaymentMethodModal.tsx - CORREGIDO
+// src/components/Loan/PaymentMethodModal.tsx - CORREGIDO CON PAYMENT INTENT
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Banknote, CreditCard, MapPin, AlertCircle, CheckCircle2, Loader, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -138,6 +138,14 @@ export const PaymentMethodModal: React.FC<PaymentMethodModalProps> = ({
     setIsValid(Object.keys(newErrors).length === 0);
   };
 
+  const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0
+    }).format(amount);
+  };
+
   const handleConfirm = async () => {
     if (!isValid || isProcessing) return;
 
@@ -156,16 +164,52 @@ export const PaymentMethodModal: React.FC<PaymentMethodModalProps> = ({
       return;
     }
 
-    if (useNewCard) {
-      if (!stripeCardElement.current || !cardholderName) {
-        setStripeError('Por favor completa todos los campos');
-        return;
-      }
+    setIsLoadingStripe(true);
+    setStripeError('');
 
-      setIsLoadingStripe(true);
-      setStripeError('');
+    try {
+      if (useNewCard) {
+        if (!stripeCardElement.current || !cardholderName) {
+          setStripeError('Por favor completa todos los campos');
+          setIsLoadingStripe(false);
+          return;
+        }
 
-      try {
+        // PASO 1: Crear Payment Intent en el backend
+        console.log('📝 Creando Payment Intent en el backend...');
+        const token = localStorage.getItem('ecomove_token');
+        
+        if (!token) {
+          setStripeError('No hay autenticación. Por favor inicia sesión nuevamente.');
+          setIsLoadingStripe(false);
+          return;
+        }
+
+        const intentResponse = await fetch('http://localhost:4000/api/v1/payments/create-intent', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            amount: Math.round(amount),
+            currency: 'cop'
+          })
+        });
+
+        if (!intentResponse.ok) {
+          const errorData = await intentResponse.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Error creando Payment Intent en el backend');
+        }
+
+        const intentData = await intentResponse.json();
+        const clientSecret = intentData.data.clientSecret;
+        const paymentIntentId = intentData.data.paymentIntentId;
+
+        console.log('✅ Payment Intent creado:', paymentIntentId);
+
+        // PASO 2: Confirmar pago con Stripe Elements en el frontend
+        console.log('💳 Confirmando pago con Stripe...');
         const result = await stripeService.processPayment(
           amount,
           stripeCardElement.current,
@@ -174,6 +218,9 @@ export const PaymentMethodModal: React.FC<PaymentMethodModalProps> = ({
         );
 
         if (result.success) {
+          console.log('✅ Pago confirmado en Stripe');
+
+          // Guardar tarjeta si se solicitó
           if (saveCard && result.last4 && result.brand) {
             const cardData = {
               last4: result.last4,
@@ -186,53 +233,87 @@ export const PaymentMethodModal: React.FC<PaymentMethodModalProps> = ({
             };
             
             localStorageService.saveCard(cardData);
+            console.log('💾 Tarjeta guardada localmente');
           }
 
+          // PASO 3: Enviar datos completos al modal parent
           const finalPaymentData: PaymentData = {
             method: 'stripe',
-            stripePaymentIntentId: result.paymentIntentId,
+            stripePaymentIntentId: paymentIntentId,        // ✅ IMPORTANTE
             stripePaymentMethodId: result.paymentMethodId,
             cardLast4: result.last4,
             cardBrand: result.brand,
             cardholderName,
-            transactionId: result.paymentIntentId
+            transactionId: paymentIntentId                 // ✅ IMPORTANTE
           };
 
+          console.log('📤 Enviando datos de pago completos:', finalPaymentData);
           onConfirm(finalPaymentData);
         } else {
-          setStripeError(result.error || 'Error al procesar el pago');
+          setStripeError(result.error || 'Error al procesar el pago con Stripe');
         }
-      } catch (error) {
-        setStripeError('Error inesperado al procesar el pago');
-      } finally {
-        setIsLoadingStripe(false);
-      }
-    } else {
-      const card = savedCards.find(c => c.id === selectedSavedCard);
-      if (!card) {
-        setStripeError('Tarjeta no encontrada');
-        return;
-      }
+      } else {
+        // PARA TARJETA GUARDADA
+        const card = savedCards.find(c => c.id === selectedSavedCard);
+        if (!card) {
+          setStripeError('Tarjeta no encontrada');
+          setIsLoadingStripe(false);
+          return;
+        }
 
-      const finalPaymentData: PaymentData = {
-        method: 'stripe',
-        stripePaymentMethodId: card.stripePaymentMethodId,
-        cardLast4: card.last4,
-        cardBrand: card.brand,
-        cardholderName: card.cardholderName,
-        transactionId: `saved_${card.id}_${Date.now()}`
-      };
+        // PASO 1: Crear Payment Intent para tarjeta guardada
+        console.log('📝 Creando Payment Intent para tarjeta guardada...');
+        const token = localStorage.getItem('ecomove_token');
+        
+        if (!token) {
+          setStripeError('No hay autenticación. Por favor inicia sesión nuevamente.');
+          setIsLoadingStripe(false);
+          return;
+        }
 
-      onConfirm(finalPaymentData);
+        const intentResponse = await fetch('http://localhost:4000/api/v1/payments/create-intent', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            amount: Math.round(amount),
+            currency: 'cop',
+            paymentMethodId: card.stripePaymentMethodId
+          })
+        });
+
+        if (!intentResponse.ok) {
+          const errorData = await intentResponse.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Error creando Payment Intent');
+        }
+
+        const intentData = await intentResponse.json();
+        const paymentIntentId = intentData.data.paymentIntentId;
+
+        console.log('✅ Payment Intent creado para tarjeta guardada:', paymentIntentId);
+
+        // PASO 2: Enviar datos completos
+        const finalPaymentData: PaymentData = {
+          method: 'stripe',
+          stripePaymentMethodId: card.stripePaymentMethodId,
+          stripePaymentIntentId: paymentIntentId,         // ✅ IMPORTANTE
+          cardLast4: card.last4,
+          cardBrand: card.brand,
+          cardholderName: card.cardholderName,
+          transactionId: paymentIntentId                  // ✅ IMPORTANTE
+        };
+
+        console.log('📤 Enviando datos de tarjeta guardada:', finalPaymentData);
+        onConfirm(finalPaymentData);
+      }
+    } catch (error: any) {
+      console.error('❌ Error en pago Stripe:', error);
+      setStripeError(error.message || 'Error al procesar el pago');
+    } finally {
+      setIsLoadingStripe(false);
     }
-  };
-
-  const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0
-    }).format(amount);
   };
 
   const getMethodInfo = () => {

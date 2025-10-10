@@ -3,9 +3,11 @@ import { LoanRepository } from '../../domain/repositories/loan.repository';
 import { UserRepository } from '../../domain/repositories/user.repository';
 import { TransportRepository } from '../../domain/repositories/transport.repository';
 import { StationRepository } from '../../domain/repositories/station.repository';
+import { NotificationService } from '../../domain/services/notification.service';
 import { TransportStatus } from '../../../shared/enums/transport.enums';
 import { ValidationException } from '../../../shared/exceptions/validation-exception';
 import { LoggerService } from '../../../infrastructure/services/winston-logger.service';
+import { UserHelper } from '../../helpers/user-helper';
 
 export interface CreateLoanRequest {
   userId: number;
@@ -15,13 +17,18 @@ export interface CreateLoanRequest {
 }
 
 export class CreateLoanUseCase {
+  private userHelper: UserHelper;
+
   constructor(
     private readonly loanRepository: LoanRepository,
     private readonly userRepository: UserRepository,
     private readonly transportRepository: TransportRepository,
     private readonly stationRepository: StationRepository,
+    private readonly notificationService: NotificationService,
     private readonly logger: LoggerService 
-  ) {}
+  ) {
+    this.userHelper = new UserHelper(userRepository);
+  }
 
   async execute(request: CreateLoanRequest): Promise<Loan> {
     const startTime = Date.now();
@@ -126,6 +133,16 @@ export class CreateLoanUseCase {
       // Cambiar estado del transporte a 'in_use'
       await this.transportRepository.update(transport.id, { status: TransportStatus.IN_USE });
 
+      // ✅ Enviar email de notificación de préstamo iniciado
+      this.sendLoanStartedNotification(
+        request.userId,
+        savedLoan,
+        transport,
+        originStation
+      ).catch(error => {
+        this.logger.error('Failed to send loan started email', error);
+      });
+
       this.logger.info('Loan creation successful', {
         loanId: savedLoan.getId(),
         userId: request.userId,
@@ -149,5 +166,72 @@ export class CreateLoanUseCase {
       });
       throw error;
     }
+  }
+
+  private async sendLoanStartedNotification(
+    userId: number,
+    savedLoan: Loan,
+    transport: any,
+    originStation: any
+  ): Promise<void> {
+    try {
+      const userInfo = await this.userHelper.getUserInfo(userId);
+      
+      if (!userInfo) {
+        this.logger.warn('User info not found for email notification');
+        return;
+      }
+
+      // Calcular tiempo estimado si está disponible
+      const estimatedDuration = savedLoan.getEstimatedDuration?.();
+      const estimatedEndTime = estimatedDuration 
+        ? new Date(savedLoan.getStartDate().getTime() + estimatedDuration * 60000)
+        : undefined;
+      const estimatedCost = this.calculateEstimatedCost(
+        transport.tipo, 
+        estimatedDuration || 60
+      );
+
+      const loanDetails = {
+        userName: userInfo.name,
+        loanId: savedLoan.getId()!.toString(),
+        transportType: this.getTransportTypeName(transport.tipo),
+        transportCode: transport.codigo || `T-${transport.id}`,
+        startStation: originStation.name,
+        startTime: savedLoan.getStartDate(),
+        estimatedEndTime,
+        estimatedCost
+      };
+
+      await this.notificationService.sendLoanStartedEmail(userInfo.email, loanDetails);
+      this.logger.info('Loan started email sent successfully', { 
+        userId,
+        loanId: savedLoan.getId() 
+      });
+    } catch (error) {
+      this.logger.error('Error in sendLoanStartedNotification', error);
+      throw error;
+    }
+  }
+
+  private getTransportTypeName(type: string): string {
+    const typeMap: Record<string, string> = {
+      'bicycle': 'Bicicleta',
+      'scooter': 'Scooter',
+      'electric_scooter': 'Scooter Eléctrico'
+    };
+    return typeMap[type] || type;
+  }
+
+  private calculateEstimatedCost(transportType: string, durationMinutes: number): number {
+    const rates: Record<string, number> = {
+      'bicycle': 50,
+      'scooter': 80,
+      'electric_scooter': 120
+    };
+    const rate = rates[transportType] || 50;
+    const baseRate = 3000;
+    const calculatedCost = durationMinutes * rate;
+    return Math.max(baseRate, calculatedCost);
   }
 }
