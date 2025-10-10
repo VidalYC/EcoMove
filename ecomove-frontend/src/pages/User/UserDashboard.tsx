@@ -1,4 +1,4 @@
-// src/pages/User/UserDashboard.tsx - COMPLETO CON MODAL DE ESTACIONES
+// src/pages/User/UserDashboard.tsx - COMPLETO CON MODAL DE PERFIL
 import React, { useState, useEffect } from 'react';
 import { 
   User, 
@@ -24,6 +24,7 @@ import { CompleteLoanModal } from '../../components/Loan/CompleteLoanModal';
 import { CancelLoanModal } from '../../components/Loan/CancelLoanModal';
 import { LoanHistoryModal } from '../../components/Loan/LoanHistoryModal';
 import { AllStationsModal } from '../../components/Station/AllStationsModal';
+import { UserProfileModal } from '../../components/User/UserProfileModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { userApiService, UserStats, QuickStats, UserLoan } from '../../services/userApi.service';
@@ -50,7 +51,7 @@ interface PaymentData {
   currency?: string;
   status?: 'pending' | 'completed' | 'failed';
   stripePaymentMethodId?: string;
-  processor?: string; // 'stripe', 'manual', etc.
+  processor?: string;
 }
 
 interface StatsCardProps {
@@ -103,6 +104,7 @@ export const UserDashboard: React.FC = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showAllStationsModal, setShowAllStationsModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [isProcessingComplete, setIsProcessingComplete] = useState(false);
   const [isProcessingCancel, setIsProcessingCancel] = useState(false);
   
@@ -331,6 +333,10 @@ export const UserDashboard: React.FC = () => {
     setShowAllStationsModal(true);
   };
 
+  const handleShowProfile = () => {
+    setShowProfileModal(true);
+  };
+
   const handleCompleteConfirm = async (destinationStationId: string, additionalData: {
     finalCost: number;
     paymentMethod: string;
@@ -347,7 +353,6 @@ export const UserDashboard: React.FC = () => {
       console.log('   Costo final:', additionalData.finalCost);
       console.log('   Payment Data:', additionalData.paymentData);
 
-      // Validar que tenemos el paymentIntentId si el método es Stripe
       if (additionalData.paymentMethod === 'stripe') {
         if (!additionalData.paymentData.transactionId) {
           throw new Error('Falta el Payment Intent ID de Stripe');
@@ -357,25 +362,19 @@ export const UserDashboard: React.FC = () => {
 
       const token = localStorage.getItem('ecomove_token');
       
-      // Preparar el body según el método de pago
       const requestBody: any = {
         estacion_destino_id: parseInt(destinationStationId),
         costo_total: additionalData.finalCost,
-        // Si es Stripe, enviar como "credit-card" que es lo que el backend acepta
         metodo_pago: additionalData.paymentMethod === 'stripe' ? 'credit-card' : additionalData.paymentMethod,
         comentarios: additionalData.comments || ''
       };
 
-      // Si es Stripe, agregar el paymentIntentId
       if (additionalData.paymentMethod === 'stripe' && additionalData.paymentData.transactionId) {
         requestBody.stripe_payment_intent_id = additionalData.paymentData.transactionId;
         requestBody.stripe_payment_method_id = additionalData.paymentData.stripePaymentMethodId;
-        
-        // Marcar que fue procesado por Stripe en los datos de pago
         additionalData.paymentData.processor = 'stripe';
       }
 
-      // Siempre enviar datos_pago
       requestBody.datos_pago = additionalData.paymentData;
 
       console.log('📤 Enviando al backend:', requestBody);
@@ -392,7 +391,6 @@ export const UserDashboard: React.FC = () => {
       const result = await response.json();
       console.log('📥 Respuesta del backend:', result);
 
-      // Si hay errores de validación, mostrarlos detalladamente
       if (result.errors && Array.isArray(result.errors)) {
         console.error('❌ Errores de validación del backend:');
         result.errors.forEach((error: any, index: number) => {
@@ -401,7 +399,6 @@ export const UserDashboard: React.FC = () => {
       }
 
       if (!response.ok) {
-        // Construir mensaje de error más detallado
         let errorMessage = result.message || `Error ${response.status}`;
         
         if (result.errors && Array.isArray(result.errors)) {
@@ -618,9 +615,10 @@ export const UserDashboard: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleLogout}
+                onClick={handleShowProfile}
                 className="flex items-center space-x-2 text-green-600 hover:text-green-700 border-green-200 hover:border-green-300 dark:text-green-400 dark:hover:text-green-300 dark:border-green-800 dark:hover:border-green-700"
               >
+                <User className="h-4 w-4" />
                 <span>Perfil</span>
               </Button>
               
@@ -990,6 +988,11 @@ export const UserDashboard: React.FC = () => {
       <AllStationsModal
         isOpen={showAllStationsModal}
         onClose={() => setShowAllStationsModal(false)}
+      />
+
+      <UserProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
       />
     </div>
   );
