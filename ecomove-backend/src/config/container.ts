@@ -344,7 +344,7 @@ export class DIContainer {
 
     // Use Cases de perfil
     this.getUserProfileUseCase = new GetUserProfileUseCase(this.userRepository);
-    this.updateUserProfileUseCase = new UpdateUserProfileUseCase(this.userRepository);
+    this.updateUserProfileUseCase = new UpdateUserProfileUseCase(this.userRepository,this.notificationService);
     this.changePasswordUseCase = new ChangePasswordUseCase(
       this.userRepository,
       this.passwordService

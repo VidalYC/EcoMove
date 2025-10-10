@@ -1,3 +1,4 @@
+// src/components/User/UserProfileModal.tsx
 import React, { useState, useEffect } from 'react';
 import { X, Edit2, Save, User, Mail, Phone, FileText, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
