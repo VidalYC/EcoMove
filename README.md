@@ -1,6 +1,5 @@
-<div align="center">
+
 # 🚲 EcoMove - Plataforma de Movilidad Urbana Sostenible
-</div>
 
 <div align="center">
 
