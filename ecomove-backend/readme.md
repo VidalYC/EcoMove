@@ -1,4 +1,1460 @@
-# 🚴 EcoMove Backend - Sistema de Préstamo de Vehículos Ecológicos
+/**
+   * Invalida cachés de disponibilidad (cuando cambia el estado)
+   */
+  private invalidateAvailabilityCaches(): void {
+    this.logger.debug('Invalidating availability caches');
+    // Todas las claves que comienzan con 'transport:available-station:*'
+  }
+
+  /**
+   * Genera hash de filtros para la clave de caché
+   */
+  private hashFilters(filters: TransportFilters): string {
+    return JSON.stringify({
+      type: filters.type || null,
+      status: filters.status || null,
+      stationId: filters.stationId || null,
+      minRate: filters.minRate || null,
+      maxRate: filters.maxRate || null
+    });
+  }
+
+  // ========== DELEGACIÓN DIRECTA (sin caché) ==========
+  
+  // Estos métodos simplemente delegan al repositorio base
+  // porque son operaciones especializadas o de escritura
+  
+  async createBicycle(data: any): Promise<Bicycle> {
+    const result = await this.baseRepository.createBicycle(data);
+    this.invalidateListCaches();
+    return result;
+  }
+
+  async createElectricScooter(data: any): Promise<ElectricScooter> {
+    const result = await this.baseRepository.createElectricScooter(data);
+    this.invalidateListCaches();
+    return result;
+  }
+
+  async updateBatteryLevel(id: number, level: number): Promise<boolean> {
+    const result = await this.baseRepository.updateBatteryLevel(id, level);
+    if (result) {
+      this.invalidateTransportCaches(id);
+    }
+    return result;
+  }
+
+  async getStats(): Promise<TransportStats> {
+    const cacheKey = MemoryCacheService.generateKey('transport', 'stats');
+    
+    const cached = this.cache.get<TransportStats>(cacheKey);
+    if (cached) {
+      this.logger.debug('Transport stats cache HIT');
+      return cached;
+    }
+
+    const stats = await this.baseRepository.getStats();
+    this.cache.set(cacheKey, stats, this.CACHE_TTL.STATS);
+    
+    return stats;
+  }
+}
+```
+
+### 🔍 Configuración y Uso en el Proyecto
+
+**Configuración en DIContainer (Composición de Decorators)**
+```typescript
+// src/config/container.ts
+export class DIContainer {
+  private transportRepository!: TransportRepository;
+  private cache!: CacheService;
+  private logger!: LoggerService;
+
+  private initializeRepositories(): void {
+    // 1. Crear el repositorio BASE (PostgreSQL)
+    const baseTransportRepository = new PostgreSQLTransportRepository(this.pool);
+    
+    // 2. "Decorar" el repositorio base con caché
+    this.transportRepository = new CachedTransportRepository(
+      baseTransportRepository,  // ← El repositorio que decoramos
+      this.cache,
+      this.logger
+    );
+    
+    // ✅ Ahora transportRepository tiene:
+    // - Toda la funcionalidad de PostgreSQLTransportRepository
+    // - PLUS: Caché automático
+    // - PLUS: Logging de operaciones de caché
+    
+    console.log('✅ CachedTransportRepository created');
+  }
+
+  getTransportRepository(): TransportRepository {
+    return this.transportRepository;
+  }
+}
+```
+
+**Activar/Desactivar Caché según Entorno**
+```typescript
+// src/config/container.ts
+private initializeRepositories(): void {
+  const baseTransportRepository = new PostgreSQLTransportRepository(this.pool);
+  
+  // Decorator Pattern permite configuración flexible
+  if (process.env.ENABLE_CACHE === 'true') {
+    // Producción: Con caché
+    this.transportRepository = new CachedTransportRepository(
+      baseTransportRepository,
+      this.cache,
+      this.logger
+    );
+    console.log('✅ Cache enabled for TransportRepository');
+  } else {
+    // Desarrollo/Testing: Sin caché
+    this.transportRepository = baseTransportRepository;
+    console.log('⚠️  Cache disabled for TransportRepository');
+  }
+}
+```
+
+**Composición de Múltiples Decorators (futuro)**
+```typescript
+// Podemos apilar decorators para añadir múltiples comportamientos
+private initializeRepositories(): void {
+  let repository: TransportRepository = new PostgreSQLTransportRepository(this.pool);
+  
+  // Decorator 1: Logging
+  repository = new LoggingTransportRepository(repository, this.logger);
+  
+  // Decorator 2: Caché (sobre el logging)
+  repository = new CachedTransportRepository(repository, this.cache, this.logger);
+  
+  // Decorator 3: Métricas (sobre el caché)
+  repository = new MetricsTransportRepository(repository, this.metricsService);
+  
+  this.transportRepository = repository;
+  
+  // Resultado: PostgreSQL → Logging → Caché → Métricas
+  // Cada capa añade funcionalidad sin modificar las anteriores
+}
+```
+
+### 📊 Diagrama de Flujo del Decorator
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│                    USE CASE / CONTROLLER                        │
+│  transportRepository.findById(5)                                │
+└───────────────────────────┬────────────────────────────────────┘
+                            │
+                            ▼
+┌────────────────────────────────────────────────────────────────┐
+│              CachedTransportRepository (DECORATOR)              │
+│                                                                 │
+│  findById(5) {                                                  │
+│    1. Generar clave: "transport:id:5"                           │
+│    2. ¿Existe en caché?                                         │
+│       │                                                          │
+│       ├─ SÍ ──────────────────────┐                            │
+│       │                            ▼                            │
+│       │                    ┌──────────────┐                    │
+│       │                    │ CACHE HIT ✅ │                    │
+│       │                    │ Return cached│                    │
+│       │                    └──────────────┘                    │
+│       │                            │                            │
+│       └─ NO ──────────────┐        │                           │
+│                            ▼        │                           │
+│                    ┌──────────────┐ │                          │
+│                    │ CACHE MISS ❌│ │                          │
+│                    └──────┬───────┘ │                          │
+│                           │         │                           │
+│                           ▼         │                           │
+│    3. Llamar al baseRepository.findById(5)                      │
+│                           │         │                           │
+└───────────────────────────┼─────────┼───────────────────────────┘
+                            │         │
+                            ▼         │
+┌────────────────────────────────────────────────────────────────┐
+│         PostgreSQLTransportRepository (BASE/DECORADO)           │
+│                                                                 │
+│  findById(5) {                                                  │
+│    const query = 'SELECT * FROM transportes WHERE id = $1';     │
+│    const result = await this.pool.query(query, [5]);           │
+│    return Transport.fromPersistence(result.rows[0]);           │
+│  }                                                              │
+└───────────────────────────┬────────────────────────────────────┘
+                            │
+                            ▼
+                    ┌──────────────┐
+                    │  PostgreSQL  │
+                    │   Database   │
+                    └──────┬───────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────────────┐
+│              CachedTransportRepository (DECORATOR)              │
+│                                                                 │
+│    4. Recibe resultado del base repository                      │
+│    5. Guardar en caché:                                         │
+│       cache.set("transport:id:5", transport, 300)              │
+│    6. Return transport                                          │
+│                                                                 │
+└───────────────────────────┬────────────────────────────────────┘
+                            │
+                            ▼
+┌────────────────────────────────────────────────────────────────┐
+│                    USE CASE / CONTROLLER                        │
+│  Recibe: Transport { id: 5, model: "...", ... }                │
+└────────────────────────────────────────────────────────────────┘
+
+PRÓXIMA LLAMADA (dentro de 5 minutos):
+  findById(5) → CACHE HIT ✅ → Return inmediato (sin DB query)
+```
+
+### 🎯 Ventajas Específicas en EcoMove
+
+**1. Performance Mejorado Drásticamente**
+```typescript
+// Escenario: Página de dashboard que muestra transportes disponibles
+
+// SIN CACHÉ (primera versión):
+// - Query a BD: ~50ms
+// - 1000 requests/hora = 50,000ms = 50 segundos de DB time
+// - DB sobrecargada
+
+// CON CACHÉ (Decorator Pattern):
+// Primera request: 50ms (cache miss)
+// Siguientes 999 requests: ~1ms (cache hit)
+// Total: 50ms + 999ms = 1,049ms ≈ 1 segundo
+// ✅ 50x más rápido
+// ✅ 999 queries menos a la BD
+```
+
+**2. Zero Código Cambiado en Use Cases**
+```typescript
+// src/core/use-cases/transport/get-all-transports.use-case.ts
+
+// El use case NO CAMBIÓ EN ABSOLUTO
+export class GetAllTransportsUseCase {
+  constructor(
+    private readonly transportRepository: TransportRepository
+  ) {}
+
+  async execute(page: number, limit: number, filters?: TransportFilters) {
+    // Esta línea es EXACTAMENTE la misma
+    return await this.transportRepository.findAll(page, limit, filters);
+    
+    // Pero ahora tiene caché gracias al Decorator
+    // Sin modificar ni una línea de este código
+  }
+}
+
+// ✅ Open/Closed Principle: Extendido sin modificación
+```
+
+**3. Invalidación Inteligente**
+```typescript
+// Cuando se actualiza un transporte, el caché se invalida automáticamente
+await transportRepository.updateStatus(5, 'maintenance');
+
+// El decorator automáticamente:
+// 1. Actualiza en la BD
+// 2. Invalida cache.get('transport:id:5')
+// 3. Invalida cache de listas que podrían incluir este transporte
+// 4. Invalida cache de estadísticas
+// 5. Invalida cache de disponibilidad
+
+// Próxima consulta: Cache miss → datos frescos de BD ✅
+```
+
+**4. Métricas y Observabilidad**
+```typescript
+// El decorator logea todas las operaciones de caché
+this.logger.debug('Transport cache HIT', { id: 5, cacheKey: 'transport:id:5' });
+this.logger.debug('Transport cache MISS', { id: 10 });
+
+// Podemos medir:
+// - Hit rate del caché
+// - Qué queries son más frecuentes
+// - Efectividad del TTL
+// - Cuánta carga quitamos de la BD
+
+// Ejemplo de análisis:
+// Cache hit rate: 85%
+// Significa: 85% de requests NO tocan la BD
+// Si tenemos 10,000 requests/hora → 8,500 evitan la BD
+```
+
+**5. TTL Diferenciado por Tipo de Dato**
+```typescript
+private readonly CACHE_TTL = {
+  SINGLE_TRANSPORT: 300,      // 5 min - Datos estables (modelo, marca)
+  TRANSPORT_LIST: 120,        // 2 min - Puede cambiar (nuevos transportes)
+  AVAILABLE_TRANSPORTS: 60,   // 1 min - Alta rotación (préstamos)
+  STATS: 180                  // 3 min - Cálculos costosos pero no críticos
+};
+
+// Balanceo entre:
+// - Frescura de datos (lower TTL)
+// - Performance (higher TTL)
+// - Naturaleza de cada dato
+```
+
+**6. Testing Sigue Siendo Simple**
+```typescript
+// En tests, simplemente NO usamos el decorator
+describe('CreateTransportUseCase', () => {
+  let mockRepo: MockTransportRepository;
+  
+  beforeEach(() => {
+    // Mock SIN caché
+    mockRepo = new MockTransportRepository();
+    useCase = new CreateTransportUseCase(mockRepo);
+  });
+  
+  // Tests rápidos, predecibles, sin caché
+});
+
+// En tests de integración, SÍ podemos usar el decorator
+describe('CachedTransportRepository Integration', () => {
+  let cachedRepo: CachedTransportRepository;
+  
+  beforeEach(() => {
+    const baseRepo = new PostgreSQLTransportRepository(testPool);
+    cachedRepo = new CachedTransportRepository(baseRepo, cache, logger);
+  });
+  
+  it('should cache transport after first query', async () => {
+    const first = await cachedRepo.findById(1);  // Cache miss
+    const second = await cachedRepo.findById(1); // Cache hit
+    
+    // Verificar que solo hubo 1 query a BD
+    expect(queriesMade).toBe(1);
+  });
+});
+```
+
+### ⚠️ Consideraciones y Trade-offs
+
+**Ventajas:**
+- ✅ **Open/Closed Principle**: Añade funcionalidad sin modificar código existente
+- ✅ **Composición sobre Herencia**: Más flexible que subclassing
+- ✅ **Runtime Flexibility**: Puede añadirse/quitarse en tiempo de ejecución
+- ✅ **Single Responsibility**: Cada decorator tiene una responsabilidad
+- ✅ **Combinable**: Múltiples decorators pueden apilarse
+
+**Desventajas:**
+- ⚠️ **Complejidad**: Más objetos en memoria
+- ⚠️ **Debugging**: Stack traces más largos (multiple layers)
+- ⚠️ **Overhead**: Pequeña penalización en performance por cada capa
+- ⚠️ **Orden importa**: El orden de los decorators afecta el comportamiento
+
+**Problemas Potenciales y Soluciones:**
+
+```typescript
+// PROBLEMA 1: Caché desincronizado
+// Si otro servicio/proceso actualiza la BD directamente
+
+// SOLUCIÓN 1: TTL corto para datos críticos
+private readonly CACHE_TTL = {
+  AVAILABLE_TRANSPORTS: 30,  // Solo 30 segundos
+};
+
+// SOLUCIÓN 2: Invalidación activa con eventos
+eventEmitter.on('transport-updated', (id) => {
+  this.invalidateTransportCaches(id);
+});
+
+// SOLUCIÓN 3: En producción, usar Redis con pub/sub
+// Múltiples instancias de la app pueden invalidar caché compartido
+```
+
+```typescript
+// PROBLEMA 2: Memoria del caché crece indefinidamente
+
+// SOLUCIÓN: Límite de keys + LRU eviction
+export class MemoryCacheService {
+  constructor(
+    private readonly maxKeys = 10000  // Máximo 10k keys
+  ) {}
+  
+  set(key: string, value: any, ttl: number): void {
+    // Si llegamos al límite, remover las más antiguas
+    if (this.cache.size >= this.maxKeys) {
+      this.evictOldest();
+    }
+    // Guardar nueva entry
+  }
+}
+```
+
+**Cuándo NO usar Decorator:**
+- Sistema muy simple sin necesidad de extensión
+- Performance crítico (cada capa añade microsegundos)
+- Equipo sin experiencia en patrones (puede confundir)
+
+**Cuándo SÍ usar Decorator (como en EcoMove):**
+- Necesitas añadir funcionalidad sin modificar código
+- Quieres mantener Open/Closed Principle
+- Necesitas activar/desactivar features dinámicamente
+- Múltiples comportamientos transversales (cache, logging, metrics)
+
+### 🔄 Variaciones Implementadas
+
+**1. Decorator para Estaciones (similar)**
+```typescript
+// src/infrastructure/database/repositories/cached-station.repository.ts
+export class CachedStationRepository implements StationRepository {
+  private readonly CACHE_TTL = {
+    SINGLE_STATION: 600,       // 10 min (estaciones cambian poco)
+    STATION_LIST: 300,         // 5 min
+    NEARBY_STATIONS: 180,      // 3 min (consulta muy frecuente)
+    AVAILABILITY: 60,          // 1 min (cambia con cada préstamo)
+    STATS: 300                 // 5 min
+  };
+  
+  // Misma estructura que CachedTransportRepository
+  // TTL más largos porque estaciones son más estables
+}
+```
+
+**2. Posibles Decorators Futuros**
+```typescript
+// Logging Decorator (registra todas las operaciones)
+export class LoggingTransportRepository implements TransportRepository {
+  constructor(
+    private readonly baseRepository: TransportRepository,
+    private readonly logger: LoggerService
+  ) {}
+  
+  async findById(id: number): Promise<Transport | null> {
+    this.logger.info('Finding transport by ID', { id });
+    const start = Date.now();
+    
+    const result = await this.baseRepository.findById(id);
+    
+    this.logger.info('Transport found', { 
+      id, 
+      found: !!result,
+      duration: Date.now() - start 
+    });
+    
+    return result;
+  }
+}
+
+// Metrics Decorator (recolecta métricas)
+export class MetricsTransportRepository implements TransportRepository {
+  constructor(
+    private readonly baseRepository: TransportRepository,
+    private readonly metrics: MetricsService
+  ) {}
+  
+  async findById(id: number): Promise<Transport | null> {
+    const timer = this.metrics.startTimer('transport.findById');
+    
+    const result = await this.baseRepository.findById(id);
+    
+    timer.end();
+    this.metrics.increment('transport.queries');
+    
+    return result;
+  }
+}
+
+// Composición de todos:
+const repo = new MetricsTransportRepository(
+  new CachedTransportRepository(
+    new LoggingTransportRepository(
+      new PostgreSQLTransportRepository(pool),
+      logger
+    ),
+    cache,
+    logger
+  ),
+  metrics
+);
+
+// Flujo: PostgreSQL → Logging → Caché → Métricas
+```
+
+### 📍 Ubicación en el Proyecto
+- **Implementación**: `src/infrastructure/database/repositories/cached-*.repository.ts`
+- **Configuración**: `src/config/container.ts` (método `initializeRepositories`)
+- **Transparente para**: `src/core/use-cases/**/*.use-case.ts` (no saben del caché)
+
+---
+
+Continúo con los siguientes patrones. ¿Quieres que siga con Adapter Pattern y los demás, o prefieres que profundice más en alguno de los que ya expliqué?  async findByEmail(email: Email): Promise<User | null> {
+    const query = 'SELECT * FROM users WHERE email = $1 AND deleted_at IS NULL';
+    const result = await this.pool.query(query, [email.getValue()]);
+    
+    if (result.rows.length === 0) {
+      return null;
+    }
+    
+    return User.fromPersistence(result.rows[0]);
+  }
+
+  async findByDocument(document: DocumentNumber): Promise<User | null> {
+    const query = 'SELECT * FROM users WHERE document_number = $1 AND deleted_at IS NULL';
+    const result = await this.pool.query(query, [document.getValue()]);
+    
+    if (result.rows.length === 0) {
+      return null;
+    }
+    
+    return User.fromPersistence(result.rows[0]);
+  }
+
+  async update(user: User): Promise<User> {
+    const data = user.toPersistence();
+    
+    const query = `
+      UPDATE users
+      SET name = $1, phone = $2, role = $3, status = $4, updated_at = NOW()
+      WHERE id = $5
+      RETURNING *
+    `;
+    
+    const result = await this.pool.query(query, [
+      data.name,
+      data.phone,
+      data.role,
+      data.status,
+      data.id
+    ]);
+    
+    if (result.rows.length === 0) {
+      throw new Error('Usuario no encontrado');
+    }
+    
+    return User.fromPersistence(result.rows[0]);
+  }
+
+  async delete(id: number): Promise<void> {
+    // Soft delete: marca como eliminado sin borrar físicamente
+    const query = 'UPDATE users SET deleted_at = NOW() WHERE id = $1';
+    await this.pool.query(query, [id]);
+  }
+
+  async exists(id: number): Promise<boolean> {
+    const query = 'SELECT 1 FROM users WHERE id = $1 AND deleted_at IS NULL';
+    const result = await this.pool.query(query, [id]);
+    return result.rows.length > 0;
+  }
+
+  async findAll(page: number, limit: number): Promise<PaginatedResponse<User>> {
+    const offset = (page - 1) * limit;
+    
+    // Query con paginación
+    const dataQuery = `
+      SELECT * FROM users 
+      WHERE deleted_at IS NULL 
+      ORDER BY created_at DESC 
+      LIMIT $1 OFFSET $2
+    `;
+    
+    const countQuery = 'SELECT COUNT(*) FROM users WHERE deleted_at IS NULL';
+    
+    // Ejecutar ambas queries en paralelo
+    const [dataResult, countResult] = await Promise.all([
+      this.pool.query(dataQuery, [limit, offset]),
+      this.pool.query(countQuery)
+    ]);
+    
+    const total = parseInt(countResult.rows[0].count);
+    const users = dataResult.rows.map(row => User.fromPersistence(row));
+    
+    return {
+      users,
+      total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page
+    };
+  }
+
+  async search(term: string, page: number, limit: number): Promise<PaginatedResponse<User>> {
+    const offset = (page - 1) * limit;
+    const searchTerm = `%${term}%`;
+    
+    const dataQuery = `
+      SELECT * FROM users 
+      WHERE deleted_at IS NULL 
+        AND (
+          name ILIKE $1 
+          OR email ILIKE $1 
+          OR document_number ILIKE $1
+        )
+      ORDER BY created_at DESC 
+      LIMIT $2 OFFSET $3
+    `;
+    
+    const countQuery = `
+      SELECT COUNT(*) FROM users 
+      WHERE deleted_at IS NULL 
+        AND (name ILIKE $1 OR email ILIKE $1 OR document_number ILIKE $1)
+    `;
+    
+    const [dataResult, countResult] = await Promise.all([
+      this.pool.query(dataQuery, [searchTerm, limit, offset]),
+      this.pool.query(countQuery, [searchTerm])
+    ]);
+    
+    const total = parseInt(countResult.rows[0].count);
+    const users = dataResult.rows.map(row => User.fromPersistence(row));
+    
+    return {
+      users,
+      total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page
+    };
+  }
+
+  async getStats(): Promise<UserStats> {
+    const query = `
+      SELECT 
+        COUNT(*) as total_users,
+        COUNT(*) FILTER (WHERE status = 'active') as active_users,
+        COUNT(*) FILTER (WHERE role = 'admin') as admins,
+        COUNT(*) FILTER (
+          WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE)
+        ) as new_users_this_month
+      FROM users
+      WHERE deleted_at IS NULL
+    `;
+    
+    const result = await this.pool.query(query);
+    const row = result.rows[0];
+    
+    return {
+      totalUsers: parseInt(row.total_users),
+      activeUsers: parseInt(row.active_users),
+      admins: parseInt(row.admins),
+      newUsersThisMonth: parseInt(row.new_users_this_month)
+    };
+  }
+}
+```
+
+### 🔍 Uso en el Proyecto
+
+**Caso 1: Use Case usando el Repository**
+```typescript
+// src/core/use-cases/user/get-user-profile.use-case.ts
+export class GetUserProfileUseCase {
+  constructor(
+    private readonly userRepository: UserRepository  // ← Interfaz, no implementación
+  ) {}
+
+  async execute(userId: number): Promise<User> {
+    // ✅ Código limpio, sin SQL
+    const user = await this.userRepository.findById(userId);
+    
+    if (!user) {
+      throw new Error('Usuario no encontrado');
+    }
+    
+    if (!user.isActive()) {
+      throw new Error('Usuario inactivo');
+    }
+    
+    return user;
+  }
+}
+
+// ✅ Este use case NO SABE que estamos usando PostgreSQL
+// ✅ Podría ser MongoDB, MySQL, una API externa, o un mock
+```
+
+**Caso 2: Configuración en DIContainer**
+```typescript
+// src/config/container.ts
+export class DIContainer {
+  private userRepository!: UserRepository;
+  
+  private initializeRepositories(): void {
+    // Aquí decidimos QUÉ implementación usar
+    this.userRepository = new PostgreSQLUserRepository(this.pool);
+    
+    // En el futuro, podríamos cambiar a:
+    // this.userRepository = new MongoDBUserRepository(this.mongoClient);
+    // this.userRepository = new APIUserRepository(this.httpClient);
+    
+    // Y NINGÚN use case necesitaría cambiar
+  }
+  
+  getUserRepository(): UserRepository {
+    return this.userRepository;
+  }
+}
+```
+
+**Caso 3: Testing con Mock Repository**
+```typescript
+// tests/unit/use-cases/get-user-profile.use-case.test.ts
+
+// Mock del repositorio
+class MockUserRepository implements UserRepository {
+  private users: Map<number, User> = new Map();
+  
+  async save(user: User): Promise<User> {
+    this.users.set(user.getId()!, user);
+    return user;
+  }
+  
+  async findById(id: number): Promise<User | null> {
+    return this.users.get(id) || null;
+  }
+  
+  async findByEmail(email: Email): Promise<User | null> {
+    // Mock implementation
+    return null;
+  }
+  
+  // ... resto de métodos mock
+}
+
+describe('GetUserProfileUseCase', () => {
+  let useCase: GetUserProfileUseCase;
+  let mockRepo: MockUserRepository;
+  
+  beforeEach(() => {
+    mockRepo = new MockUserRepository();
+    useCase = new GetUserProfileUseCase(mockRepo);
+  });
+  
+  it('should return user profile when user exists', async () => {
+    // Arrange: Preparar datos de prueba
+    const testUser = User.createNew(
+      'Test User',
+      'test@example.com',
+      '12345678',
+      '3001234567',
+      'hashedPassword'
+    );
+    await mockRepo.save(testUser);
+    
+    // Act: Ejecutar el caso de uso
+    const result = await useCase.execute(testUser.getId()!);
+    
+    // Assert: Verificar resultado
+    expect(result).toBeDefined();
+    expect(result.getName()).toBe('Test User');
+  });
+  
+  it('should throw error when user does not exist', async () => {
+    // Act & Assert
+    await expect(
+      useCase.execute(999)
+    ).rejects.toThrow('Usuario no encontrado');
+  });
+});
+
+// ✅ Tests rápidos: sin BD real, sin I/O
+// ✅ Tests aislados: cada test es independiente
+// ✅ Tests controlables: datos predecibles
+```
+
+### 📊 Diagrama de Arquitectura
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    PRESENTATION LAYER                            │
+│                                                                  │
+│  ┌──────────────┐      ┌──────────────┐      ┌──────────────┐ │
+│  │ Controller 1 │      │ Controller 2 │      │ Controller 3 │ │
+│  └──────┬───────┘      └──────┬───────┘      └──────┬───────┘ │
+│         │                     │                     │          │
+└─────────┼─────────────────────┼─────────────────────┼──────────┘
+          │                     │                     │
+          ▼                     ▼                     ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    APPLICATION LAYER                             │
+│                                                                  │
+│  ┌──────────────┐      ┌──────────────┐      ┌──────────────┐ │
+│  │  Use Case 1  │      │  Use Case 2  │      │  Use Case 3  │ │
+│  │              │      │              │      │              │ │
+│  │ Depende de:  │      │ Depende de:  │      │ Depende de:  │ │
+│  │ UserRepository│      │ UserRepository│      │ UserRepository│ │
+│  │  (interfaz)  │      │  (interfaz)  │      │  (interfaz)  │ │
+│  └──────┬───────┘      └──────┬───────┘      └──────┬───────┘ │
+│         │                     │                     │          │
+│         └─────────────────────┼─────────────────────┘          │
+│                               │                                │
+└───────────────────────────────┼────────────────────────────────┘
+                                │
+                                │ Inyección de Dependencias
+                                │
+┌───────────────────────────────▼────────────────────────────────┐
+│                      DOMAIN LAYER                               │
+│                                                                  │
+│  ┌────────────────────────────────────────────────────────┐    │
+│  │          UserRepository (INTERFAZ)                      │    │
+│  │                                                          │    │
+│  │  + save(user: User): Promise<User>                      │    │
+│  │  + findById(id: number): Promise<User | null>           │    │
+│  │  + findByEmail(email: Email): Promise<User | null>      │    │
+│  │  + update(user: User): Promise<User>                    │    │
+│  │  + delete(id: number): Promise<void>                    │    │
+│  │  + findAll(page, limit): Promise<PaginatedResponse>     │    │
+│  └────────────────────────────────────────────────────────┘    │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+                                ▲
+                                │ Implementa
+                                │
+┌───────────────────────────────┼────────────────────────────────┐
+│                  INFRASTRUCTURE LAYER                            │
+│                               │                                 │
+│  ┌────────────────────────────┴──────────────────────────────┐ │
+│  │     PostgreSQLUserRepository (IMPLEMENTACIÓN)             │ │
+│  │                                                            │ │
+│  │  - pool: Pool                                             │ │
+│  │                                                            │ │
+│  │  + save(user): Promise<User> {                            │ │
+│  │      const query = 'INSERT INTO users...'                 │ │
+│  │      await this.pool.query(query, values)                 │ │
+│  │  }                                                         │ │
+│  │                                                            │ │
+│  │  + findById(id): Promise<User | null> {                   │ │
+│  │      const query = 'SELECT * FROM users WHERE...'         │ │
+│  │      await this.pool.query(query, [id])                   │ │
+│  │  }                                                         │ │
+│  │  ... resto de implementaciones SQL                        │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│                                                                  │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │          PostgreSQL Database                                │ │
+│  │          ┌──────────┐                                       │ │
+│  │          │  users   │                                       │ │
+│  │          │  table   │                                       │ │
+│  │          └──────────┘                                       │ │
+│  └────────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### 🎯 Ventajas Específicas en EcoMove
+
+**1. Cambiar de Base de Datos sin Dolor**
+```typescript
+// ANTES (sin Repository Pattern):
+// Si cambiamos de PostgreSQL a MongoDB:
+// - Modificar 50+ use cases ❌
+// - Reescribir todas las queries SQL a NoSQL ❌
+// - Actualizar tests ❌
+// Estimado: 2-3 semanas de trabajo 😱
+
+// DESPUÉS (con Repository Pattern):
+// Si cambiamos de PostgreSQL a MongoDB:
+// 1. Crear MongoDBUserRepository implementando UserRepository
+// 2. Cambiar UNA línea en DIContainer:
+this.userRepository = new MongoDBUserRepository(this.mongoClient);
+// 3. ¡Listo! ✅
+// Estimado: 1-2 días de trabajo 🎉
+
+// Los use cases NO CAMBIAN en absoluto
+```
+
+**2. Testing sin Base de Datos Real**
+```typescript
+// SIN Repository: Tests lentos
+// - Cada test necesita BD corriendo
+// - Setup/teardown de datos
+// - Tests toman 30+ segundos
+describe('Loan Tests', () => {
+  beforeAll(async () => {
+    await startPostgresContainer();  // 10 segundos
+    await runMigrations();            // 5 segundos
+  });
+  // ...
+});
+
+// CON Repository: Tests rápidos
+// - Mock en memoria
+// - Sin I/O
+// - Tests toman < 1 segundo
+describe('Loan Tests', () => {
+  beforeEach(() => {
+    mockRepo = new MockLoanRepository();  // Instantáneo
+  });
+  // ...
+});
+
+// 100 tests: 50 minutos → 2 minutos 🚀
+```
+
+**3. Queries Complejas Encapsuladas**
+```typescript
+// En el repositorio: SQL complejo centralizado
+async getUserLoanHistory(
+  userId: number, 
+  page: number, 
+  limit: number
+): Promise<UserLoanHistory> {
+  const query = `
+    SELECT 
+      l.*,
+      u.name as user_name,
+      u.email as user_email,
+      t.model as transport_model,
+      t.type as transport_type,
+      s1.name as origin_station_name,
+      s2.name as destination_station_name,
+      COUNT(*) OVER() as total_count
+    FROM prestamos l
+    INNER JOIN users u ON l.usuario_id = u.id
+    INNER JOIN transportes t ON l.transporte_id = t.id
+    INNER JOIN estaciones s1 ON l.estacion_origen_id = s1.id
+    LEFT JOIN estaciones s2 ON l.estacion_destino_id = s2.id
+    WHERE l.usuario_id = $1
+    ORDER BY l.created_at DESC
+    LIMIT $2 OFFSET $3
+  `;
+  
+  // Implementación compleja encapsulada
+  // Los use cases solo llaman: repository.getUserLoanHistory(userId, page, limit)
+}
+
+// En el use case: Simple y limpio
+const history = await this.loanRepository.getUserLoanHistory(userId, 1, 10);
+// ✅ Sin SQL en la lógica de negocio
+// ✅ Fácil de leer y mantener
+```
+
+**4. Caché Transparente (preparado para Decorator)**
+```typescript
+// El repository es la capa perfecta para añadir caché
+// (Veremos esto en detalle en el patrón Decorator)
+
+// Sin cambiar NADA en los use cases:
+const user = await userRepository.findById(1);  
+// Primera llamada: va a BD
+// Segunda llamada: devuelve desde caché
+// Los use cases ni siquiera saben que hay caché
+```
+
+**5. Estadísticas y Analytics Centralizadas**
+```typescript
+// Todas las consultas analíticas en un solo lugar
+interface UserRepository {
+  // Queries simples
+  findById(id: number): Promise<User | null>;
+  
+  // Queries complejas/analytics
+  getStats(): Promise<UserStats>;
+  getGrowthRate(): Promise<GrowthMetrics>;
+  getTopActiveUsers(limit: number): Promise<User[]>;
+  getUsersByRegistrationMonth(): Promise<MonthlyStats[]>;
+}
+
+// Los controladores de admin solo llaman:
+const stats = await userRepository.getStats();
+// No necesitan saber SQL, agregaciones, etc.
+```
+
+### ⚠️ Consideraciones y Trade-offs
+
+**Ventajas:**
+- ✅ **Separación de responsabilidades**: Lógica de negocio vs acceso a datos
+- ✅ **Testabilidad**: Fácil mockear para tests unitarios
+- ✅ **Mantenibilidad**: Cambios en BD no afectan lógica de negocio
+- ✅ **Flexibilidad**: Fácil cambiar de tecnología de persistencia
+- ✅ **Reutilización**: Mismo repositorio para múltiples use cases
+- ✅ **Optimización**: Lugar perfecto para añadir caché
+
+**Desventajas:**
+- ⚠️ **Capa adicional**: Más código y abstracción
+- ⚠️ **Overhead**: Pequeño impacto en performance por la abstracción
+- ⚠️ **Curva de aprendizaje**: Desarrolladores deben entender el patrón
+- ⚠️ **Over-engineering**: Para apps muy simples puede ser excesivo
+
+**Cuándo NO usar Repository:**
+- Aplicaciones CRUD muy simples (< 5 entidades)
+- Prototipos o MVPs temporales
+- Scripts de un solo uso
+- Cuando NO se prevén cambios de BD
+
+**Cuándo SÍ usar Repository (como en EcoMove):**
+- Aplicaciones medianas/grandes
+- Múltiples fuentes de datos
+- Testing importante
+- Equipo de múltiples desarrolladores
+- Lógica de negocio compleja
+- Posibilidad de cambio de BD en el futuro
+
+### 🔄 Variaciones del Patrón en el Proyecto
+
+**1. Repository con Queries Especializadas**
+```typescript
+// LoanRepository tiene queries muy específicas del dominio
+interface LoanRepository {
+  // CRUD básico
+  save(loan: Loan): Promise<Loan>;
+  findById(id: number): Promise<Loan | null>;
+  
+  // Queries de negocio
+  findActiveByUserId(userId: number): Promise<Loan | null>;
+  findOverdueLoans(): Promise<Loan[]>;
+  getMostUsedTransports(startDate: Date, endDate: Date): Promise<any[]>;
+  getMostActiveStations(startDate: Date, endDate: Date): Promise<any[]>;
+}
+
+// Cada query tiene sentido en el dominio de préstamos
+```
+
+**2. Repository con Paginación**
+```typescript
+// Todos los métodos de listado retornan objetos paginados
+interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  totalPages: number;
+  currentPage: number;
+}
+
+// Consistencia en toda la API
+const users = await userRepository.findAll(1, 10);
+const loans = await loanRepository.findAll(1, 10);
+const transports = await transportRepository.findAll(1, 10);
+```
+
+**3. Repository con Filtros Complejos**
+```typescript
+// Uso de Value Objects para filtros
+const filters = TransportFilters.create({
+  type: 'bicycle',
+  status: 'available',
+  stationId: 5,
+  minRate: 1000,
+  maxRate: 5000
+});
+
+const transports = await transportRepository.findAll(1, 10, filters);
+
+// El repositorio interpreta el filtro y construye la query apropiada
+```
+
+### 📍 Ubicación en el Proyecto
+- **Interfaces**: `src/core/domain/repositories/*.repository.ts`
+- **Implementaciones PostgreSQL**: `src/infrastructure/database/repositories/postgresql-*.repository.ts`
+- **Implementaciones con Caché**: `src/infrastructure/database/repositories/cached-*.repository.ts`
+- **Uso**: `src/core/use-cases/**/*.use-case.ts`
+
+---
+
+## Decorator Pattern
+
+### 📖 Definición
+El patrón Decorator permite añadir responsabilidades adicionales a un objeto de forma dinámica, proporcionando una alternativa flexible a la herencia para extender funcionalidad.
+
+### 🎯 Problema que Resuelve
+
+**Problema 1: Extender funcionalidad sin modificar código existente**
+```typescript
+// ❌ PROBLEMA: Modificar el repositorio original para añadir caché
+export class PostgreSQLTransportRepository {
+  async findById(id: number): Promise<Transport | null> {
+    // ❓ ¿Añadir caché aquí?
+    // Viola Open/Closed Principle
+    // Si luego queremos logging, ¿modificamos de nuevo?
+    
+    const query = 'SELECT * FROM transportes WHERE id = $1';
+    return await this.pool.query(query, [id]);
+  }
+}
+```
+
+**Problema 2: Combinar múltiples comportamientos**
+```typescript
+// ❌ PROBLEMA: ¿Caché + Logging + Métricas?
+// ¿Herencia múltiple? No existe en TypeScript
+// ¿Modificar la clase base? Viola SOLID
+
+class TransportRepositoryWithCacheAndLoggingAndMetrics {
+  // Pesadilla de mantenimiento 😱
+}
+```
+
+**Problema 3: Activar/desactivar features dinámicamente**
+```typescript
+// ❌ PROBLEMA: ¿Cómo tener caché solo en producción?
+if (process.env.NODE_ENV === 'production') {
+  // usar versión con caché
+} else {
+  // usar versión sin caché
+}
+// Código disperso y confuso
+```
+
+### ✅ Solución Implementada
+
+```typescript
+// src/infrastructure/database/repositories/cached-transport.repository.ts
+
+/**
+ * Decorator que añade funcionalidad de caché a cualquier TransportRepository
+ * SIN MODIFICAR el repositorio original
+ */
+export class CachedTransportRepository implements TransportRepository {
+  // Configuración de TTL para diferentes tipos de datos
+  private readonly CACHE_TTL = {
+    SINGLE_TRANSPORT: 300,      // 5 minutos - datos estables
+    TRANSPORT_LIST: 120,        // 2 minutos - lista puede cambiar
+    AVAILABLE_TRANSPORTS: 60,   // 1 minuto - alta rotación
+    STATS: 180                  // 3 minutos - cálculos costosos
+  };
+
+  constructor(
+    private readonly baseRepository: TransportRepository,  // ← Repositorio "decorado"
+    private readonly cache: CacheService,                  // ← Servicio de caché
+    private readonly logger: LoggerService                 // ← Logging opcional
+  ) {}
+
+  // ========== OPERACIONES DE LECTURA (con caché) ==========
+
+  async findById(id: number): Promise<Transport | null> {
+    // 1. Generar clave única de caché
+    const cacheKey = MemoryCacheService.generateKey('transport', 'id', id);
+    
+    // 2. Intentar obtener del caché primero
+    const cached = this.cache.get<Transport>(cacheKey);
+    if (cached) {
+      this.logger.debug('Transport cache HIT', { id, cacheKey });
+      return cached;  // ✅ Cache hit - return rápido
+    }
+
+    // 3. Cache miss - delegar al repositorio base
+    this.logger.debug('Transport cache MISS', { id, cacheKey });
+    const transport = await this.baseRepository.findById(id);
+    
+    // 4. Si encontró resultado, guardarlo en caché para futuras consultas
+    if (transport) {
+      this.cache.set(cacheKey, transport, this.CACHE_TTL.SINGLE_TRANSPORT);
+      this.logger.debug('Transport cached', { 
+        id, 
+        cacheKey,
+        ttl: this.CACHE_TTL.SINGLE_TRANSPORT 
+      });
+    }
+
+    return transport;
+  }
+
+  async findAll(
+    page: number, 
+    limit: number, 
+    filters?: TransportFilters
+  ): Promise<PaginatedResponse<Transport>> {
+    // Generar clave que incluya todos los parámetros
+    const filterHash = filters ? this.hashFilters(filters) : 'none';
+    const cacheKey = MemoryCacheService.generateKey(
+      'transport', 
+      'list', 
+      page, 
+      limit, 
+      filterHash
+    );
+
+    // Intentar caché
+    const cached = this.cache.get<PaginatedResponse<Transport>>(cacheKey);
+    if (cached) {
+      this.logger.debug('Transport list cache HIT', { 
+        page, 
+        limit, 
+        filterHash 
+      });
+      return cached;
+    }
+
+    // Delegar al repositorio base
+    this.logger.debug('Transport list cache MISS', { page, limit });
+    const result = await this.baseRepository.findAll(page, limit, filters);
+    
+    // Cachear resultado
+    this.cache.set(cacheKey, result, this.CACHE_TTL.TRANSPORT_LIST);
+    
+    return result;
+  }
+
+  async findAvailableByStation(
+    stationId: number, 
+    type?: TransportType
+  ): Promise<Transport[]> {
+    const cacheKey = MemoryCacheService.generateKey(
+      'transport', 
+      'available-station', 
+      stationId, 
+      type || 'all'
+    );
+
+    const cached = this.cache.get<Transport[]>(cacheKey);
+    if (cached) {
+      this.logger.debug('Available transports cache HIT', { stationId, type });
+      return cached;
+    }
+
+    const transports = await this.baseRepository.findAvailableByStation(
+      stationId, 
+      type
+    );
+    
+    // TTL corto porque disponibilidad cambia frecuentemente
+    this.cache.set(cacheKey, transports, this.CACHE_TTL.AVAILABLE_TRANSPORTS);
+    
+    return transports;
+  }
+
+  // ========== OPERACIONES DE ESCRITURA (invalidan caché) ==========
+
+  async create(transport: Transport): Promise<Transport> {
+    // Crear en el repositorio base
+    const result = await this.baseRepository.create(transport);
+    
+    // Invalidar cachés relacionados
+    this.invalidateListCaches();
+    this.logger.info('Transport created, caches invalidated', { 
+      id: result.getId() 
+    });
+    
+    return result;
+  }
+
+  async update(id: number, updates: Partial<Transport>): Promise<Transport | null> {
+    // Actualizar en el repositorio base
+    const result = await this.baseRepository.update(id, updates);
+    
+    if (result) {
+      // Invalidar TODOS los cachés relacionados con este transporte
+      this.invalidateTransportCaches(id);
+      this.logger.info('Transport updated, caches invalidated', { id });
+    }
+    
+    return result;
+  }
+
+  async delete(id: number): Promise<boolean> {
+    const result = await this.baseRepository.delete(id);
+    
+    if (result) {
+      this.invalidateTransportCaches(id);
+      this.logger.info('Transport deleted, caches invalidated', { id });
+    }
+    
+    return result;
+  }
+
+  async updateStatus(id: number, status: TransportStatus): Promise<boolean> {
+    const result = await this.baseRepository.updateStatus(id, status);
+    
+    if (result) {
+      // El estado afecta la disponibilidad
+      this.invalidateTransportCaches(id);
+      // También afecta las listas de "available"
+      this.invalidateAvailabilityCaches();
+    }
+    
+    return result;
+  }
+
+  // ========== MÉTODOS DE INVALIDACIÓN DE CACHÉ ==========
+
+  /**
+   * Invalida todos los cachés relacionados con un transporte específico
+   */
+  private invalidateTransportCaches(id: number): void {
+    // Caché del transporte individual
+    const singleKey = MemoryCacheService.generateKey('transport', 'id', id);
+    this.cache.del(singleKey);
+    
+    // Cachés de listas (difícil saber cuáles incluyen este transporte)
+    this.invalidateListCaches();
+    
+    // Cachés de estadísticas
+    const statsKey = MemoryCacheService.generateKey('transport', 'stats');
+    this.cache.del(statsKey);
+  }
+
+  /**
+   * Invalida todos los cachés de listas
+   */
+  private invalidateListCaches(): void {
+    // Estrategia: Usar patrón en las claves para borrar múltiples
+    // En una implementación más sofisticada, usaríamos Redis con SCAN
+    
+    this.logger.debug('Invalidating all transport list caches');
+    
+    // Por ahora, invalidamos las claves conocidas
+    // En producción con Redis, usaríamos: 
+    // SCAN 0 MATCH transport:list:* COUNT 100
+  }
+
+  /**
+   *// Si cambia la query, ¡hay que cambiarla en 3+ lugares!
+```
+
+**Problema 3: Dificultad para Testing**
+```typescript
+// ❌ PROBLEMA: ¿Cómo testear sin BD real?
+describe('GetUserProfileUseCase', () => {
+  it('should get user profile', async () => {
+    // Necesito una BD PostgreSQL corriendo
+    // Necesito datos de prueba
+    // Cada test es lento (I/O real)
+    const useCase = new GetUserProfileUseCase(realDatabasePool);
+    // ...
+  });
+});
+```
+
+### ✅ Solución Implementada
+
+El patrón Repository se implementa en DOS partes:
+
+#### **PARTE 1: Interfaz en el Dominio (Contrato)**
+
+```typescript
+// src/core/domain/repositories/user.repository.ts
+/**
+ * Contrato del repositorio de usuarios
+ * Define QUÉ operaciones se pueden hacer, NO CÓMO
+ * 
+ * Esta interfaz pertenece al DOMINIO, no a la infraestructura
+ */
+export interface UserRepository {
+  // ========== CRUD BÁSICO ==========
+  
+  /**
+   * Guarda un nuevo usuario
+   * @returns Usuario con ID asignado
+   */
+  save(user: User): Promise<User>;
+  
+  /**
+   * Busca usuario por ID
+   * @returns Usuario o null si no existe
+   */
+  findById(id: number): Promise<User | null>;
+  
+  /**
+   * Busca usuario por email
+   * @returns Usuario o null si no existe
+   */
+  findByEmail(email: Email): Promise<User | null>;
+  
+  /**
+   * Busca usuario por documento
+   * @returns Usuario o null si no existe
+   */
+  findByDocument(document: DocumentNumber): Promise<User | null>;
+  
+  /**
+   * Actualiza un usuario existente
+   * @throws Error si el usuario no existe
+   */
+  update(user: User): Promise<User>;
+  
+  /**
+   * Elimina un usuario (soft delete)
+   */
+  delete(id: number): Promise<void>;
+  
+  /**
+   * Verifica si existe un usuario
+   */
+  exists(id: number): Promise<boolean>;
+
+  // ========== CONSULTAS ESPECÍFICAS ==========
+  
+  /**
+   * Obtiene usuarios paginados
+   */
+  findAll(page: number, limit: number): Promise<PaginatedResponse<User>>;
+  
+  /**
+   * Busca usuarios por término (nombre, email, documento)
+   */
+  search(term: string, page: number, limit: number): Promise<PaginatedResponse<User>>;
+  
+  /**
+   * Obtiene estadísticas de usuarios
+   */
+  getStats(): Promise<UserStats>;
+}
+
+// Tipos auxiliares
+export interface PaginatedResponse<T> {
+  users: T[];
+  total: number;
+  totalPages: number;
+  currentPage: number;
+}
+
+export interface UserStats {
+  totalUsers: number;
+  activeUsers: number;
+  admins: number;
+  newUsersThisMonth: number;
+}
+```
+
+#### **PARTE 2: Implementación en Infraestructura**
+
+```typescript
+// src/infrastructure/persistence/postgresql/user.repository.ts
+/**
+ * Implementación PostgreSQL del repositorio de usuarios
+ * Define CÓMO se hacen las operaciones con PostgreSQL específicamente
+ */
+export class PostgreSQLUserRepository implements UserRepository {
+  constructor(private readonly pool: Pool) {}
+
+  // ========== IMPLEMENTACIÓN DE MÉTODOS ==========
+
+  async save(user: User): Promise<User> {
+    // 1. Convertir entidad de dominio a formato de BD
+    const data = user.toPersistence();
+    
+    // 2. Query SQL específico de PostgreSQL
+    const query = `
+      INSERT INTO users (
+        name, email, document_number, phone, password, role, status
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING *
+    `;
+    
+    // 3. Ejecutar query
+    const result = await this.pool.query(query, [
+      data.name,
+      data.email,
+      data.document_number,
+      data.phone,
+      data.password,
+      data.role,
+      data.status
+    ]);
+    
+    // 4. Convertir resultado de BD a entidad de dominio
+    return User.fromPersistence(result.rows[0]);
+  }
+
+  async findById(id: number): Promise<User | null> {
+    const query = 'SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL';
+    const result = await this.pool.query(query, [id]);
+    
+    if (result.rows.length === 0) {
+      return null;
+    }
+    
+    return User.fromPersistence(result.rows[0]);
+  }
+
+  async findByEmail(email: Email): Promise<User | null> {
+    const query = 'SELECT * FROM users WHERE email# 🚴 EcoMove Backend - Sistema de Préstamo de Vehículos Ecológicos
 
 ![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-green.svg)
@@ -85,36 +1541,713 @@ El proyecto implementa **Clean Architecture** (Arquitectura Hexagonal), separand
 
 ---
 
-## 🎨 Patrones de Diseño Implementados
+## 🎨 Patrones de Diseño Implementados - Análisis Detallado
 
-### 1. PATRONES CREACIONALES
+Esta sección proporciona un análisis exhaustivo de cada patrón de diseño implementado en el proyecto, incluyendo el problema que resuelve, la solución aplicada, ejemplos de código real, diagramas conceptuales y las ventajas específicas en el contexto de EcoMove.
 
-#### **Singleton Pattern** 
+---
+
+## 📚 Índice de Patrones
+
+### Patrones Creacionales
+1. [Singleton Pattern](#singleton-pattern)
+2. [Factory Pattern](#factory-pattern)
+
+### Patrones Estructurales
+3. [Repository Pattern](#repository-pattern)
+4. [Decorator Pattern](#decorator-pattern)
+5. [Adapter Pattern](#adapter-pattern)
+6. [Dependency Injection](#dependency-injection)
+
+### Patrones Comportamentales
+7. [Strategy Pattern](#strategy-pattern)
+8. [Chain of Responsibility](#chain-of-responsibility)
+9. [Command Pattern](#command-pattern)
+
+### Patrones DDD
+10. [Entity Pattern](#entity-pattern)
+11. [Value Object Pattern](#value-object-pattern)
+12. [Aggregate Pattern](#aggregate-pattern)
+
+---
+
+# PATRONES CREACIONALES
+
+Los patrones creacionales se encargan de la construcción de objetos, abstrayendo el proceso de instanciación y haciéndolo más flexible y reutilizable.
+
+---
+
+## Singleton Pattern 
+## Singleton Pattern
+
+### 📖 Definición
+El patrón Singleton garantiza que una clase tenga una única instancia en toda la aplicación y proporciona un punto de acceso global a ella.
+
+### 🎯 Problema que Resuelve
+En aplicaciones complejas, ciertos componentes deben existir en una única instancia:
+- **Conexiones a bases de datos**: Crear múltiples pools sería ineficiente
+- **Configuración global**: Mantener múltiples configuraciones causaría inconsistencias
+- **Gestores de recursos**: Como loggers, caché, o contenedores de dependencias
+
+**Antes del patrón:**
+```typescript
+// ❌ PROBLEMA: Múltiples instancias del contenedor
+const container1 = new DIContainer();  // Pool de BD creado
+const container2 = new DIContainer();  // ¡Otro pool! ❌
+const container3 = new DIContainer();  // ¡Y otro! ❌
+
+// Resultado: 3 pools de conexiones, 3 configuraciones diferentes
+// Uso ineficiente de memoria y recursos
+```
+
+### ✅ Solución Implementada
+
 ```typescript
 // src/config/container.ts
 export class DIContainer {
+  // 1. Instancia privada estática - Solo una existe
   private static instance: DIContainer;
   
-  static getInstance(): DIContainer {
+  // 2. Pool de base de datos - Compartido por todos
+  private pool: Pool;
+  
+  // 3. Todos los servicios y repositorios
+  private userRepository!: UserRepository;
+  private passwordService!: PasswordService;
+  // ... más dependencias
+
+  // 4. Constructor PRIVADO - No se puede hacer "new DIContainer()"
+  private constructor() {
+    this.pool = DatabaseConfig.createPool();
+    this.initializeServices();
+    this.initializeRepositories();
+    this.initializeUseCases();
+    this.initializeControllers();
+  }
+
+  // 5. Método estático getInstance - Único punto de acceso
+  public static getInstance(): DIContainer {
+    // Si no existe, créala. Si existe, devuelve la existente
     if (!DIContainer.instance) {
+      console.log('🏗️  Creando ÚNICA instancia del DIContainer...');
       DIContainer.instance = new DIContainer();
+    } else {
+      console.log('♻️  Reutilizando instancia existente del DIContainer');
     }
+    
     return DIContainer.instance;
+  }
+
+  // 6. Método para limpiar recursos (útil en testing)
+  public static resetInstance(): void {
+    if (DIContainer.instance) {
+      DIContainer.instance.pool.end();  // Cierra conexiones
+      DIContainer.instance = null as any;
+    }
+  }
+
+  // Getters para acceder a las dependencias
+  public getUserRepository(): UserRepository {
+    return this.userRepository;
+  }
+  
+  public getPool(): Pool {
+    return this.pool;
   }
 }
 ```
 
-**¿Por qué se implementó?**
-- Garantiza una única instancia del contenedor de dependencias en toda la aplicación
-- Evita duplicación de conexiones a la base de datos
-- Centraliza la configuración de todas las dependencias
-- Optimiza el uso de memoria al reutilizar instancias
+### 🔍 Uso en el Proyecto
 
-**Ubicación**: `src/config/container.ts`
+```typescript
+// src/main.ts
+const container = DIContainer.getInstance();  // Primera llamada: crea instancia
+const logger = container.getLogger();
+const pool = container.getPool();
+
+// src/presentation/http/routes/user.routes.ts
+const container = DIContainer.getInstance();  // Segunda llamada: reutiliza instancia
+const authController = container.getAuthController();
+
+// Ambos apuntan a LA MISMA instancia
+console.log(container1 === container2);  // true ✅
+```
+
+### 📊 Diagrama Conceptual
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Primera llamada                           │
+│  DIContainer.getInstance()                                   │
+│         │                                                     │
+│         ▼                                                     │
+│  ¿Existe instance?  → NO                                     │
+│         │                                                     │
+│         ▼                                                     │
+│  Crear nueva instancia                                       │
+│  - Pool de BD                                                │
+│  - Repositorios        ┌─────────────────┐                  │
+│  - Servicios          │  DIContainer    │                  │
+│  - Use Cases          │   instance      │                  │
+│  - Controllers        │  (Singleton)    │                  │
+│         │             └─────────────────┘                  │
+│         ▼                      ▲                              │
+│  Guardar en variable estática  │                             │
+│  Retornar instancia            │                             │
+└────────────────────────────────┼──────────────────────────────┘
+                                 │
+┌────────────────────────────────┼──────────────────────────────┐
+│                    Llamadas posteriores                        │
+│  DIContainer.getInstance()                                     │
+│         │                      │                               │
+│         ▼                      │                               │
+│  ¿Existe instance?  → SÍ ──────┘                             │
+│         │                                                      │
+│         ▼                                                      │
+│  Retornar instancia existente (no crear nueva)                │
+│                                                                │
+│  ✅ Mismo Pool de BD                                          │
+│  ✅ Mismas configuraciones                                    │
+│  ✅ Mismos servicios                                          │
+└────────────────────────────────────────────────────────────────┘
+```
+
+### 🎯 Ventajas Específicas en EcoMove
+
+1. **Eficiencia de Recursos**
+```typescript
+// Una única pool de conexiones para toda la app
+// Pool configurado con:
+// - max: 20 conexiones
+// - idleTimeout: 30s
+// - connectionTimeout: 2s
+
+// Sin Singleton: 
+// Si 10 módulos crean su propio DIContainer = 200 conexiones 😱
+// Con Singleton: 
+// Todos comparten el mismo pool = 20 conexiones ✅
+```
+
+2. **Consistencia de Configuración**
+```typescript
+// Todos los módulos usan la MISMA configuración de JWT
+const tokenService = container.getTokenService();
+// JWT_SECRET: "abc123"
+// JWT_EXPIRES_IN: "24h"
+
+// No hay posibilidad de que diferentes partes de la app
+// usen diferentes configuraciones
+```
+
+3. **Gestión Centralizada del Ciclo de Vida**
+```typescript
+// Inicialización
+const container = DIContainer.getInstance();
+container.initialize();
+
+// Cierre limpio
+process.on('SIGTERM', () => {
+  container.close();  // Cierra TODAS las conexiones
+  process.exit(0);
+});
+```
+
+4. **Facilita Testing**
+```typescript
+// En tests, podemos resetear el singleton
+afterEach(() => {
+  DIContainer.resetInstance();
+});
+
+// Y crear uno nuevo con mocks
+const mockContainer = DIContainer.getInstance();
+// Inyectar dependencias mock...
+```
+
+### ⚠️ Consideraciones y Trade-offs
+
+**Ventajas:**
+- ✅ Control total sobre la instanciación
+- ✅ Acceso global conveniente
+- ✅ Inicialización lazy (solo cuando se necesita)
+- ✅ Ahorro de memoria y recursos
+
+**Desventajas:**
+- ⚠️ Estado global (puede dificultar testing si no se maneja bien)
+- ⚠️ Acoplamiento (código depende de una clase específica)
+- ⚠️ Difícil de extender o heredar
+- ⚠️ No es thread-safe por defecto en algunos lenguajes (JavaScript es single-threaded)
+
+**Solución a las desventajas en nuestro código:**
+```typescript
+// Mitigamos el acoplamiento con interfaces
+interface Container {
+  getUserRepository(): UserRepository;
+  getLogger(): LoggerService;
+}
+
+// El código depende de la interfaz, no de DIContainer directamente
+function someFunction(container: Container) {
+  const userRepo = container.getUserRepository();
+}
+
+// Testing: Fácil mockear
+class MockContainer implements Container {
+  getUserRepository() { return new MockUserRepository(); }
+  getLogger() { return new MockLogger(); }
+}
+```
+
+### 📍 Ubicación en el Proyecto
+- **Implementación**: `src/config/container.ts`
+- **Uso**: `src/main.ts`, `src/presentation/http/routes/**/*.routes.ts`
 
 ---
 
-#### **Factory Pattern**
+## Factory Pattern
+
+### 📖 Definición
+El patrón Factory encapsula la lógica de creación de objetos, permitiendo crear instancias sin especificar sus clases exactas. Centraliza la construcción de objetos complejos.
+
+### 🎯 Problema que Resuelve
+
+**Problema 1: Construcción Compleja**
+```typescript
+// ❌ PROBLEMA: Constructor complejo y disperso por el código
+const user = new User(
+  data.id,
+  data.name,
+  new Email(data.email),  // ¿Validación aquí?
+  new DocumentNumber(data.document_number),
+  data.phone,
+  data.password,
+  data.role as UserRole,
+  data.status as UserStatus,
+  new Date(data.registration_date),
+  new Date(data.updated_at)
+);
+// Esta lógica se repite en 10 lugares diferentes 😱
+```
+
+**Problema 2: Transformación de Datos**
+```typescript
+// ❌ PROBLEMA: ¿Cómo convertir un objeto de BD a entidad?
+const dbResult = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
+const row = dbResult.rows[0];
+
+// Código de transformación duplicado en múltiples repositorios
+const user = new User(
+  row.id,
+  row.name,
+  Email.fromString(row.email),
+  // ... más campos
+);
+```
+
+### ✅ Solución Implementada
+
+```typescript
+// src/core/domain/entities/user.entity.ts
+export class User {
+  // Constructor normal (privado o protegido en algunos casos)
+  constructor(
+    private id: number | null,
+    private name: string,
+    private email: Email,
+    private documentNumber: DocumentNumber,
+    private phone: string,
+    private password: string,
+    private role: UserRole = UserRole.USER,
+    private status: UserStatus = UserStatus.ACTIVE,
+    private registrationDate: Date = new Date(),
+    private updatedAt: Date = new Date()
+  ) {}
+
+  // ========== FACTORY METHOD 1: Desde Persistencia ==========
+  /**
+   * Crea una entidad User desde datos de la base de datos
+   * Centraliza la lógica de transformación DB → Domain
+   */
+  static fromPersistence(data: any): User {
+    // Validación de datos requeridos
+    if (!data.id || !data.email) {
+      throw new Error('Datos incompletos para crear usuario');
+    }
+
+    // Transformación y validación
+    return new User(
+      data.id,
+      data.name,
+      Email.fromString(data.email),  // Factory de Value Object
+      DocumentNumber.fromString(data.document_number),
+      data.phone,
+      data.password,  // Ya hasheada
+      data.role as UserRole,
+      data.status as UserStatus,
+      new Date(data.registration_date),
+      new Date(data.updated_at)
+    );
+  }
+
+  // ========== FACTORY METHOD 2: Usuario Nuevo ==========
+  /**
+   * Crea un nuevo usuario (para registro)
+   * Sin ID (será asignado por la BD)
+   */
+  static createNew(
+    name: string,
+    email: string,
+    documentNumber: string,
+    phone: string,
+    hashedPassword: string,
+    role: UserRole = UserRole.USER
+  ): User {
+    return new User(
+      null,  // ID null = nuevo usuario
+      name,
+      Email.fromString(email),
+      DocumentNumber.fromString(documentNumber),
+      phone,
+      hashedPassword,
+      role,
+      UserStatus.ACTIVE,  // Siempre activo al crear
+      new Date(),
+      new Date()
+    );
+  }
+
+  // ========== MÉTODO PARA PERSISTENCIA ==========
+  /**
+   * Convierte la entidad de dominio a formato de BD
+   * Transformación: Domain → DB
+   */
+  toPersistence(): any {
+    return {
+      id: this.id,
+      name: this.name,
+      email: this.email.getValue(),  // Value Object → string
+      document_number: this.documentNumber.getValue(),
+      phone: this.phone,
+      password: this.password,
+      role: this.role,
+      status: this.status,
+      registration_date: this.registrationDate,
+      updated_at: this.updatedAt
+    };
+  }
+
+  // ========== FACTORY METHOD 3: Para DTOs ==========
+  /**
+   * Convierte a DTO para la capa de presentación
+   * NO expone información sensible
+   */
+  toDTO(): UserDTO {
+    return {
+      id: this.id!,
+      name: this.name,
+      email: this.email.getValue(),
+      documentNumber: this.documentNumber.getValue(),
+      phone: this.phone,
+      role: this.role,
+      status: this.status,
+      // ❌ NO incluye password
+    };
+  }
+}
+```
+
+### 🔍 Uso en el Proyecto
+
+**Caso 1: Repositorio PostgreSQL**
+```typescript
+// src/infrastructure/persistence/postgresql/user.repository.ts
+export class PostgreSQLUserRepository implements UserRepository {
+  async findById(id: number): Promise<User | null> {
+    const query = 'SELECT * FROM users WHERE id = $1';
+    const result = await this.pool.query(query, [id]);
+    
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    // ✅ Factory Method: BD → Dominio
+    return User.fromPersistence(result.rows[0]);
+  }
+
+  async save(user: User): Promise<User> {
+    // ✅ Factory Method: Dominio → BD
+    const data = user.toPersistence();
+    
+    const query = `
+      INSERT INTO users (name, email, document_number, phone, password, role, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING *
+    `;
+    
+    const result = await this.pool.query(query, [
+      data.name,
+      data.email,
+      data.document_number,
+      data.phone,
+      data.password,
+      data.role,
+      data.status
+    ]);
+
+    // ✅ Factory Method: BD → Dominio
+    return User.fromPersistence(result.rows[0]);
+  }
+}
+```
+
+**Caso 2: Use Case de Registro**
+```typescript
+// src/core/use-cases/user/register-user.use-case.ts
+export class RegisterUserUseCase {
+  async execute(dto: RegisterUserDTO): Promise<{ user: User; token: string }> {
+    // Validar que no exista
+    const existingUser = await this.userRepository.findByEmail(
+      Email.fromString(dto.correo)
+    );
+    
+    if (existingUser) {
+      throw new Error('El email ya está registrado');
+    }
+
+    // Hashear contraseña
+    const hashedPassword = await this.passwordService.hash(dto.password);
+
+    // ✅ Factory Method: Crear usuario nuevo
+    const user = User.createNew(
+      dto.nombre,
+      dto.correo,
+      dto.documento,
+      dto.telefono,
+      hashedPassword,
+      dto.role || UserRole.USER
+    );
+
+    // Guardar
+    const savedUser = await this.userRepository.save(user);
+
+    // Generar token
+    const token = await this.tokenService.generate({
+      userId: savedUser.getId()!,
+      email: savedUser.getEmail().getValue(),
+      role: savedUser.getRole()
+    });
+
+    return { user: savedUser, token };
+  }
+}
+```
+
+**Caso 3: Controller**
+```typescript
+// src/presentation/http/controllers/auth.controller.ts
+export class AuthController {
+  async register(req: Request, res: Response): Promise<void> {
+    try {
+      const { user, token } = await this.registerUserUseCase.execute(req.body);
+
+      // ✅ Factory Method: Dominio → DTO (sin password)
+      res.status(201).json({
+        success: true,
+        message: 'Usuario registrado exitosamente',
+        data: {
+          user: user.toDTO(),  // ← Factory Method
+          token
+        }
+      });
+    } catch (error) {
+      // Manejo de errores...
+    }
+  }
+}
+```
+
+### 📊 Diagrama de Flujo
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                 FACTORY PATTERN EN ACCIÓN                    │
+└─────────────────────────────────────────────────────────────┘
+
+ DATABASE QUERY                          
+      │                                   
+      ▼                                   
+┌──────────────┐                          
+│  Raw Data    │                          
+│  {           │                          
+│   id: 1,     │                          
+│   email:...  │                          
+│  }           │                          
+└──────┬───────┘                          
+       │                                  
+       │ User.fromPersistence(data)       
+       │                                  
+       ▼                                  
+┌──────────────────────┐                  
+│  Transformación:     │                  
+│  - Validar datos     │                  
+│  - Crear VOs         │                  
+│  - Instanciar User   │                  
+└──────┬───────────────┘                  
+       │                                  
+       ▼                                  
+┌──────────────┐                          
+│ User Entity  │                          
+│ (Dominio)    │                          
+└──────┬───────┘                          
+       │                                  
+       │ user.toDTO()                     
+       │                                  
+       ▼                                  
+┌──────────────┐                          
+│  UserDTO     │                          
+│  (Sin pass)  │                          
+└──────────────┘                          
+       │                                  
+       ▼                                  
+   JSON Response                          
+```
+
+### 🎯 Ventajas Específicas en EcoMove
+
+1. **Separación de Representaciones**
+```typescript
+// Dominio: User con toda la lógica de negocio
+const domainUser: User = User.fromPersistence(dbData);
+domainUser.activate();
+domainUser.changePassword(newPassword);
+
+// Persistencia: Formato de BD
+const dbData = domainUser.toPersistence();
+// { id: 1, name: "Juan", email: "juan@...", password: "$2a$..." }
+
+// Presentación: DTO para API (sin datos sensibles)
+const dtoUser = domainUser.toDTO();
+// { id: 1, name: "Juan", email: "juan@..." }  ❌ sin password
+```
+
+2. **Validación Centralizada**
+```typescript
+// ✅ Un solo lugar para validar la creación
+static fromPersistence(data: any): User {
+  if (!data.id) throw new Error('ID requerido');
+  if (!data.email) throw new Error('Email requerido');
+  if (!data.name || data.name.length < 2) {
+    throw new Error('Nombre inválido');
+  }
+  // Todas las validaciones en un solo lugar
+  return new User(...);
+}
+
+// Si cambia la validación, se cambia en UN SOLO LUGAR
+// No hay validación duplicada en 10 repositorios diferentes
+```
+
+3. **Facilita Testing**
+```typescript
+// En tests, crear usuarios es trivial
+describe('User', () => {
+  it('should create user from persistence', () => {
+    const userData = {
+      id: 1,
+      name: 'Test User',
+      email: 'test@example.com',
+      // ... más campos
+    };
+
+    const user = User.fromPersistence(userData);
+    
+    expect(user.getId()).toBe(1);
+    expect(user.getEmail().getValue()).toBe('test@example.com');
+  });
+});
+```
+
+4. **Type Safety y Autocompletado**
+```typescript
+// TypeScript sabe exactamente qué tipo es
+const user: User = User.fromPersistence(data);  // ✅ User
+const dto: UserDTO = user.toDTO();              // ✅ UserDTO
+
+// vs sin Factory
+const user = createUserFromData(data);  // ❓ any? User? object?
+```
+
+### ⚠️ Alternativas y Variaciones
+
+**Abstract Factory (no implementado, pero podría usarse)**
+```typescript
+// Para crear familias de objetos relacionados
+interface VehicleFactory {
+  createTransport(): Transport;
+  createMaintenance(): Maintenance;
+  createInsurance(): Insurance;
+}
+
+class BicycleFactory implements VehicleFactory {
+  createTransport() { return new Bicycle(); }
+  createMaintenance() { return new BicycleMaintenance(); }
+  createInsurance() { return new BicycleInsurance(); }
+}
+
+class ScooterFactory implements VehicleFactory {
+  createTransport() { return new ElectricScooter(); }
+  createMaintenance() { return new ScooterMaintenance(); }
+  createInsurance() { return new ScooterInsurance(); }
+}
+```
+
+### 📍 Ubicación en el Proyecto
+- **Implementación**: `src/core/domain/entities/*.entity.ts` (métodos estáticos)
+- **Uso**: `src/infrastructure/database/repositories/*.repository.ts`
+
+---
+
+# PATRONES ESTRUCTURALES
+
+Los patrones estructurales se ocupan de cómo se componen las clases y objetos para formar estructuras más grandes, manteniendo flexibilidad y eficiencia.
+
+---
+
+## Repository Pattern
+
+### 📖 Definición
+El patrón Repository actúa como una colección en memoria de objetos de dominio, encapsulando la lógica de acceso a datos y proporcionando una interfaz orientada a objetos para consultar y manipular datos.
+
+### 🎯 Problema que Resuelve
+
+**Problema 1: Acoplamiento directo con la BD**
+```typescript
+// ❌ PROBLEMA: Use Case acoplado a PostgreSQL
+export class GetUserProfileUseCase {
+  async execute(userId: number) {
+    // SQL directamente en el caso de uso 😱
+    const query = 'SELECT * FROM users WHERE id = $1';
+    const result = await pool.query(query, [userId]);
+    
+    // ¿Qué pasa si cambio a MongoDB? ¿MySQL? ¿API externa?
+    // Tengo que modificar TODOS los use cases
+  }
+}
+```
+
+**Problema 2: Lógica de acceso duplicada**
+```typescript
+// ❌ PROBLEMA: Mismo SQL en múltiples lugares
+// En AuthController:
+const result1 = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+
+// En UserProfileController:
+const result2 = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+
+// En AdminController:
+const result3 = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+
+// Si cambia la query, ¡hay que cambiarla en 3+ lugares!
 ```typescript
 // src/core/domain/entities/user.entity.ts
 export class User {
