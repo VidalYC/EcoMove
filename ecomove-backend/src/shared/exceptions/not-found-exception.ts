@@ -1,6 +1,11 @@
+// src/shared/exceptions/not-found-exception.ts
+
 export class NotFoundException extends Error {
-  constructor(message: string = 'Resource not found') {
+  public readonly statusCode: number = 404;
+
+  constructor(message: string) {
     super(message);
     this.name = 'NotFoundException';
+    Object.setPrototypeOf(this, NotFoundException.prototype);
   }
 }

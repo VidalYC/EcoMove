@@ -12,6 +12,8 @@
   "dependencies": {
     "@react-three/drei": "^9.88.13",
     "@react-three/fiber": "^8.15.19",
+    "@stripe/react-stripe-js": "^5.0.0",
+    "@stripe/stripe-js": "^8.0.0",
     "date-fns": "^4.1.0",
     "framer-motion": "^12.23.16",
     "lucide-react": "^0.344.0",

@@ -10,7 +10,7 @@ import { StationRoutes } from './presentation/http/routes/v1/station.routes';
 import { LoanRoutes } from './presentation/http/routes/v1/loan.routes';
 import { HealthRoutes } from './presentation/http/routes/v1/health.routes';
 import { generalLimiter } from './presentation/http/middleware/rate-limiter.middleware';
-
+import { PaymentsRoutes } from './presentation/http/routes/v1/payments.routes';
 dotenv.config();
 
 const app = express();
@@ -46,7 +46,7 @@ app.use('/api/v1/users', userRoutes.getRouter());
 app.use('/api/v1/transports', TransportRoutes.create());
 app.use('/api/v1/stations', StationRoutes.create());
 app.use('/api/v1/loans', LoanRoutes.create());
-
+app.use('/api/v1/payments', PaymentsRoutes.create());
 // ✅ IMPORTANTE: Health routes ANTES del endpoint individual
 app.use('/api/v1/health', healthRoutes.getRouter());
 

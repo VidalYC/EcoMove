@@ -1,3 +1,4 @@
+// src/components/Loan/LoanModal.tsx
 import React, { useState, useEffect } from 'react';
 import { X, MapPin, Clock, DollarSign } from 'lucide-react';
 import { Station, Vehicle } from '../../contexts/DataContext';
@@ -26,13 +27,23 @@ export default function LoanModal({
 
   useEffect(() => {
     if (selectedVehicle) {
+      // Nuevas tarifas ajustadas para cumplir con Stripe (mínimo $3,000 COP):
+      // - Bicicleta: $50/min = $3,000/hora
+      // - Scooter: $80/min = $4,800/hora
+      // - Scooter Eléctrico: $120/min = $7,200/hora
       const rates = {
-        bicycle: 0.5,
-        scooter: 0.8,
-        'electric-scooter': 1.2
+        bicycle: 50,           // $3,000/hora
+        scooter: 80,          // $4,800/hora
+        'electric-scooter': 120  // $7,200/hora
       };
-      const rate = rates[selectedVehicle.type] || 0.5;
-      setEstimatedCost(Math.round(rate * estimatedDuration * 100) / 100);
+      const rate = rates[selectedVehicle.type] || 50;
+      
+      // Calcular costo con tarifa base mínima de $3,000
+      const baseRate = 3000;
+      const calculatedCost = estimatedDuration * rate;
+      const totalCost = Math.max(baseRate, calculatedCost);
+      
+      setEstimatedCost(Math.round(totalCost));
     }
   }, [selectedVehicle, estimatedDuration]);
 
@@ -123,11 +134,11 @@ export default function LoanModal({
                     Costo estimado:
                   </span>
                   <span className="text-lg font-semibold text-emerald-800">
-                    ${estimatedCost.toFixed(2)}
+                    ${estimatedCost.toLocaleString('es-CO')}
                   </span>
                 </div>
                 <p className="text-xs text-emerald-600 mt-1">
-                  * El costo final se calculará según la duración real del préstamo
+                  * Tarifa base mínima: $3,000 COP. El costo final se calculará según la duración real del préstamo
                 </p>
               </div>
             </div>

@@ -39,10 +39,6 @@ import { UserAdminController } from '../presentation/http/controllers/user-admin
 // Middleware - USUARIOS (existente)
 import { AuthenticationMiddleware } from '../presentation/http/middleware/authentication.middleware';
 
-// ====================================================================
-// IMPORTACIONES - TRANSPORTES (existentes)
-// ====================================================================
-
 // Repositories - TRANSPORTES (existentes)
 import { TransportRepository } from '../core/domain/repositories/transport.repository';
 import { PostgreSQLTransportRepository } from '../infrastructure/database/repositories/postgresql-transport.repository';
@@ -64,10 +60,6 @@ import {
 
 // Controllers - TRANSPORTES (existentes)
 import { TransportController } from '../presentation/http/controllers/transport.controller';
-
-// ====================================================================
-// IMPORTACIONES - ESTACIONES (existentes)
-// ====================================================================
 
 // Repositories - ESTACIONES (existentes)
 import { StationRepository } from '../core/domain/repositories/station.repository';
@@ -91,10 +83,6 @@ import {
 
 // Controllers - ESTACIONES (existentes)
 import { StationController } from '../presentation/http/controllers/station.controller';
-
-// ====================================================================
-// NUEVAS IMPORTACIONES - PRÉSTAMOS/LOANS
-// ====================================================================
 
 // Repositories - PRÉSTAMOS (nuevos)
 import { LoanRepository } from '../core/domain/repositories/loan.repository';
@@ -138,20 +126,22 @@ export class DIContainer {
 
   private healthCheckUseCase!: HealthCheckUseCase;
 
-  // ====================================================================
-  // USUARIOS - EXISTENTES (sin cambios)
-  // ====================================================================
-  
   // Repositories
   private userRepository!: UserRepository;
+  private transportRepository!: TransportRepository;
+  private stationRepository!: StationRepository;
+  private loanRepository!: LoanRepository;
 
   // Services
   private passwordService!: PasswordService;
   private tokenService!: TokenService;
   private logger!: LoggerService;
   private requestLoggerMiddleware!: RequestLoggerMiddleware;
+  private paymentService!: PaymentService;
+  private notificationService!: NotificationService;
+  private pricingService!: PricingService;
 
-  // Use Cases
+  // Use Cases - USUARIOS
   private registerUserUseCase!: RegisterUserUseCase;
   private loginUserUseCase!: LoginUserUseCase;
   private getUserProfileUseCase!: GetUserProfileUseCase;
@@ -165,22 +155,7 @@ export class DIContainer {
   private deactivateUserUseCase!: DeactivateUserUseCase;
   private updateUserByIdUseCase!: UpdateUserByIdUseCase;
 
-  // Controllers - Especializados
-  private authController!: AuthController;
-  private userProfileController!: UserProfileController;
-  private userAdminController!: UserAdminController;
-
-  // Middleware
-  private authenticationMiddleware!: AuthenticationMiddleware;
-
-  // ====================================================================
-  // TRANSPORTES - EXISTENTES (sin cambios)
-  // ====================================================================
-  
-  // Repositories
-  private transportRepository!: TransportRepository;
-
-  // Use Cases
+  // Use Cases - TRANSPORTES
   private createBicycleUseCase!: CreateBicycleUseCase;
   private createElectricScooterUseCase!: CreateElectricScooterUseCase;
   private getTransportUseCase!: GetTransportUseCase;
@@ -193,17 +168,7 @@ export class DIContainer {
   private getTransportStatsUseCase!: GetTransportStatsUseCase;
   private deleteTransportUseCase!: DeleteTransportUseCase;
 
-  // Controllers
-  private transportController!: TransportController;
-
-  // ====================================================================
-  // ESTACIONES - EXISTENTES (sin cambios)
-  // ====================================================================
-
-  // Repositories
-  private stationRepository!: StationRepository;
-
-  // Use Cases
+  // Use Cases - ESTACIONES
   private createStationUseCase!: CreateStationUseCase;
   private getStationUseCase!: GetStationUseCase;
   private getAllStationsUseCase!: GetAllStationsUseCase;
@@ -217,21 +182,7 @@ export class DIContainer {
   private deactivateStationUseCase!: DeactivateStationUseCase;
   private getOccupancyRankingUseCase!: GetOccupancyRankingUseCase;
 
-  // Controllers
-  private stationController!: StationController;
-
-  // ====================================================================
-  // PRÉSTAMOS - NUEVOS
-  // ====================================================================
-
-  // Repositories
-  private loanRepository!: LoanRepository;
-
-  // Services
-  private paymentService!: PaymentService;
-  private notificationService!: NotificationService;
-  private pricingService!: PricingService;
-
+  // Use Cases - PRÉSTAMOS
   private createLoanUseCase!: CreateLoanUseCase;
   private completeLoanUseCase!: CompleteLoanUseCase;
   private cancelLoanUseCase!: CancelLoanUseCase;
@@ -246,7 +197,15 @@ export class DIContainer {
   private calculateFareUseCase!: CalculateFareUseCase;
 
   // Controllers
+  private authController!: AuthController;
+  private userProfileController!: UserProfileController;
+  private userAdminController!: UserAdminController;
+  private transportController!: TransportController;
+  private stationController!: StationController;
   private loanController!: LoanController;
+
+  // Middleware
+  private authenticationMiddleware!: AuthenticationMiddleware;
 
   private constructor() {
     this.pool = DatabaseConfig.createPool();
@@ -268,66 +227,68 @@ export class DIContainer {
     this.initializeMiddleware();
   }
 
-  private initializeRepositories(): void {
-    // USUARIOS (existentes)
-    this.userRepository = new PostgreSQLUserRepository(this.pool);
-    
-    // TRANSPORTES (existentes)
-    console.log('🏗️ Initializing repositories...');
-    console.log('🔍 Cache available:', !!this.cache);
-    console.log('🔍 Logger available:', !!this.logger);
-    const baseTransportRepository = new PostgreSQLTransportRepository(this.pool);
-    this.transportRepository = new CachedTransportRepository(
-      baseTransportRepository,
-      this.cache,
-      this.logger
-    );
-    console.log('✅ CachedTransportRepository created');
-
-    // ESTACIONES (existentes)
-    const baseStationRepository = new PostgreSQLStationRepository(this.pool);
-    this.stationRepository = new CachedStationRepository(
-      baseStationRepository,
-      this.cache,
-      this.logger
-    );
-    console.log('✅ CachedStationRepository created');
-
-    // PRÉSTAMOS (nuevos)
-    this.loanRepository = new PostgreSQLLoanRepository(this.pool);
-
-    console.log('✅ CachedTransportRepository created');
-  }
-
   private initializeServices(): void {
     console.log('🏗️ Initializing services...');
     this.logger = new WinstonLoggerService();
     this.cache = new MemoryCacheService(this.logger);
     console.log('✅ Cache initialized:', !!this.cache);
-    // USUARIOS (existentes - sin cambios)
+    
     this.passwordService = new BcryptPasswordService();
     this.tokenService = new JwtTokenService(
       process.env.JWT_SECRET || 'your-secret-key',
       process.env.JWT_EXPIRES_IN || '24h'
     );
 
-    // PRÉSTAMOS (nuevos)
+    // ✅ SERVICIOS DE PRÉSTAMOS CON NOTIFICACIONES
     this.paymentService = new StripePaymentService(
       process.env.STRIPE_SECRET_KEY || 'your-stripe-secret-key'
     );
     this.notificationService = new EmailNotificationService();
     this.pricingService = new ConsolidatedPricingService();
+    
+    console.log('✅ All services initialized');
+  }
+
+  private initializeRepositories(): void {
+    console.log('🏗️ Initializing repositories...');
+    
+    // USUARIOS
+    this.userRepository = new PostgreSQLUserRepository(this.pool);
+    
+    // TRANSPORTES
+    const baseTransportRepository = new PostgreSQLTransportRepository(this.pool);
+    this.transportRepository = new CachedTransportRepository(
+      baseTransportRepository,
+      this.cache,
+      this.logger
+    );
+
+    // ESTACIONES
+    const baseStationRepository = new PostgreSQLStationRepository(this.pool);
+    this.stationRepository = new CachedStationRepository(
+      baseStationRepository,
+      this.cache,
+      this.logger
+    );
+
+    // PRÉSTAMOS
+    this.loanRepository = new PostgreSQLLoanRepository(this.pool);
+
+    console.log('✅ All repositories initialized');
   }
 
   private initializeUseCases(): void {
-    // ====================================================================
-    // USUARIOS - Use Cases (existentes - sin cambios)
-    // ====================================================================
+    console.log('🏗️ Initializing use cases...');
+    
+    // Health Check
     this.healthCheckUseCase = new HealthCheckUseCase(
       this.pool,
       this.logger
     );
-    // Use Cases de autenticación
+
+    // ====================================================================
+    // USUARIOS - Use Cases
+    // ====================================================================
     this.registerUserUseCase = new RegisterUserUseCase(
       this.userRepository,
       this.passwordService,
@@ -342,15 +303,19 @@ export class DIContainer {
       this.logger
     );
 
-    // Use Cases de perfil
     this.getUserProfileUseCase = new GetUserProfileUseCase(this.userRepository);
-    this.updateUserProfileUseCase = new UpdateUserProfileUseCase(this.userRepository);
+    
+    // ✅ CON NOTIFICACIÓN DE ACTUALIZACIÓN DE PERFIL
+    this.updateUserProfileUseCase = new UpdateUserProfileUseCase(
+      this.userRepository,
+      this.notificationService
+    );
+    
     this.changePasswordUseCase = new ChangePasswordUseCase(
       this.userRepository,
       this.passwordService
     );
 
-    // Use Cases de administración
     this.getAllUsersUseCase = new GetAllUsersUseCase(this.userRepository);
     this.searchUsersUseCase = new SearchUsersUseCase(this.userRepository);
     this.getUserStatsUseCase = new GetUserStatsUseCase(this.userRepository);
@@ -360,9 +325,8 @@ export class DIContainer {
     this.updateUserByIdUseCase = new UpdateUserByIdUseCase(this.userRepository);
 
     // ====================================================================
-    // TRANSPORTES - Use Cases (existentes - sin cambios)
+    // TRANSPORTES - Use Cases
     // ====================================================================
-    
     this.createBicycleUseCase = new CreateBicycleUseCase(this.transportRepository);
     this.createElectricScooterUseCase = new CreateElectricScooterUseCase(this.transportRepository);
     this.getTransportUseCase = new GetTransportUseCase(this.transportRepository);
@@ -376,9 +340,8 @@ export class DIContainer {
     this.deleteTransportUseCase = new DeleteTransportUseCase(this.transportRepository);
         
     // ====================================================================
-    // ESTACIONES - Use Cases (existentes - sin cambios)
+    // ESTACIONES - Use Cases
     // ====================================================================
-
     this.createStationUseCase = new CreateStationUseCase(this.stationRepository);
     this.getStationUseCase = new GetStationUseCase(this.stationRepository);
     this.getAllStationsUseCase = new GetAllStationsUseCase(this.stationRepository);
@@ -392,73 +355,73 @@ export class DIContainer {
     this.deactivateStationUseCase = new DeactivateStationUseCase(this.stationRepository);
     this.getOccupancyRankingUseCase = new GetOccupancyRankingUseCase(this.stationRepository);
 
-     // ====================================================================
-    // PRÉSTAMOS - Use Cases (nuevos)
+    // ====================================================================
+    // PRÉSTAMOS - Use Cases CON NOTIFICACIONES ✅ ACTUALIZADO
     // ====================================================================
 
+    // ✅ CreateLoan CON NOTIFICACIÓN DE PRÉSTAMO INICIADO
     this.createLoanUseCase = new CreateLoanUseCase(
       this.loanRepository,
       this.userRepository,
       this.transportRepository,
       this.stationRepository,
+      this.notificationService,  // ← Agregado
       this.logger
     );
 
+    // ✅ CompleteLoan CON NOTIFICACIONES DE PRÉSTAMO FINALIZADO Y PAGO
     this.completeLoanUseCase = new CompleteLoanUseCase(
       this.loanRepository,
       this.transportRepository,
-      this.stationRepository
+      this.stationRepository,
+      this.notificationService,  // ← Agregado
+      this.paymentService,        // ← Agregado
+      this.userRepository         // ← Agregado
     );
 
+    // ✅ CancelLoan CON NOTIFICACIÓN DE CANCELACIÓN
     this.cancelLoanUseCase = new CancelLoanUseCase(
       this.loanRepository,
-      this.transportRepository
+      this.transportRepository,
+      this.notificationService,  // ← Agregado
+      this.userRepository         // ← Agregado
     );
 
+    // Los demás use cases de préstamos siguen igual
     this.extendLoanUseCase = new ExtendLoanUseCase(this.loanRepository);
-
     this.getLoanUseCase = new GetLoanUseCase(this.loanRepository);
-
     this.getLoanWithDetailsUseCase = new GetLoanWithDetailsUseCase(this.loanRepository);
-
     this.getAllLoansUseCase = new GetAllLoansUseCase(this.loanRepository);
-
     this.getActiveLoansUseCase = new GetActiveLoansUseCase(this.loanRepository);
-
     this.getUserLoanHistoryUseCase = new GetUserLoanHistoryUseCase(
       this.loanRepository,
       this.userRepository
     );
-
     this.getLoanStatsUseCase = new GetLoanStatsUseCase(this.loanRepository);
-
     this.getPeriodReportUseCase = new GetPeriodReportUseCase(this.loanRepository);
-
     this.calculateFareUseCase = new CalculateFareUseCase(
       this.transportRepository,
-      this.pricingService // ✅ AGREGAR SEGUNDO PARÁMETRO
+      this.pricingService
     );
+    
+    console.log('✅ All use cases initialized');
   }
 
   private initializeControllers(): void {
-    // ====================================================================
-    // USUARIOS - Controllers (existentes - sin cambios)
-    // ====================================================================
+    console.log('🏗️ Initializing controllers...');
     
-    // Controlador de autenticación
+    // USUARIOS
     this.authController = new AuthController(
       this.registerUserUseCase,
       this.loginUserUseCase
     );
 
-    // Controlador de perfil
     this.userProfileController = new UserProfileController(
       this.getUserProfileUseCase,
       this.updateUserProfileUseCase,
       this.changePasswordUseCase
     );
 
-    // Controlador de administración
     this.userAdminController = new UserAdminController(
       this.getAllUsersUseCase,
       this.searchUsersUseCase,
@@ -469,10 +432,7 @@ export class DIContainer {
       this.updateUserByIdUseCase
     );
 
-    // ====================================================================
-    // TRANSPORTES - Controllers (existentes - sin cambios)
-    // ====================================================================
-    
+    // TRANSPORTES
     this.transportController = new TransportController(
       this.createBicycleUseCase,
       this.createElectricScooterUseCase,
@@ -487,10 +447,7 @@ export class DIContainer {
       this.deleteTransportUseCase
     );
         
-    // ====================================================================
-    // ESTACIONES - Controllers (existentes - sin cambios)
-    // ====================================================================
-
+    // ESTACIONES
     this.stationController = new StationController(
       this.createStationUseCase,
       this.getStationUseCase,
@@ -506,10 +463,7 @@ export class DIContainer {
       this.getOccupancyRankingUseCase
     );
 
-    // ====================================================================
-    // PRÉSTAMOS - Controllers (nuevos)
-    // ====================================================================
-    
+    // PRÉSTAMOS
     this.loanController = new LoanController(
       this.createLoanUseCase,
       this.completeLoanUseCase,
@@ -524,152 +478,61 @@ export class DIContainer {
       this.getPeriodReportUseCase,
       this.calculateFareUseCase,
     );
+    
+    console.log('✅ All controllers initialized');
   }
 
   private initializeMiddleware(): void {
     this.requestLoggerMiddleware = new RequestLoggerMiddleware(this.logger);
     
-    // Configurar el logger en el error handler
     const { ErrorHandlerMiddleware } = require('../presentation/http/middleware/error-handler.middleware');
     ErrorHandlerMiddleware.setLogger(this.logger);
+    
     this.authenticationMiddleware = new AuthenticationMiddleware(
       this.tokenService,
       this.userRepository
     );
   }
 
-  // ========== GETTERS - USUARIOS (existentes - sin cambios) ==========
+  // ========== GETTERS ==========
 
-  getLogger(): LoggerService {
-    return this.logger;
-  }
-
-  getRequestLoggerMiddleware(): RequestLoggerMiddleware {
-    return this.requestLoggerMiddleware;
-  }
-
-  // Database
-  getPool(): Pool {
-    return this.pool;
-  }
-
-  // Repositories
-  getUserRepository(): UserRepository {
-    return this.userRepository;
-  }
-
-  // Services
-  getPasswordService(): PasswordService {
-    return this.passwordService;
-  }
-
-  getTokenService(): TokenService {
-    return this.tokenService;
-  }
-
-  // Controllers especializados
-  getAuthController(): AuthController {
-    return this.authController;
-  }
-
-  getUserProfileController(): UserProfileController {
-    return this.userProfileController;
-  }
-
-  getUserAdminController(): UserAdminController {
-    return this.userAdminController;
-  }
-
-  // Middleware
-  getAuthMiddleware(): AuthenticationMiddleware {
-    return this.authenticationMiddleware;
-  }
-
-  // ========== GETTERS - TRANSPORTES (existentes - sin cambios) ==========
-
-  // Repositories
-  getTransportRepository(): TransportRepository {
-    return this.transportRepository;
-  }
-
-  // Controllers
-  getTransportController(): TransportController {
-    return this.transportController;
-  }
-
-  getCache(): CacheService {
-    return this.cache;
-  }
-
-  getCacheStats(): CacheStats {
-    return this.cache.getStats();
-  }
-
-  // ========== GETTERS - ESTACIONES (existentes - sin cambios) ==========
-
-  // Repositories
-  getStationRepository(): StationRepository {
-    return this.stationRepository;
-  }
-
-  // Controllers
-  getStationController(): StationController {
-    return this.stationController;
-  }
-
-  // ========== GETTERS - PRÉSTAMOS (nuevos) ==========
-
-  // Repositories
-  getLoanRepository(): LoanRepository {
-    return this.loanRepository;
-  }
-
-  // Services
-  getPaymentService(): PaymentService {
-    return this.paymentService;
-  }
-
-  getNotificationService(): NotificationService {
-    return this.notificationService;
-  }
-
-  getPricingService(): PricingService {
-    return this.pricingService;
-  }
-
-  // Controllers
-  getLoanController(): LoanController {
-    return this.loanController;
-  }
-
-  getCalculateFareUseCase(): CalculateFareUseCase {
-    return this.calculateFareUseCase;
-  }
-
-  // ========== UTILIDADES ==========
-
-  getHealthCheckUseCase(): HealthCheckUseCase {
-    return this.healthCheckUseCase;
-  }
+  getLogger(): LoggerService { return this.logger; }
+  getRequestLoggerMiddleware(): RequestLoggerMiddleware { return this.requestLoggerMiddleware; }
+  getPool(): Pool { return this.pool; }
+  getUserRepository(): UserRepository { return this.userRepository; }
+  getPasswordService(): PasswordService { return this.passwordService; }
+  getTokenService(): TokenService { return this.tokenService; }
+  getAuthController(): AuthController { return this.authController; }
+  getUserProfileController(): UserProfileController { return this.userProfileController; }
+  getUserAdminController(): UserAdminController { return this.userAdminController; }
+  getAuthMiddleware(): AuthenticationMiddleware { return this.authenticationMiddleware; }
+  getTransportRepository(): TransportRepository { return this.transportRepository; }
+  getTransportController(): TransportController { return this.transportController; }
+  getCache(): CacheService { return this.cache; }
+  getCacheStats(): CacheStats { return this.cache.getStats(); }
+  getStationRepository(): StationRepository { return this.stationRepository; }
+  getStationController(): StationController { return this.stationController; }
+  getLoanRepository(): LoanRepository { return this.loanRepository; }
+  getPaymentService(): PaymentService { return this.paymentService; }
+  getNotificationService(): NotificationService { return this.notificationService; }
+  getPricingService(): PricingService { return this.pricingService; }
+  getLoanController(): LoanController { return this.loanController; }
+  getCalculateFareUseCase(): CalculateFareUseCase { return this.calculateFareUseCase; }
+  getHealthCheckUseCase(): HealthCheckUseCase { return this.healthCheckUseCase; }
 
   async healthCheck(): Promise<{
     status: string;
     dependencies: Record<string, boolean>;
   }> {
     try {
-      // ✅ MEJORADO: Usar el nuevo HealthCheckUseCase
       const detailedHealth = await this.healthCheckUseCase.execute();
       
-      // ✅ MANTENER: El formato que espera tu código existente
       return {
         status: detailedHealth.status,
         dependencies: {
-          // ✅ MEJORADO: Basado en health checks reales
           database: detailedHealth.dependencies.database.status === 'up',
           pricing: detailedHealth.dependencies.external_services.pricing.status === 'up',
           logging: detailedHealth.dependencies.external_services.logging.status === 'up',
-          
-          // ✅ MANTENER: Verificaciones de componentes internos
           userRepositories: !!this.userRepository,
           transportRepositories: !!this.transportRepository,
           stationRepositories: !!this.stationRepository,
@@ -688,10 +551,9 @@ export class DIContainer {
       return {
         status: 'unhealthy',
         dependencies: {
-          // ✅ MEJORADO: En caso de error, aún verificar componentes internos
           database: false,
           pricing: false,
-          logging: !!this.logger, // Al menos verificar si el logger existe
+          logging: !!this.logger,
           userRepositories: !!this.userRepository,
           transportRepositories: !!this.transportRepository,
           stationRepositories: !!this.stationRepository,
