@@ -58,24 +58,35 @@ export interface StationFilters {
 
 export interface StationWithStats {
   id: number;
-  nombre: string;
-  direccion: string;
-  latitud: number;
-  longitud: number;
-  capacidad: number;
-  estado: 'active' | 'inactive' | 'maintenance';
-  zona: string;
+  // Soporte para ambos formatos: backend (camelCase inglés) y legacy (snake_case español)
+  name?: string;
+  nombre?: string;
+  address?: string;
+  direccion?: string;
+  coordinate?: {
+    latitude: number;
+    longitude: number;
+  };
+  latitud?: number;
+  longitud?: number;
+  maxCapacity?: number;
+  capacidad?: number;
+  isActive?: boolean;
+  estado?: 'active' | 'inactive' | 'maintenance';
+  zona?: string;
   descripcion?: string;
   horario_apertura?: string;
   horario_cierre?: string;
-  created_at: string;
-  updated_at: string;
+  createdAt?: string;
+  created_at?: string;
+  updatedAt?: string;
+  updated_at?: string;
   // Estadísticas adicionales
-  transportes_disponibles: number;
-  transportes_totales: number;
-  ocupacion_porcentaje: number;
-  prestamos_origen: number;
-  prestamos_destino: number;
+  transportes_disponibles?: number;
+  transportes_totales?: number;
+  ocupacion_porcentaje?: number;
+  prestamos_origen?: number;
+  prestamos_destino?: number;
   distancia_km?: number; // Solo cuando se busca por ubicación
 }
 
@@ -216,6 +227,20 @@ class StationApiService {
     estado: 'active' | 'inactive' | 'maintenance'
   ): Promise<ApiResponse<Station>> {
     return apiService.patch<Station>(`${this.baseUrl}/${id}/estado`, { estado });
+  }
+
+  /**
+   * Activar estación
+   */
+  async activateStation(id: number): Promise<ApiResponse<Station>> {
+    return apiService.patch<Station>(`${this.baseUrl}/${id}/activate`, {});
+  }
+
+  /**
+   * Desactivar estación
+   */
+  async deactivateStation(id: number): Promise<ApiResponse<Station>> {
+    return apiService.patch<Station>(`${this.baseUrl}/${id}/deactivate`, {});
   }
 
   /**

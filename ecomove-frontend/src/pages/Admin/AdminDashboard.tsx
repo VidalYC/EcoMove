@@ -1,9 +1,10 @@
 // src/pages/Admin/AdminDashboard.tsx
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  Bike, 
-  MapPin, 
+import { useNavigate } from 'react-router-dom';
+import {
+  Users,
+  Bike,
+  MapPin,
   TrendingUp,
   DollarSign,
   AlertTriangle,
@@ -42,6 +43,7 @@ interface RecentActivity {
 }
 
 export const AdminDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { showSuccess, showError } = useNotifications();
   const [stats, setStats] = useState<SystemStats | null>(null);
@@ -265,13 +267,13 @@ export const AdminDashboard: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleLogout}
-                className="flex items-center space-x-2 text-green-600 hover:text-green-700 border-red-200 hover:border-green-300"
+                onClick={() => navigate('/profile')}
+                className="flex items-center space-x-2 text-green-600 hover:text-green-700 border-green-200 hover:border-green-300"
               >
-                <LogOut className="h-4 w-4" />
+                <Shield className="h-4 w-4" />
                 <span>Mi Perfil</span>
               </Button>
-              
+
               <Button
                 variant="outline"
                 size="sm"
@@ -398,7 +400,7 @@ export const AdminDashboard: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 * index }}
-                onClick={() => alert(`Navegando a ${action.href} - En desarrollo`)}
+                onClick={() => navigate(action.href)}
                 className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow cursor-pointer group"
               >
                 <div className="flex items-center space-x-3">

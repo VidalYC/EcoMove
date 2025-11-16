@@ -19,6 +19,10 @@ import ProfilePage from './pages/User/ProfilePage';
 // Nuevas páginas que vamos a crear
 import { UserDashboard } from './pages/User/UserDashboard';
 import { AdminDashboard } from './pages/Admin/AdminDashboard';
+import { AdminUsers } from './pages/Admin/AdminUsers';
+import { AdminVehicles } from './pages/Admin/AdminVehicles';
+import { AdminStations } from './pages/Admin/AdminStations';
+import { AdminReports } from './pages/Admin/AdminReports';
 import { RentVehicle } from './pages/User/RentVehicle'; // ✅ NUEVA IMPORTACIÓN
 import { VehicleList } from './components/Vehicle/VehicleList';
 import { Bike } from 'lucide-react';
@@ -240,50 +244,52 @@ const AppRoutes: React.FC = () => {
         </ProtectedRoute>
       } 
     />
-      <Route 
-        path="/admin/transportes" 
+      {/* Rutas de administración - Usuarios */}
+      <Route
+        path="/admin/usuarios"
         element={
           <ProtectedRoute requireAdmin={true}>
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-              <div className="text-center">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                  Gestión de Transportes
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400">Próximamente disponible</p>
-              </div>
-            </div>
+            <AdminUsers />
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/admin/estaciones" 
+
+      {/* Rutas de administración - Vehículos */}
+      <Route
+        path="/admin/vehiculos"
         element={
           <ProtectedRoute requireAdmin={true}>
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-              <div className="text-center">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                  Gestión de Estaciones
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400">Próximamente disponible</p>
-              </div>
-            </div>
+            <AdminVehicles />
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/admin/reportes" 
+      <Route
+        path="/admin/transportes"
         element={
           <ProtectedRoute requireAdmin={true}>
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-              <div className="text-center">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                  Reportes y Estadísticas
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400">Próximamente disponible</p>
-              </div>
-            </div>
+            <AdminVehicles />
           </ProtectedRoute>
-        } 
+        }
+      />
+
+      {/* Rutas de administración - Estaciones */}
+      <Route
+        path="/admin/estaciones"
+        element={
+          <ProtectedRoute requireAdmin={true}>
+            <AdminStations />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Rutas de administración - Reportes */}
+      <Route
+        path="/admin/reportes"
+        element={
+          <ProtectedRoute requireAdmin={true}>
+            <AdminReports />
+          </ProtectedRoute>
+        }
       />
       <Route 
         path="/admin/finanzas" 

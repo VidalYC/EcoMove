@@ -5,20 +5,28 @@ import { apiService, ApiResponse } from './api.service';
 
 export interface Transport {
   id: number;
-  codigo: string;
-  tipo: 'bicycle' | 'electric_scooter' | 'scooter';
-  modelo: string;
+  type: 'BICYCLE' | 'ELECTRIC_SCOOTER' | 'bicycle' | 'electric_scooter' | 'scooter';
+  model: string;
+  status: 'AVAILABLE' | 'IN_USE' | 'MAINTENANCE' | 'INACTIVE' | 'available' | 'in_use' | 'maintenance' | 'damaged';
+  currentStationId?: number;
+  hourlyRate: number;
+  createdAt: string;
+  updatedAt: string;
+  specifications?: Record<string, any>;
+  // Compatibilidad con nombres antiguos (snake_case español)
+  codigo?: string;
+  tipo?: 'bicycle' | 'electric_scooter' | 'scooter';
+  modelo?: string;
   marca?: string;
-  estado: 'available' | 'in_use' | 'maintenance' | 'damaged';
+  estado?: 'available' | 'in_use' | 'maintenance' | 'damaged';
   estacion_actual_id?: number;
-  tarifa_por_hora: number;
-  created_at: string;
-  updated_at: string;
-  // Campos específicos según tipo
-  numero_cambios?: number; // Para bicicletas
-  tipo_frenos?: string; // Para bicicletas
-  nivel_bateria?: number; // Para scooters eléctricos
-  velocidad_maxima?: number; // Para scooters eléctricos
+  tarifa_por_hora?: number;
+  created_at?: string;
+  updated_at?: string;
+  numero_cambios?: number;
+  tipo_frenos?: string;
+  nivel_bateria?: number;
+  velocidad_maxima?: number;
 }
 
 export interface CreateTransportData {
@@ -36,6 +44,12 @@ export interface CreateTransportData {
 }
 
 export interface UpdateTransportData {
+  // Backend espera camelCase inglés
+  model?: string;
+  status?: 'available' | 'in_use' | 'maintenance' | 'damaged' | 'AVAILABLE' | 'IN_USE' | 'MAINTENANCE' | 'INACTIVE';
+  stationId?: number;
+  hourlyRate?: number;
+  // Legacy snake_case español (para compatibilidad)
   modelo?: string;
   marca?: string;
   estado?: 'available' | 'in_use' | 'maintenance' | 'damaged';
@@ -153,6 +167,66 @@ class TransportApiService {
   }
 
   /**
+   * Crear nueva bicicleta
+   */
+  async createBicycle(data: {
+    modelo: string;
+    tarifa_hora: number;
+    numero_marchas: number;
+    tipo_freno: string;
+    estacion_id?: number;
+  }): Promise<ApiResponse<Transport>> {
+    // El backend espera camelCase inglés
+    const backendData: any = {
+      model: data.modelo,
+      hourlyRate: data.tarifa_hora,
+      gearCount: data.numero_marchas,
+      brakeType: data.tipo_freno
+    };
+
+    // Solo incluir stationId si tiene un valor válido
+    if (data.estacion_id !== undefined && data.estacion_id !== null && data.estacion_id > 0) {
+      backendData.stationId = data.estacion_id;
+    }
+
+    console.log('🚲 Creando bicicleta con datos:', backendData);
+    return apiService.post<Transport>(`${this.baseUrl}/bicycles`, backendData);
+  }
+
+  /**
+   * Crear nuevo scooter eléctrico
+   */
+  async createElectricScooter(data: {
+    modelo: string;
+    tarifa_hora: number;
+    velocidad_maxima: number;
+    autonomia: number;
+    nivel_bateria?: number;
+    estacion_id?: number;
+  }): Promise<ApiResponse<Transport>> {
+    // El backend espera camelCase inglés
+    const backendData: any = {
+      model: data.modelo,
+      hourlyRate: data.tarifa_hora,
+      maxSpeed: data.velocidad_maxima,
+      range: data.autonomia
+    };
+
+    // Solo incluir batteryLevel si tiene un valor válido
+    if (data.nivel_bateria !== undefined && data.nivel_bateria !== null) {
+      backendData.batteryLevel = data.nivel_bateria;
+    }
+
+    // Solo incluir stationId si tiene un valor válido
+    if (data.estacion_id !== undefined && data.estacion_id !== null && data.estacion_id > 0) {
+      backendData.stationId = data.estacion_id;
+    }
+
+    console.log('⚡ Creando scooter eléctrico con datos:', backendData);
+    return apiService.post<Transport>(`${this.baseUrl}/electric-scooters`, backendData);
+  }
+
+  /**
    * Actualizar transporte
    */
   async updateTransport(id: number, data: UpdateTransportData): Promise<ApiResponse<Transport>> {
@@ -173,12 +247,14 @@ class TransportApiService {
    * Mover transporte a otra estación
    */
   async moveTransportToStation(
-    transportId: number, 
+    transportId: number,
     estacionId: number
   ): Promise<ApiResponse<Transport>> {
+    // El backend espera el endpoint /move (no /mover) y el campo stationId
+    console.log(`🚚 Moviendo transporte ${transportId} a estación ${estacionId}`);
     return apiService.patch<Transport>(
-      `${this.baseUrl}/${transportId}/mover`,
-      { estacion_destino_id: estacionId }
+      `${this.baseUrl}/${transportId}/move`,
+      { stationId: estacionId }
     );
   }
 

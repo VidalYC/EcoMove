@@ -102,19 +102,24 @@ export class ApiService {
 
   // ========== MÉTODO REQUEST BASE (existente) ==========
   async request<T>(
-    endpoint: string, 
+    endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     // Construir la URL correctamente - el endpoint ya incluye /api/v1
     const url = `${this.baseUrl}${endpoint}`;
-    
+
+    // IMPORTANTE: Siempre leer el token más reciente del localStorage
+    this.token = localStorage.getItem('ecomove_token');
+
     const defaultHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
     };
 
     if (this.token) {
       defaultHeaders['Authorization'] = `Bearer ${this.token}`;
-      console.log('Token enviado:', this.token.substring(0, 20) + '...');
+      console.log('🔑 Token enviado:', this.token.substring(0, 20) + '...');
+    } else {
+      console.log('⚠️ No hay token disponible');
     }
 
     const config: RequestInit = {
@@ -425,14 +430,14 @@ export class ApiService {
    * Obtener estadísticas de estaciones
    */
   async getStationStats(): Promise<ApiResponse<any>> {
-    return this.get('/api/v1/estaciones/estadisticas');
+    return this.get('/api/v1/stations/stats');
   }
 
   /**
    * Obtener estadísticas de transportes
    */
   async getTransportStats(): Promise<ApiResponse<any>> {
-    return this.get('/api/v1/transportes/estadisticas');
+    return this.get('/api/v1/transports/stats');
   }
 
   // ========== MÉTODOS DE HEALTH CHECK (existentes) ==========
