@@ -172,7 +172,7 @@ export class CachedStationRepository implements StationRepository {
     return result;
   }
 
-  async findWithAvailableTransports(transportType?: string): Promise<Station[]> {
+  async findWithAvailableTransports(transportType?: string): Promise<any[]> {
     return this.baseRepository.findWithAvailableTransports(transportType);
   }
 

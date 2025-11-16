@@ -287,41 +287,54 @@ export class PostgreSQLStationRepository implements StationRepository {
     ));
   }
 
-  async findWithAvailableTransports(transportType?: string): Promise<Station[]> {
-    let typeFilter = '';
-    const params: any[] = [];
-    
-    if (transportType) {
-      typeFilter = 'AND t.tipo = $1';
-      params.push(transportType);
-    }
-    
+  async findWithAvailableTransports(transportType?: string): Promise<any[]> {
+    // Retornar todas las estaciones con sus estadísticas de transportes
     const query = `
-      SELECT DISTINCT
-        e.id, e.nombre, e.direccion, e.latitud, e.longitud, e.capacidad_total, 
-        e.estado, e.created_at, e.updated_at
+      SELECT
+        e.id, e.nombre, e.direccion, e.latitud, e.longitud, e.capacidad_total,
+        e.estado, e.created_at, e.updated_at,
+        COALESCE(tc.total_count, 0) as total_transports,
+        COALESCE(tc.available_count, 0) as available_transports,
+        CASE
+          WHEN e.capacidad_total > 0 THEN
+            (COALESCE(tc.total_count, 0)::float / e.capacidad_total) * 100
+          ELSE 0
+        END as occupancy_percentage
       FROM estaciones e
-      INNER JOIN (
-        SELECT estacion_actual_id FROM bicicleta WHERE estado = 'available' AND deleted_at IS NULL
-        UNION ALL
-        SELECT estacion_actual_id FROM patineta_electrica WHERE estado = 'available' AND deleted_at IS NULL
-      ) t ON e.id = t.estacion_actual_id
-      WHERE e.deleted_at IS NULL AND e.estado = 'active' ${typeFilter}
+      LEFT JOIN (
+        SELECT
+          estacion_actual_id,
+          COUNT(*) as total_count,
+          COUNT(CASE WHEN estado = 'available' THEN 1 END) as available_count
+        FROM (
+          SELECT estacion_actual_id, estado FROM bicicleta WHERE deleted_at IS NULL
+          UNION ALL
+          SELECT estacion_actual_id, estado FROM patineta_electrica WHERE deleted_at IS NULL
+        ) t
+        GROUP BY estacion_actual_id
+      ) tc ON e.id = tc.estacion_actual_id
+      WHERE e.deleted_at IS NULL
       ORDER BY e.nombre
     `;
-    
-    const result = await this.pool.query(query, params);
-    
-    return result.rows.map(row => new Station(
-      row.id,
-      row.nombre,
-      row.direccion,
-      { latitude: parseFloat(row.latitud), longitude: parseFloat(row.longitud) },
-      row.capacidad_total,
-      row.estado === 'active',
-      row.created_at,
-      row.updated_at
-    ));
+
+    const result = await this.pool.query(query);
+
+    return result.rows.map(row => ({
+      id: row.id,
+      name: row.nombre,
+      address: row.direccion,
+      coordinate: {
+        latitude: parseFloat(row.latitud),
+        longitude: parseFloat(row.longitud)
+      },
+      maxCapacity: row.capacidad_total,
+      isActive: row.estado === 'active',
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      totalTransports: parseInt(row.total_transports),
+      availableTransports: parseInt(row.available_transports),
+      occupancyPercentage: parseFloat(row.occupancy_percentage)
+    }));
   }
 
   async getAvailability(id: number): Promise<StationAvailability | null> {

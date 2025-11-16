@@ -81,7 +81,11 @@ export interface StationWithStats {
   created_at?: string;
   updatedAt?: string;
   updated_at?: string;
-  // Estadísticas adicionales
+  // Estadísticas adicionales (campos del backend en inglés)
+  availableTransports?: number;
+  totalTransports?: number;
+  occupancyPercentage?: number;
+  // Estadísticas adicionales (campos legacy en español)
   transportes_disponibles?: number;
   transportes_totales?: number;
   ocupacion_porcentaje?: number;
@@ -133,29 +137,43 @@ class StationApiService {
   // ========== OBTENER ESTACIONES ==========
 
   /**
-   * Obtener todas las estaciones con filtros opcionales
+   * Obtener todas las estaciones con filtros opcionales y estadísticas
    */
   async getStations(filters?: StationFilters): Promise<ApiResponse<PaginatedStations>> {
+    // Usar el endpoint with-transports para obtener estadísticas de transportes
     const params = new URLSearchParams();
-    
-    if (filters?.estado) params.append('estado', filters.estado);
-    if (filters?.zona) params.append('zona', filters.zona);
-    if (filters?.pagina) params.append('pagina', filters.pagina.toString());
-    if (filters?.limite) params.append('limite', filters.limite.toString());
-    
-    // Para búsqueda por ubicación
-    if (filters?.cerca_de) {
-      params.append('latitud', filters.cerca_de.latitud.toString());
-      params.append('longitud', filters.cerca_de.longitud.toString());
-      if (filters.cerca_de.radio_km) {
-        params.append('radio_km', filters.cerca_de.radio_km.toString());
-      }
+
+    if (filters?.pagina) params.append('page', filters.pagina.toString());
+    if (filters?.limite) params.append('limit', filters.limite.toString());
+
+    const url = params.toString() ? `${this.baseUrl}/with-transports?${params}` : `${this.baseUrl}/with-transports`;
+
+    console.log('🏢 Fetching stations with stats from:', url);
+    const response = await apiService.get<any>(url);
+
+    console.log('🏢 Raw response from backend:', response);
+
+    // Transformar la respuesta para que coincida con PaginatedStations
+    if (response.success && response.data) {
+      const stations = Array.isArray(response.data) ? response.data : [];
+      console.log('🏢 First station data:', stations[0]);
+
+      return {
+        success: true,
+        message: response.message,
+        data: {
+          stations,
+          pagination: response.pagination || {
+            total: response.total || stations.length,
+            totalPages: Math.ceil((response.total || stations.length) / (filters?.limite || 10)),
+            currentPage: filters?.pagina || 1,
+            limit: filters?.limite || 10
+          }
+        }
+      };
     }
 
-    const url = params.toString() ? `${this.baseUrl}?${params}` : this.baseUrl;
-    
-    console.log('🏢 Fetching stations from:', url);
-    return apiService.get<PaginatedStations>(url);
+    return response;
   }
 
   /**

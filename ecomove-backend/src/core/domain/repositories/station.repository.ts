@@ -36,7 +36,7 @@ export interface StationRepository {
   
   // Geographic operations
   findNearby(coordinate: Coordinate, radiusKm: number, limit?: number): Promise<Station[]>;
-  findWithAvailableTransports(transportType?: string): Promise<Station[]>;
+  findWithAvailableTransports(transportType?: string): Promise<any[]>;
   
   // Availability operations
   getAvailability(id: number): Promise<StationAvailability | null>;

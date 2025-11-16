@@ -112,7 +112,7 @@ export const AdminStations: React.FC = () => {
     try {
       if (formMode === 'create') {
         // El backend espera camelCase inglés
-        await stationApiService.createStation({
+        const response = await stationApiService.createStation({
           name: data.nombre,
           address: data.direccion,
           latitude: data.latitud,
@@ -120,9 +120,15 @@ export const AdminStations: React.FC = () => {
           maxCapacity: data.capacidad_maxima
         });
         showSuccess('Estación creada', 'La estación se creó correctamente');
+
+        // Actualización optimista: agregar la nueva estación
+        if (response.success && response.data) {
+          setStations(prev => [response.data!, ...prev]);
+          setTotalStations(prev => prev + 1);
+        }
       } else if (selectedStation) {
         // El backend espera camelCase inglés
-        await stationApiService.updateStation(selectedStation.id, {
+        const response = await stationApiService.updateStation(selectedStation.id, {
           name: data.nombre,
           address: data.direccion,
           latitude: data.latitud,
@@ -130,9 +136,14 @@ export const AdminStations: React.FC = () => {
           maxCapacity: data.capacidad_maxima
         });
         showSuccess('Estación actualizada', 'Los cambios se guardaron correctamente');
-      }
 
-      await loadStations();
+        // Actualización optimista: actualizar la estación en la lista
+        if (response.success && response.data) {
+          setStations(prev => prev.map(s =>
+            s.id === selectedStation.id ? response.data! : s
+          ));
+        }
+      }
     } catch (error: any) {
       throw error;
     }
@@ -140,10 +151,16 @@ export const AdminStations: React.FC = () => {
 
   const handleActivateStation = async (station: StationWithStats) => {
     try {
+      // Actualización optimista
+      setStations(prev => prev.map(s =>
+        s.id === station.id ? { ...s, isActive: true, estado: 'active' } : s
+      ));
+
       await stationApiService.activateStation(station.id);
       showSuccess('Estación activada', `${station.name || station.nombre} ha sido activada`);
-      await loadStations();
     } catch (error: any) {
+      // Si falla, revertir
+      await loadStations();
       showError('Error', error.message || 'No se pudo activar la estación');
     }
   };
@@ -152,10 +169,16 @@ export const AdminStations: React.FC = () => {
     if (!confirm(`¿Está seguro de desactivar ${station.name || station.nombre}?`)) return;
 
     try {
+      // Actualización optimista
+      setStations(prev => prev.map(s =>
+        s.id === station.id ? { ...s, isActive: false, estado: 'inactive' } : s
+      ));
+
       await stationApiService.deactivateStation(station.id);
       showSuccess('Estación desactivada', `${station.name || station.nombre} ha sido desactivada`);
-      await loadStations();
     } catch (error: any) {
+      // Si falla, revertir
+      await loadStations();
       showError('Error', error.message || 'No se pudo desactivar la estación');
     }
   };
@@ -337,8 +360,8 @@ export const AdminStations: React.FC = () => {
                         <Users className="h-4 w-4 mr-1" />
                         Ocupación:
                       </span>
-                      <span className={`font-semibold ${getOccupancyColor(station.ocupacion_porcentaje || 0)}`}>
-                        {(station.ocupacion_porcentaje || 0).toFixed(0)}%
+                      <span className={`font-semibold ${getOccupancyColor(station.occupancyPercentage || station.ocupacion_porcentaje || 0)}`}>
+                        {(station.occupancyPercentage || station.ocupacion_porcentaje || 0).toFixed(0)}%
                       </span>
                     </div>
 
@@ -346,13 +369,13 @@ export const AdminStations: React.FC = () => {
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600 dark:text-gray-400">Disponibles:</span>
                         <span className="font-medium text-green-600 dark:text-green-400">
-                          {station.transportes_disponibles || 0}
+                          {station.availableTransports || station.transportes_disponibles || 0}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600 dark:text-gray-400">Total:</span>
                         <span className="font-medium text-gray-900 dark:text-white">
-                          {station.transportes_totales || 0}
+                          {station.totalTransports || station.transportes_totales || 0}
                         </span>
                       </div>
                     </div>

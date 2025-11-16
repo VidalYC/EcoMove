@@ -206,10 +206,17 @@ export const AdminVehicles: React.FC = () => {
     if (!stationId) return;
 
     try {
-      await transportApiService.moveTransportToStation(vehicle.id, Number(stationId));
+      // Actualización optimista
+      const newStationId = Number(stationId);
+      setVehicles(prev => prev.map(v =>
+        v.id === vehicle.id ? { ...v, currentStationId: newStationId, estacion_actual_id: newStationId } : v
+      ));
+
+      await transportApiService.moveTransportToStation(vehicle.id, newStationId);
       showSuccess('Vehículo movido', 'El vehículo se movió a la nueva estación');
-      await loadData();
     } catch (error: any) {
+      // Si falla, revertir
+      await loadData();
       showError('Error', error.message || 'No se pudo mover el vehículo');
     }
   };
@@ -219,10 +226,21 @@ export const AdminVehicles: React.FC = () => {
     if (!batteryLevel) return;
 
     try {
-      await transportApiService.updateBatteryLevel(vehicle.id, Number(batteryLevel));
+      // Actualización optimista
+      const newBatteryLevel = Number(batteryLevel);
+      setVehicles(prev => prev.map(v =>
+        v.id === vehicle.id ? {
+          ...v,
+          specifications: { ...v.specifications, batteryLevel: newBatteryLevel },
+          nivel_bateria: newBatteryLevel
+        } : v
+      ));
+
+      await transportApiService.updateBatteryLevel(vehicle.id, newBatteryLevel);
       showSuccess('Batería actualizada', `Nivel de batería: ${batteryLevel}%`);
-      await loadData();
     } catch (error: any) {
+      // Si falla, revertir
+      await loadData();
       showError('Error', error.message || 'No se pudo actualizar la batería');
     }
   };
@@ -231,10 +249,15 @@ export const AdminVehicles: React.FC = () => {
     if (!confirm(`¿Está seguro de eliminar el vehículo ${vehicle.model || vehicle.modelo}?`)) return;
 
     try {
+      // Actualización optimista: eliminar de la lista inmediatamente
+      setVehicles(prev => prev.filter(v => v.id !== vehicle.id));
+      setTotalVehicles(prev => prev - 1);
+
       await transportApiService.deleteTransport(vehicle.id);
       showSuccess('Vehículo eliminado', 'El vehículo se eliminó correctamente');
-      await loadData();
     } catch (error: any) {
+      // Si falla, recargar para restaurar
+      await loadData();
       showError('Error', error.message || 'No se pudo eliminar el vehículo');
     }
   };

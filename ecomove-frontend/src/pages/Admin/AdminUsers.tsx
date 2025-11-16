@@ -87,9 +87,15 @@ export const AdminUsers: React.FC = () => {
 
   const handleSaveUser = async (id: number, updates: Partial<AdminUser>) => {
     try {
-      await adminApiService.updateUser(id, updates);
+      const response = await adminApiService.updateUser(id, updates);
       showSuccess('Usuario actualizado', 'Los cambios se guardaron correctamente');
-      await loadUsers();
+
+      // Actualización optimista: actualizar el usuario en la lista
+      if (response.success && response.data) {
+        setUsers(prev => prev.map(u =>
+          u.id === id ? response.data! : u
+        ));
+      }
     } catch (error: any) {
       throw error;
     }
@@ -97,10 +103,16 @@ export const AdminUsers: React.FC = () => {
 
   const handleActivateUser = async (user: AdminUser) => {
     try {
+      // Actualización optimista
+      setUsers(prev => prev.map(u =>
+        u.id === user.id ? { ...u, activo: true } : u
+      ));
+
       await adminApiService.activateUser(user.id);
       showSuccess('Usuario activado', `${user.nombre} ha sido activado`);
-      await loadUsers();
     } catch (error: any) {
+      // Si falla, revertir
+      await loadUsers();
       showError('Error', error.message || 'No se pudo activar el usuario');
     }
   };
@@ -109,10 +121,16 @@ export const AdminUsers: React.FC = () => {
     if (!confirm(`¿Está seguro de desactivar a ${user.nombre}?`)) return;
 
     try {
+      // Actualización optimista
+      setUsers(prev => prev.map(u =>
+        u.id === user.id ? { ...u, activo: false } : u
+      ));
+
       await adminApiService.deactivateUser(user.id);
       showSuccess('Usuario desactivado', `${user.nombre} ha sido desactivado`);
-      await loadUsers();
     } catch (error: any) {
+      // Si falla, revertir
+      await loadUsers();
       showError('Error', error.message || 'No se pudo desactivar el usuario');
     }
   };
