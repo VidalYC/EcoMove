@@ -1,24 +1,5 @@
-
-// src/pages/User/UserDashboard.tsx - COMPLETO CON DEBUG Y MODAL DE PERFIL
+// src/pages/User/UserDashboard.tsx - SIN ICONOS
 import React, { useState, useEffect } from 'react';
-import { 
-  User, 
-  Bike, 
-  MapPin, 
-  Clock,
-  DollarSign,
-  Activity,
-  TrendingUp,
-  Navigation,
-  Play,
-  RefreshCw,
-  ChevronRight,
-  Calendar,
-  Target,
-  LogOut,
-  CheckCircle2,
-  XCircle
-} from 'lucide-react';
 import { Button } from '../../components/UI/Button';
 import { ThemeToggle } from '../../components/UI/ThemeToggle';
 import { CompleteLoanModal } from '../../components/Loan/CompleteLoanModal';
@@ -31,6 +12,7 @@ import { useNotifications } from '../../contexts/NotificationContext';
 import { userApiService, UserStats, QuickStats, UserLoan } from '../../services/userApi.service';
 import { apiService } from '../../services/api.service';
 import { motion } from 'framer-motion';
+import { MapModal } from '../../components/Map/MapModal';
 
 interface PaymentData {
   transactionId?: string;
@@ -58,20 +40,19 @@ interface PaymentData {
 interface StatsCardProps {
   title: string;
   value: string | number;
-  icon: React.ComponentType<any>;
   color: string;
   change?: string;
   isLoading?: boolean;
 }
 
-const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon: Icon, color, change, isLoading }) => (
+const StatsCard: React.FC<StatsCardProps> = ({ title, value, color, change, isLoading }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700"
   >
     <div className="flex items-center justify-between">
-      <div>
+      <div className="flex-1">
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{title}</p>
         {isLoading ? (
           <div className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
@@ -81,9 +62,6 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon: Icon, color, 
         {change && (
           <p className="text-xs text-green-600 dark:text-green-400 mt-1">{change}</p>
         )}
-      </div>
-      <div className={`p-3 rounded-lg ${color}`}>
-        <Icon className="h-6 w-6 text-white" />
       </div>
     </div>
   </motion.div>
@@ -96,7 +74,7 @@ export const UserDashboard: React.FC = () => {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [quickStats, setQuickStats] = useState<QuickStats | null>(null);
   const [activeLoan, setActiveLoan] = useState<UserLoan | null>(null);
-  const [nearbyStations, setNearbyStations] = useState<any[]>([]);
+  
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [backendConnected, setBackendConnected] = useState<boolean | null>(null);
@@ -111,6 +89,11 @@ export const UserDashboard: React.FC = () => {
   
   const [currentCost, setCurrentCost] = useState<number>(0);
   const [realTimeTimer, setRealTimeTimer] = useState<NodeJS.Timeout | null>(null);
+
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [selectedStationForNavigation, setSelectedStationForNavigation] = useState<any | null>(null);
+  const [nearbyStations, setNearbyStations] = useState<any[]>([]);
+  const [allStations, setAllStations] = useState<any[]>([]);
 
   const checkBackendConnectivity = async (): Promise<boolean> => {
     try {
@@ -150,6 +133,97 @@ export const UserDashboard: React.FC = () => {
       
       if (!isBackendAvailable) {
         throw new Error('Backend no disponible - usando datos de fallback');
+      }
+
+      try {
+        console.log('🔄 Iniciando carga de estaciones y vehículos...');
+        
+        const stationsResponse = await fetch(`http://localhost:4000/api/v1/stations`, {
+          headers: { 
+            'Authorization': `Bearer ${localStorage.getItem('ecomove_token')}`,
+            'Cache-Control': 'no-cache'
+          }
+        });
+        
+        if (!stationsResponse.ok) {
+          throw new Error(`Error al cargar estaciones: ${stationsResponse.status}`);
+        }
+        
+        const stationsData = await stationsResponse.json();
+        
+        const transportsResponse = await fetch(`http://localhost:4000/api/v1/transports`, {
+          headers: { 
+            'Authorization': `Bearer ${localStorage.getItem('ecomove_token')}`,
+            'Cache-Control': 'no-cache'
+          }
+        });
+        
+        if (!transportsResponse.ok) {
+          throw new Error(`Error al cargar vehículos: ${transportsResponse.status}`);
+        }
+        
+        const transportsData = await transportsResponse.json();
+        
+        if (!stationsData.success || !stationsData.data) {
+          throw new Error('No se recibieron datos de estaciones');
+        }
+        
+        if (!transportsData.success) {
+          throw new Error('No se recibieron datos de vehículos');
+        }
+        
+        console.log('🗺️ Estaciones cargadas desde BD:', stationsData.data.length);
+        
+        let vehicleArray = [];
+        if (Array.isArray(transportsData.data)) {
+          vehicleArray = transportsData.data;
+        } else if (transportsData.data?.transports && Array.isArray(transportsData.data.transports)) {
+          vehicleArray = transportsData.data.transports;
+        }
+        
+        console.log('🚗 Total de vehículos cargados:', vehicleArray.length);
+        
+        const stationsWithTransports = stationsData.data.map((station: any) => {
+          const availableVehicles = vehicleArray.filter((vehicle: any) => {
+            const stationId = vehicle.currentStationId || vehicle.estacion_actual_id;
+            const status = vehicle.status || vehicle.estado;
+            const isAvailable = status === 'available' || status === 'disponible';
+            
+            return stationId === station.id && isAvailable;
+          });
+          
+          const transportes_disponibles = availableVehicles.length;
+          
+          const lat = station.coordinate?.latitude || station.latitud;
+          const lng = station.coordinate?.longitude || station.longitud;
+
+          return {
+            id: station.id,
+            nombre: station.name,
+            direccion: station.address,
+            latitud: typeof lat === 'number' ? lat : parseFloat(lat || 0),
+            longitud: typeof lng === 'number' ? lng : parseFloat(lng || 0),
+            capacidad: station.maxCapacity || station.capacidad_total,
+            estado: station.isActive ? 'active' : 'inactive',
+            zona: station.zona,
+            transportes_disponibles,
+            distancia_km: Number((Math.random() * 2 + 0.5).toFixed(1))
+          };
+        });
+
+        setAllStations(stationsWithTransports);
+        
+        const nearbyStations = stationsWithTransports
+          .filter((s: any) => s.transportes_disponibles > 0)
+          .sort((a: any, b: any) => b.transportes_disponibles - a.transportes_disponibles)
+          .slice(0, 3);
+        
+        setNearbyStations(nearbyStations);
+        
+      } catch (error: any) {
+        console.error('❌ Error cargando estaciones:', error);
+        setAllStations([]);
+        setNearbyStations([]);
       }
 
       try {
@@ -217,7 +291,6 @@ export const UserDashboard: React.FC = () => {
       try {
         const currentLoanResponse = await userApiService.getCurrentLoan();
         if (currentLoanResponse) {
-          console.log('Setting active loan:', currentLoanResponse);
           setActiveLoan(currentLoanResponse);
         } else {
           setActiveLoan(null);
@@ -227,48 +300,6 @@ export const UserDashboard: React.FC = () => {
         setActiveLoan(null);
       }
 
-      try {
-        const stationsResponse = await fetch(`http://localhost:4000/api/v1/stations`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('ecomove_token')}` }
-        });
-        const stationsData = await stationsResponse.json();
-        
-        if (stationsData.success && stationsData.data) {
-          const adaptedStations = stationsData.data.map((station: any) => ({
-            id: station.id,
-            nombre: station.name,
-            direccion: station.address,
-            transportes_disponibles: station.id === 5 ? 3 : station.id === 4 ? 2 : Math.floor(Math.random() * 4) + 1,
-            distancia_km: station.id === 5 ? 0.8 : station.id === 4 ? 1.2 : Number((Math.random() * 2 + 0.5).toFixed(1))
-          }));
-          
-          const nearbyStations = adaptedStations
-            .sort((a: any, b: any) => a.distancia_km - b.distancia_km)
-            .slice(0, 3);
-          
-          setNearbyStations(nearbyStations);
-        } else {
-          throw new Error('No stations data received');
-        }
-      } catch (error) {
-        setNearbyStations([
-          {
-            id: 5,
-            nombre: 'Estación Zona Rosa',
-            direccion: 'Carrera 13 # 85-32, Bogotá',
-            transportes_disponibles: 3,
-            distancia_km: 0.8
-          },
-          {
-            id: 4,
-            nombre: 'Estación Universidad Nacional',
-            direccion: 'Calle 45 # 26-85, Bogotá',
-            transportes_disponibles: 2,
-            distancia_km: 1.2
-          }
-        ]);
-      }
-
       if (isRefresh) {
         showSuccess('Actualizado', 'Dashboard actualizado con datos del servidor');
       }
@@ -276,7 +307,7 @@ export const UserDashboard: React.FC = () => {
     } catch (error: any) {
       console.error('Error loading dashboard data:', error);
       
-      const fallbackStats = {
+      setStats({
         totalLoans: 0,
         activeLoans: 0,
         completedLoans: 0,
@@ -284,17 +315,15 @@ export const UserDashboard: React.FC = () => {
         averageDuration: 0,
         favoriteStations: [],
         thisMonth: { loans: 0, spent: 0, duration: 0 }
-      };
+      });
       
-      const fallbackQuickStats = {
+      setQuickStats({
         activeLoans: 0,
         availableVehicles: 0,
         nearbyStations: 0,
         totalSpent: 0
-      };
+      });
       
-      setStats(fallbackStats);
-      setQuickStats(fallbackQuickStats);
       setActiveLoan(null);
       setNearbyStations([]);
 
@@ -338,124 +367,84 @@ export const UserDashboard: React.FC = () => {
     setShowProfileModal(true);
   };
 
-const handleCompleteConfirm = async (destinationStationId: string, additionalData: {
-  finalCost: number;
-  paymentMethod: string;
-  paymentData: PaymentData;
-  comments?: string;
-}) => {
-  if (!activeLoan) return;
-  
-  try {
-    setIsProcessingComplete(true);
-
-    console.log('=== USERDASHBOARD: DATOS RECIBIDOS ===');
-    console.log('Método de pago:', additionalData.paymentMethod);
-    console.log('Costo final:', additionalData.finalCost);
-    console.log('Payment Data completo:', JSON.stringify(additionalData.paymentData, null, 2));
-    console.log('transactionId:', additionalData.paymentData?.transactionId);
-    console.log('stripePaymentIntentId:', additionalData.paymentData?.stripePaymentMethodId);
-
-    // VALIDACIÓN: Verificar que tenemos el Payment Intent ID para Stripe
-    if (additionalData.paymentMethod === 'stripe') {
-      const intentId = additionalData.paymentData?.transactionId || 
-                       additionalData.paymentData?.stripePaymentMethodId;
-      
-      if (!intentId) {
-        console.error('❌ CRÍTICO: No hay Payment Intent ID en additionalData.paymentData');
-        console.error('   transactionId:', additionalData.paymentData?.transactionId);
-        console.error('   stripePaymentIntentId:', additionalData.paymentData?.stripePaymentMethodId);
-        throw new Error('Falta el Payment Intent ID de Stripe. Por favor intenta de nuevo.');
-      }
-      
-      console.log('✅ Payment Intent ID encontrado:', intentId);
-    }
-
-    const token = localStorage.getItem('ecomove_token');
+  const handleCompleteConfirm = async (destinationStationId: string, additionalData: {
+    finalCost: number;
+    paymentMethod: string;
+    paymentData: PaymentData;
+    comments?: string;
+  }) => {
+    if (!activeLoan) return;
     
-    const requestBody: any = {
-      estacion_destino_id: parseInt(destinationStationId),
-      costo_total: additionalData.finalCost,
-      metodo_pago: additionalData.paymentMethod === 'stripe' ? 'credit-card' : additionalData.paymentMethod,
-      comentarios: additionalData.comments || ''
-    };
+    try {
+      setIsProcessingComplete(true);
 
-    // IMPORTANTE: Asegúrate de incluir el Payment Intent ID
-    if (additionalData.paymentMethod === 'stripe') {
-      const intentId = additionalData.paymentData?.transactionId || 
-                       additionalData.paymentData?.stripePaymentMethodId;
+      const token = localStorage.getItem('ecomove_token');
       
-      requestBody.stripe_payment_intent_id = intentId;
-      requestBody.stripe_payment_method_id = additionalData.paymentData?.stripePaymentMethodId;
-    }
+      const requestBody: any = {
+        estacion_destino_id: parseInt(destinationStationId),
+        costo_total: additionalData.finalCost,
+        metodo_pago: additionalData.paymentMethod === 'stripe' ? 'credit-card' : additionalData.paymentMethod,
+        comentarios: additionalData.comments || ''
+      };
 
-    requestBody.datos_pago = additionalData.paymentData;
-
-    const url = `http://localhost:4000/api/v1/loans/${activeLoan.id}/completar`;
-    
-    console.log('📤 ENVIANDO AL BACKEND:');
-    console.log('URL:', url);
-    console.log('stripe_payment_intent_id:', requestBody.stripe_payment_intent_id);
-    console.log('Body completo:', JSON.stringify(requestBody, null, 2));
-
-    const response = await fetch(url, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(requestBody)
-    });
-
-    console.log('📥 RESPUESTA DEL BACKEND:');
-    console.log('Status:', response.status);
-    console.log('StatusText:', response.statusText);
-
-    const result = await response.json();
-    console.log('Body:', result);
-
-    if (!response.ok) {
-      let errorMessage = result.message || `Error ${response.status}`;
-      
-      if (result.errors && Array.isArray(result.errors)) {
-        const errorDetails = result.errors.map((err: any) => {
-          if (typeof err === 'string') return err;
-          if (err.message) return err.message;
-          if (err.msg) return err.msg;
-          return JSON.stringify(err);
-        }).join(', ');
-        errorMessage = `${errorMessage}: ${errorDetails}`;
-      }
-      
-      throw new Error(errorMessage);
-    }
-    
-    if (result.success) {
-      let paymentInfo = '';
       if (additionalData.paymentMethod === 'stripe') {
         const intentId = additionalData.paymentData?.transactionId || 
-                        additionalData.paymentData?.stripePaymentMethodId;
-        paymentInfo = ` (Stripe: ${intentId?.substring(0, 20)}...)`;
+                         additionalData.paymentData?.stripePaymentMethodId;
+        
+        requestBody.stripe_payment_intent_id = intentId;
+        requestBody.stripe_payment_method_id = additionalData.paymentData?.stripePaymentMethodId;
       }
 
-      showSuccess(
-        'Préstamo completado', 
-        `Viaje finalizado! Total pagado: ${formatCurrency(additionalData.finalCost)} vía ${additionalData.paymentMethod}${paymentInfo}`
-      );
+      requestBody.datos_pago = additionalData.paymentData;
+
+      const url = `http://localhost:4000/api/v1/loans/${activeLoan.id}/completar`;
+
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        let errorMessage = result.message || `Error ${response.status}`;
+        
+        if (result.errors && Array.isArray(result.errors)) {
+          const errorDetails = result.errors.map((err: any) => {
+            if (typeof err === 'string') return err;
+            if (err.message) return err.message;
+            if (err.msg) return err.msg;
+            return JSON.stringify(err);
+          }).join(', ');
+          errorMessage = `${errorMessage}: ${errorDetails}`;
+        }
+        
+        throw new Error(errorMessage);
+      }
       
-      await loadDashboardData();
-    } else {
-      throw new Error(result.message || 'No se pudo completar el préstamo');
+      if (result.success) {
+        showSuccess(
+          'Préstamo completado', 
+          `Viaje finalizado! Total pagado: ${formatCurrency(additionalData.finalCost)}`
+        );
+        
+        await loadDashboardData();
+      } else {
+        throw new Error(result.message || 'No se pudo completar el préstamo');
+      }
+      
+    } catch (error: any) {
+      console.error('❌ ERROR EN handleCompleteConfirm:', error);
+      showError('Error de pago', error.message || 'No se pudo procesar el pago del préstamo');
+    } finally {
+      setIsProcessingComplete(false);
+      setShowCompleteModal(false);
     }
-    
-  } catch (error: any) {
-    console.error('❌ ERROR EN handleCompleteConfirm:', error);
-    showError('Error de pago', error.message || 'No se pudo procesar el pago del préstamo');
-  } finally {
-    setIsProcessingComplete(false);
-    setShowCompleteModal(false);
-  }
-};
+  };
 
   const handleCancelConfirm = async (reason: string, additionalData: any) => {
     if (!activeLoan) return;
@@ -582,9 +571,6 @@ const handleCompleteConfirm = async (destinationStationId: string, additionalDat
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-4">
-              <div className="bg-gradient-to-r from-emerald-500 to-teal-600 p-2 rounded-lg">
-                <User className="h-6 w-6 text-white" />
-              </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                   Hola, {user?.nombre}!
@@ -620,7 +606,6 @@ const handleCompleteConfirm = async (destinationStationId: string, additionalDat
                 disabled={isRefreshing}
                 className="flex items-center space-x-2"
               >
-                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                 <span>Actualizar</span>
               </Button>
 
@@ -628,9 +613,8 @@ const handleCompleteConfirm = async (destinationStationId: string, additionalDat
                 variant="outline"
                 size="sm"
                 onClick={handleShowProfile}
-                className="flex items-center space-x-2 text-green-600 hover:text-green-700 border-green-200 hover:border-green-300 dark:text-green-400 dark:hover:text-green-300 dark:border-green-800 dark:hover:border-green-700"
+                className="flex items-center space-x-2 text-green-600 hover:text-green-700 border-green-200 hover:border-green-300"
               >
-                <User className="h-4 w-4" />
                 <span>Perfil</span>
               </Button>
               
@@ -638,9 +622,8 @@ const handleCompleteConfirm = async (destinationStationId: string, additionalDat
                 variant="outline"
                 size="sm"
                 onClick={handleLogout}
-                className="flex items-center space-x-2 text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 dark:text-red-400 dark:hover:text-red-300 dark:border-red-800 dark:hover:border-red-700"
+                className="flex items-center space-x-2 text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
               >
-                <LogOut className="h-4 w-4" />
                 <span>Cerrar Sesión</span>
               </Button>
             </div>
@@ -653,7 +636,6 @@ const handleCompleteConfirm = async (destinationStationId: string, additionalDat
           <StatsCard
             title="Préstamos Totales"
             value={stats?.totalLoans || 0}
-            icon={Activity}
             color="bg-blue-500"
             change={stats?.thisMonth.loans ? `+${stats.thisMonth.loans} este mes` : undefined}
             isLoading={!stats}
@@ -661,14 +643,12 @@ const handleCompleteConfirm = async (destinationStationId: string, additionalDat
           <StatsCard
             title="Préstamos Activos"
             value={quickStats?.activeLoans || 0}
-            icon={TrendingUp}
             color="bg-orange-500"
             isLoading={!quickStats}
           />
           <StatsCard
             title="Préstamos Completados"
             value={stats?.completedLoans || 0}
-            icon={DollarSign}
             color="bg-green-500"
             change={stats?.completedLoans ? `${stats.completedLoans} finalizados` : undefined}
             isLoading={!stats}
@@ -676,7 +656,6 @@ const handleCompleteConfirm = async (destinationStationId: string, additionalDat
           <StatsCard
             title="Estaciones Cercanas"
             value={nearbyStations.length || 0}
-            icon={MapPin}
             color="bg-purple-500"
             change="Con vehículos disponibles"
             isLoading={false}
@@ -704,9 +683,6 @@ const handleCompleteConfirm = async (destinationStationId: string, additionalDat
                   className="space-y-4"
                 >
                   <div className="flex items-center space-x-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <div className="p-3 bg-emerald-500 rounded-lg">
-                      <Bike className="h-6 w-6 text-white" />
-                    </div>
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900 dark:text-white">
                         {activeLoan.transportType} - {activeLoan.transportModel}
@@ -745,7 +721,6 @@ const handleCompleteConfirm = async (destinationStationId: string, additionalDat
                       className="flex-1 bg-green-600 hover:bg-green-700 text-white"
                       disabled={isProcessingComplete || isProcessingCancel}
                     >
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
                       Completar
                     </Button>
                     
@@ -754,14 +729,13 @@ const handleCompleteConfirm = async (destinationStationId: string, additionalDat
                       className="flex-1 bg-red-500 hover:bg-red-600 text-white"
                       disabled={isProcessingComplete || isProcessingCancel}
                     >
-                      <XCircle className="h-4 w-4 mr-2" />
                       Cancelar
                     </Button>
                   </div>
 
                   {(isProcessingComplete || isProcessingCancel) && (
                     <div className="mt-4 flex items-center justify-center">
-                      <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-500 mr-2"></div>
                       <span className="text-sm">
                         {isProcessingComplete && 'Procesando pago y completando préstamo...'}
                         {isProcessingCancel && 'Cancelando préstamo...'}
@@ -771,7 +745,6 @@ const handleCompleteConfirm = async (destinationStationId: string, additionalDat
                 </motion.div>
               ) : (
                 <div className="text-center py-8">
-                  <Bike className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                     No tienes préstamos activos
                   </h3>
@@ -782,7 +755,6 @@ const handleCompleteConfirm = async (destinationStationId: string, additionalDat
                     onClick={handleStartRental}
                     className="bg-emerald-500 hover:bg-emerald-600 text-white"
                   >
-                    <Play className="h-4 w-4 mr-2" />
                     Iniciar Préstamo
                   </Button>
                 </div>
@@ -800,15 +772,13 @@ const handleCompleteConfirm = async (destinationStationId: string, additionalDat
                   onClick={handleStartRental}
                   className="w-full bg-emerald-500 hover:bg-emerald-600 text-white justify-start"
                 >
-                  <Bike className="h-4 w-4 mr-3" />
                   Alquilar Vehículo
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => showSuccess('Próximamente', 'Función en desarrollo')}
+                  onClick={() => setShowMapModal(true)}
                   className="w-full justify-start"
                 >
-                  <MapPin className="h-4 w-4 mr-3" />
                   Ver Mapa
                 </Button>
                 <Button
@@ -816,7 +786,6 @@ const handleCompleteConfirm = async (destinationStationId: string, additionalDat
                   onClick={handleShowHistory}
                   className="w-full justify-start"
                 >
-                  <Calendar className="h-4 w-4 mr-3" />
                   Mi Historial
                 </Button>
               </div>
@@ -830,9 +799,10 @@ const handleCompleteConfirm = async (destinationStationId: string, additionalDat
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => showSuccess('Próximamente', 'Función en desarrollo')}
+                  onClick={() => setShowMapModal(true)}
+                  title="Abrir mapa completo"
                 >
-                  <Navigation className="h-4 w-4" />
+                  Ver en mapa
                 </Button>
               </div>
 
@@ -844,49 +814,24 @@ const handleCompleteConfirm = async (destinationStationId: string, additionalDat
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.1 }}
-                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors cursor-pointer"
-                      onClick={() => showSuccess('Próximamente', 'Navegación a estación en desarrollo')}
+                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
                     >
                       <div className="flex items-center space-x-3">
-                        <div className={`p-2 rounded-lg ${
-                          station.transportes_disponibles > 0 
-                            ? 'bg-emerald-100 dark:bg-emerald-900' 
-                            : 'bg-gray-100 dark:bg-gray-800'
-                        }`}>
-                          <MapPin className={`h-4 w-4 ${
-                            station.transportes_disponibles > 0 
-                              ? 'text-emerald-600 dark:text-emerald-400' 
-                              : 'text-gray-400'
-                          }`} />
-                        </div>
                         <div>
                           <p className="font-medium text-gray-900 dark:text-white text-sm">
                             {station.nombre || `Estación ${index + 1}`}
                           </p>
-                          <div className="flex items-center space-x-2 text-xs text-gray-600 dark:text-gray-400">
-                            <span className={station.transportes_disponibles > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500'}>
-                              {station.transportes_disponibles || 0} vehículos
-                            </span>
-                            {station.distancia_km && (
-                              <>
-                                <span>•</span>
-                                <span>{station.distancia_km} km</span>
-                              </>
-                            )}
-                          </div>
                           {station.direccion && (
-                            <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                               {station.direccion}
                             </p>
                           )}
                         </div>
                       </div>
-                      <ChevronRight className="h-4 w-4 text-gray-400" />
                     </motion.div>
                   ))
                 ) : (
                   <div className="text-center py-6">
-                    <MapPin className="h-8 w-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       No se encontraron estaciones cercanas
                     </p>
@@ -896,7 +841,6 @@ const handleCompleteConfirm = async (destinationStationId: string, additionalDat
                       onClick={handleRefresh}
                       className="mt-2 text-emerald-600 hover:text-emerald-700"
                     >
-                      <RefreshCw className="h-4 w-4 mr-1" />
                       Buscar nuevamente
                     </Button>
                   </div>
@@ -911,65 +855,8 @@ const handleCompleteConfirm = async (destinationStationId: string, additionalDat
                   className="w-full mt-3 text-emerald-600 hover:text-emerald-700"
                 >
                   Ver todas las estaciones
-                  <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               )}
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-8">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Resumen de Este Mes
-              </h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleShowHistory}
-              >
-                Ver historial completo
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center p-4 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 rounded-lg">
-                <div className="flex items-center justify-center w-12 h-12 bg-blue-500 rounded-lg mx-auto mb-3">
-                  <Target className="h-6 w-6 text-white" />
-                </div>
-                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                  {stats?.totalLoans || 0}
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Total de préstamos
-                </p>
-              </div>
-
-              <div className="text-center p-4 bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900 dark:to-green-800 rounded-lg">
-                <div className="flex items-center justify-center w-12 h-12 bg-green-500 rounded-lg mx-auto mb-3">
-                  <Activity className="h-6 w-6 text-white" />
-                </div>
-                <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                  {stats?.activeLoans || 0}
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Préstamos activos
-                </p>
-              </div>
-
-              <div className="text-center p-4 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900 dark:to-purple-800 rounded-lg">
-                <div className="flex items-center justify-center w-12 h-12 bg-purple-500 rounded-lg mx-auto mb-3">
-                  <MapPin className="h-6 w-6 text-white" />
-                </div>
-                <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                  {nearbyStations.length}
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Estaciones disponibles
-                </p>
-              </div>
             </div>
           </div>
         </div>
@@ -1000,11 +887,29 @@ const handleCompleteConfirm = async (destinationStationId: string, additionalDat
       <AllStationsModal
         isOpen={showAllStationsModal}
         onClose={() => setShowAllStationsModal(false)}
+        onNavigateToStation={(station) => {
+          setSelectedStationForNavigation(station);
+          setShowMapModal(true);
+        }}
       />
 
       <UserProfileModal
         isOpen={showProfileModal}
         onClose={() => setShowProfileModal(false)}
+      />
+
+      <MapModal
+        isOpen={showMapModal}
+        onClose={() => {
+          setShowMapModal(false);
+          setSelectedStationForNavigation(null);
+        }}
+        stations={allStations}
+        userLocation={undefined}
+        selectedStation={selectedStationForNavigation}
+        onStationClick={(station) => {
+          console.log('🎯 Estación seleccionada:', station);
+        }}
       />
     </div>
   );

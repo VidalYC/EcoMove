@@ -1,18 +1,5 @@
-// src/components/Station/AllStationsModal.tsx
-// Importa este componente en tu UserDashboard.tsx así:
-// import { AllStationsModal } from '../../components/Station/AllStationsModal';
+// src/components/Station/AllStationsModal.tsx - SIN ICONOS Y SIN KM
 import React, { useState, useEffect } from 'react';
-import { 
-  X, 
-  MapPin, 
-  Navigation, 
-  Bike,
-  Clock,
-  AlertCircle,
-  CheckCircle2,
-  RefreshCw,
-  ExternalLink
-} from 'lucide-react';
 import { Button } from '../UI/Button';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -31,11 +18,13 @@ interface Station {
 interface AllStationsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onNavigateToStation?: (station: Station) => void;
 }
 
 export const AllStationsModal: React.FC<AllStationsModalProps> = ({
   isOpen,
-  onClose
+  onClose,
+  onNavigateToStation
 }) => {
   const [stations, setStations] = useState<Station[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,42 +43,84 @@ export const AllStationsModal: React.FC<AllStationsModalProps> = ({
       setIsLoading(true);
       setError(null);
 
+      console.log('🔄 [AllStationsModal] Cargando estaciones y vehículos...');
+
       const token = localStorage.getItem('ecomove_token');
-      const response = await fetch('http://localhost:4000/api/v1/stations', {
+      
+      const stationsResponse = await fetch('http://localhost:4000/api/v1/stations', {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-cache'
         }
       });
 
-      if (!response.ok) {
-        throw new Error('Error al cargar estaciones');
+      if (!stationsResponse.ok) {
+        throw new Error(`Error al cargar estaciones: ${stationsResponse.status}`);
       }
 
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        // Adaptar los datos del backend
-        const adaptedStations = result.data.map((station: any) => ({
+      const stationsData = await stationsResponse.json();
+
+      const transportsResponse = await fetch('http://localhost:4000/api/v1/transports', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-cache'
+        }
+      });
+
+      if (!transportsResponse.ok) {
+        throw new Error(`Error al cargar vehículos: ${transportsResponse.status}`);
+      }
+
+      const transportsData = await transportsResponse.json();
+
+      if (!stationsData.success || !stationsData.data) {
+        throw new Error('No se recibieron datos de estaciones');
+      }
+
+      if (!transportsData.success) {
+        throw new Error('No se recibieron datos de vehículos');
+      }
+
+      console.log('🗺️ [AllStationsModal] Estaciones cargadas:', stationsData.data.length);
+
+      let vehicleArray: any[] = [];
+      if (Array.isArray(transportsData.data)) {
+        vehicleArray = transportsData.data;
+      } else if (transportsData.data?.transports && Array.isArray(transportsData.data.transports)) {
+        vehicleArray = transportsData.data.transports;
+      }
+
+      console.log('🚗 [AllStationsModal] Total de vehículos:', vehicleArray.length);
+
+      const adaptedStations = stationsData.data.map((station: any) => {
+        const availableVehicles = vehicleArray.filter((vehicle: any) => {
+          const stationId = vehicle.currentStationId || vehicle.estacion_actual_id;
+          const status = vehicle.status || vehicle.estado;
+          const isAvailable = status === 'available' || status === 'disponible';
+          
+          return stationId === station.id && isAvailable;
+        });
+
+        const transportes_disponibles = availableVehicles.length;
+
+        return {
           id: station.id,
           nombre: station.name,
           direccion: station.address,
-          latitud: station.latitude,
-          longitud: station.longitude,
-          capacidad: station.capacity,
-          estado: station.status,
-          // Simular datos adicionales que no vienen del backend
-          transportes_disponibles: station.id === 5 ? 3 : 
-                                   station.id === 4 ? 2 : 
-                                   Math.floor(Math.random() * 5),
-          distancia_km: station.id === 5 ? 0.8 : 
-                       station.id === 4 ? 1.2 : 
-                       Number((Math.random() * 5 + 0.5).toFixed(1))
-        }));
+          latitud: station.coordinate?.latitude || station.latitud,
+          longitud: station.coordinate?.longitude || station.longitud,
+          capacidad: station.maxCapacity || station.capacity,
+          estado: station.isActive ? 'activa' : 'inactiva',
+          transportes_disponibles
+        };
+      });
 
-        setStations(adaptedStations);
-      }
+      console.log('✅ [AllStationsModal] Estaciones procesadas:', adaptedStations.length);
+
+      setStations(adaptedStations);
+
     } catch (err: any) {
-      console.error('Error loading stations:', err);
+      console.error('❌ [AllStationsModal] Error:', err);
       setError(err.message || 'Error al cargar las estaciones');
     } finally {
       setIsLoading(false);
@@ -101,9 +132,10 @@ export const AllStationsModal: React.FC<AllStationsModalProps> = ({
   };
 
   const handleNavigate = (station: Station) => {
-    if (station.latitud && station.longitud) {
-      const url = `https://www.google.com/maps/dir/?api=1&destination=${station.latitud},${station.longitud}`;
-      window.open(url, '_blank');
+    if (onNavigateToStation && station.latitud && station.longitud) {
+      console.log('🗺️ Abriendo mapa interno para:', station.nombre);
+      onNavigateToStation(station);
+      onClose();
     }
   };
 
@@ -112,7 +144,6 @@ export const AllStationsModal: React.FC<AllStationsModalProps> = ({
     window.location.href = `/transportes?station=${stationId}`;
   };
 
-  // Filtrar estaciones
   const filteredStations = stations.filter(station => {
     const matchesSearch = station.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          station.direccion.toLowerCase().includes(searchTerm.toLowerCase());
@@ -138,9 +169,6 @@ export const AllStationsModal: React.FC<AllStationsModalProps> = ({
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center space-x-3">
-              <div className="bg-gradient-to-r from-emerald-500 to-teal-600 p-2 rounded-lg">
-                <MapPin className="h-6 w-6 text-white" />
-              </div>
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                   Todas las Estaciones
@@ -158,13 +186,13 @@ export const AllStationsModal: React.FC<AllStationsModalProps> = ({
                 disabled={isLoading}
                 className="flex items-center space-x-2"
               >
-                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                <span>Actualizar</span>
               </Button>
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               >
-                <X className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                Cerrar
               </button>
             </div>
           </div>
@@ -178,9 +206,8 @@ export const AllStationsModal: React.FC<AllStationsModalProps> = ({
                 placeholder="Buscar estación por nombre o dirección..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white"
               />
-              <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
             </div>
 
             {/* Filtros rápidos */}
@@ -227,7 +254,6 @@ export const AllStationsModal: React.FC<AllStationsModalProps> = ({
               </div>
             ) : error ? (
               <div className="flex flex-col items-center justify-center py-12">
-                <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
                 <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
                 <Button onClick={handleRefresh} variant="outline">
                   Intentar nuevamente
@@ -235,7 +261,6 @@ export const AllStationsModal: React.FC<AllStationsModalProps> = ({
               </div>
             ) : filteredStations.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12">
-                <MapPin className="h-12 w-12 text-gray-300 dark:text-gray-600 mb-4" />
                 <p className="text-gray-600 dark:text-gray-400">
                   No se encontraron estaciones
                 </p>
@@ -252,77 +277,28 @@ export const AllStationsModal: React.FC<AllStationsModalProps> = ({
                   >
                     {/* Header de la tarjeta */}
                     <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-start space-x-3">
-                        <div className={`p-2 rounded-lg ${
-                          (station.transportes_disponibles || 0) > 0
-                            ? 'bg-emerald-100 dark:bg-emerald-900'
-                            : 'bg-gray-100 dark:bg-gray-800'
-                        }`}>
-                          <MapPin className={`h-5 w-5 ${
-                            (station.transportes_disponibles || 0) > 0
-                              ? 'text-emerald-600 dark:text-emerald-400'
-                              : 'text-gray-400'
-                          }`} />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
-                            {station.nombre}
-                          </h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {station.direccion}
-                          </p>
-                        </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
+                          {station.nombre}
+                        </h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {station.direccion}
+                        </p>
                       </div>
                     </div>
 
                     {/* Estadísticas */}
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                      <div className="flex items-center space-x-2 text-sm">
-                        <Bike className={`h-4 w-4 ${
-                          (station.transportes_disponibles || 0) > 0
-                            ? 'text-green-600 dark:text-green-400'
-                            : 'text-red-500'
-                        }`} />
+                    <div className="mb-4">
+                      <div className="text-sm">
                         <span className={`font-medium ${
                           (station.transportes_disponibles || 0) > 0
                             ? 'text-green-600 dark:text-green-400'
                             : 'text-red-500'
                         }`}>
-                          {station.transportes_disponibles || 0} disponibles
+                          {station.transportes_disponibles || 0} vehículos disponibles
                         </span>
                       </div>
-                      {station.distancia_km && (
-                        <div className="flex items-center space-x-2 text-sm">
-                          <Navigation className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                          <span className="text-gray-700 dark:text-gray-300">
-                            {station.distancia_km} km
-                          </span>
-                        </div>
-                      )}
                     </div>
-
-                    {/* Estado */}
-                    {station.estado && (
-                      <div className="mb-4">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                          station.estado === 'activa'
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                            : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-                        }`}>
-                          {station.estado === 'activa' ? (
-                            <>
-                              <CheckCircle2 className="h-3 w-3 mr-1" />
-                              Activa
-                            </>
-                          ) : (
-                            <>
-                              <Clock className="h-3 w-3 mr-1" />
-                              {station.estado}
-                            </>
-                          )}
-                        </span>
-                      </div>
-                    )}
 
                     {/* Acciones */}
                     <div className="flex space-x-2">
@@ -332,7 +308,6 @@ export const AllStationsModal: React.FC<AllStationsModalProps> = ({
                           className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white text-sm"
                           size="sm"
                         >
-                          <Bike className="h-4 w-4 mr-2" />
                           Alquilar aquí
                         </Button>
                       ) : (
@@ -345,14 +320,15 @@ export const AllStationsModal: React.FC<AllStationsModalProps> = ({
                         </Button>
                       )}
                       
-                      {station.latitud && station.longitud && (
+                      {station.latitud && station.longitud && onNavigateToStation && (
                         <Button
                           onClick={() => handleNavigate(station)}
                           variant="outline"
                           size="sm"
                           className="flex items-center"
+                          title="Calcular ruta a esta estación"
                         >
-                          <ExternalLink className="h-4 w-4" />
+                          Cómo llegar
                         </Button>
                       )}
                     </div>
@@ -367,6 +343,11 @@ export const AllStationsModal: React.FC<AllStationsModalProps> = ({
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 Mostrando {filteredStations.length} de {stations.length} estaciones
+                {stations.length > 0 && (
+                  <span className="ml-2">
+                    • {stations.filter(s => (s.transportes_disponibles || 0) > 0).length} con vehículos
+                  </span>
+                )}
               </div>
               <Button
                 onClick={onClose}

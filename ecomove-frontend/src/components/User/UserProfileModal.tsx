@@ -1,6 +1,5 @@
-// src/components/User/UserProfileModal.tsx
+// src/components/User/UserProfileModal.tsx - SIN ICONOS
 import React, { useState, useEffect } from 'react';
-import { X, Edit2, Save, User, Mail, Phone, FileText, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../UI/Button';
 import { useAuth } from '../../contexts/AuthContext';
@@ -52,7 +51,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       return;
     }
 
-    // Validar nombre (solo letras y espacios)
     const nameRegex = /^[a-zA-ZÀ-ÿ\s]+$/;
     if (!nameRegex.test(formData.nombre)) {
       showError('Nombre Inválido', 'El nombre solo puede contener letras y espacios');
@@ -83,7 +81,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       const result = await response.json();
 
       if (!response.ok) {
-        // Si es error de autorización, sugerir re-login
         if (response.status === 401 || response.status === 403) {
           throw new Error('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.');
         }
@@ -91,7 +88,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       }
 
       if (result.success) {
-        // Actualizar el contexto de autenticación
         await updateProfile({
           nombre: formData.nombre.trim(),
           telefono: formData.telefono.trim() || undefined
@@ -105,7 +101,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
     } catch (error: any) {
       console.error('Error updating profile:', error);
       
-      // Si es error de token, cerrar modal y pedir re-login
       if (error.message.includes('sesión') || error.message.includes('token')) {
         showError('Sesión Expirada', error.message);
         onClose();
@@ -133,7 +128,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -141,7 +135,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
             onClick={onClose}
             className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
           >
-            {/* Modal */}
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -153,15 +146,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
               <div className="bg-gradient-to-r from-emerald-500 to-teal-600 p-6 relative">
                 <button
                   onClick={onClose}
-                  className="absolute top-4 right-4 text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
+                  className="absolute top-4 right-4 text-white hover:bg-white/20 rounded-lg px-3 py-1 transition-colors"
                 >
-                  <X className="h-5 w-5" />
+                  Cerrar
                 </button>
                 
                 <div className="flex items-center space-x-4">
-                  <div className="w-16 h-16 bg-white dark:bg-gray-700 rounded-full flex items-center justify-center">
-                    <User className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
-                  </div>
                   <div>
                     <h2 className="text-2xl font-bold text-white">Mi Perfil</h2>
                     <p className="text-emerald-100">Gestiona tu información personal</p>
@@ -175,16 +165,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                   <div className="space-y-6">
                     {/* Información de Solo Lectura */}
                     <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-5 border border-gray-200 dark:border-gray-600">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-                        <Shield className="h-5 w-5 mr-2 text-blue-500" />
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                         Información Protegida
                       </h3>
                       
                       <div className="space-y-4">
                         {/* Email */}
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
-                            <Mail className="h-4 w-4 mr-2 text-gray-400" />
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Correo Electrónico
                           </label>
                           <div className="bg-gray-100 dark:bg-gray-600 rounded-lg px-4 py-3 text-gray-600 dark:text-gray-300">
@@ -198,8 +186,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                         {/* Documento */}
                         {user.documento && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
-                              <FileText className="h-4 w-4 mr-2 text-gray-400" />
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                               Documento de Identidad
                             </label>
                             <div className="bg-gray-100 dark:bg-gray-600 rounded-lg px-4 py-3 text-gray-600 dark:text-gray-300">
@@ -216,8 +203,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                     {/* Información Editable */}
                     <div className="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
                       <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
-                          <User className="h-5 w-5 mr-2 text-emerald-500" />
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                           Información Personal
                         </h3>
                         
@@ -229,7 +215,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                             onClick={() => setIsEditing(true)}
                             className="flex items-center space-x-2"
                           >
-                            <Edit2 className="h-4 w-4" />
                             <span>Editar</span>
                           </Button>
                         )}
@@ -261,8 +246,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
 
                         {/* Teléfono */}
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
-                            <Phone className="h-4 w-4 mr-2 text-gray-400" />
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Teléfono
                           </label>
                           {isEditing ? (
@@ -286,13 +270,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
 
                     {/* Información Adicional */}
                     <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-5 border border-gray-200 dark:border-gray-600">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-                        <Shield className="h-5 w-5 mr-2 text-purple-500" />
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                         Información de Cuenta
                       </h3>
                       
                       <div className="grid grid-cols-1 gap-4">
-                        {/* Rol */}
                         <div>
                           <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Rol</p>
                           <p className="text-base font-medium text-gray-900 dark:text-white capitalize">
@@ -317,10 +299,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                             <span>Guardando...</span>
                           </div>
                         ) : (
-                          <>
-                            <Save className="h-4 w-4 mr-2" />
-                            Guardar Cambios
-                          </>
+                          <span>Guardar Cambios</span>
                         )}
                       </Button>
                       
